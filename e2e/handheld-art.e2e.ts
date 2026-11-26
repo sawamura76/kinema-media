@@ -121,3 +121,26 @@ test('saved excessive scale clamps to 115 and fullscreen buttons remain square',
  const rect=(await exit.boundingBox())!;expect(Math.abs(rect.width-rect.height)).toBeLessThan(1);
  await page.screenshot({path:'work/handheld-115-round-controls.png'});
 });
+
+for(const scale of [85,100,115])for(const width of [1280,854])test(`visualizer check marks stay inside boxes at ${scale}% and ${width}px`,async({page})=>{
+ await page.addInitScript((scale)=>localStorage.setItem('kinemaMockPersistedLayout',JSON.stringify([['ui_mode','handheld'],['handheld_scale',String(scale)]])),scale);
+ await page.reload();await page.setViewportSize({width,height:width===854?480:720});
+ await page.locator('.top-nav').getByRole('button',{name:'Music',exact:true}).click();
+ await page.getByRole('button',{name:'Album',exact:true}).click();
+ await page.getByRole('button',{name:'First album Test artist',exact:true}).click();
+ await page.getByRole('button',{name:'▶ Play',exact:true}).click();
+ await page.getByRole('button',{name:'Open full-screen music',exact:true}).click();
+ await page.getByRole('button',{name:'Visualizer',exact:true}).click();
+ const panel=page.getByRole('dialog',{name:'Visualizer',exact:true});
+ for(const category of ['Art','Butterchurn','Spectrum analyzer']){
+  await panel.getByRole('button',{name:/^Category:/}).click();
+  await panel.locator('.music-viz-dropdown').getByRole('button',{name:category,exact:true}).click();
+  await expect(panel.locator('.music-viz-check').first()).toBeVisible();
+  const checks=await panel.locator('.music-viz-check').evaluateAll((buttons)=>buttons.map((button)=>{
+   const box=button.getBoundingClientRect(),mark=button.querySelector('svg')!.getBoundingClientRect();
+   return {square:Math.abs(box.width-box.height)<1,inside:mark.left>=box.left&&mark.right<=box.right&&mark.top>=box.top&&mark.bottom<=box.bottom,centered:Math.abs((mark.left+mark.right-box.left-box.right)/2)<1&&Math.abs((mark.top+mark.bottom-box.top-box.bottom)/2)<1};
+  }));
+  expect(checks.length).toBeGreaterThan(0);for(const check of checks)expect(check).toEqual({square:true,inside:true,centered:true});
+ }
+ if(scale===115&&width===854)await page.screenshot({path:'work/visualizer-checks-115-handheld.png'});
+});

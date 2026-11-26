@@ -62,7 +62,7 @@ export default function VisualizerPanel({ preset, onPreset, onNext, onClose }: {
         const list = category === 'butterchurn' ? settings.presetNames : included;
         const label = category === 'butterchurn' ? name : t(name as typeof modes[number]);
         return <FocusGroup kind="row" className="music-viz-item" key={name}>
-          <FocusButton pressed={list.includes(name)} disabled={list.length === 1 && list.includes(name)} label={`${ja ? '含める' : 'Include'} ${label}`} onSelect={() => toggle(name)}>{list.includes(name) ? '✓' : '＋'}</FocusButton>
+          <FocusButton className="music-viz-check" pressed={list.includes(name)} disabled={list.length === 1 && list.includes(name)} label={`${ja ? '含める' : 'Include'} ${label}`} onSelect={() => toggle(name)}><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">{list.includes(name) ? <path d="M5 12l4 4L19 6" /> : <path d="M12 5v14M5 12h14" />}</svg></FocusButton>
           <FocusButton className={selected ? 'selected' : ''} pressed={selected} label={`${ja ? '表示' : 'Show'} ${label}`} onSelect={() => {
             if (!list.includes(name)) toggle(name);
             if (category === 'butterchurn') onPreset(presets.findIndex((p) => p.name === name));
