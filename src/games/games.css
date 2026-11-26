@@ -73,3 +73,9 @@ select.focused { outline: 2px solid #ba9cff; outline-offset: 2px; }
 .box-art-controls label {display:grid;gap:.5rem;}
 .box-art-controls input {width:100%;}
 @media(max-width:640px){.box-art-workspace{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.75rem;}}
+
+.leave.box-art-cropper {width:min(48rem,94vw);max-width:94vw;box-sizing:border-box;}
+.box-art-cropper select,.box-art-cropper button {font:inherit;color:#f6f3ff;background:#292633;border:1px solid #635775;border-radius:.45rem;padding:.65rem .8rem;min-height:44px;max-width:100%;}
+.box-art-cropper input[type='range'] {accent-color:#b79aff;min-height:36px;}
+.box-art-cropper .focused {outline:var(--focus-ring,3px) solid #c3a4ff;outline-offset:2px;}
+.box-art-cropper p {line-height:1.5;}

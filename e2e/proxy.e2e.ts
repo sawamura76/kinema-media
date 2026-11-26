@@ -46,7 +46,7 @@ test('off by default; a bad address is refused in words, Check says what happene
   await expect.poll(() => focused(page)).toBe('On');
   await press(page, 'Enter');
   await expect(page.locator('.proxy-section .settings-error')).toContainText('Type the proxy');
-  
+
 
   // An address with no port is refused too.
   await reach(page, '[127.0.0.1:8080]');
