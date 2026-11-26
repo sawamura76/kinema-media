@@ -24,7 +24,7 @@ let fullscreenWork: Promise<void> = Promise.resolve();
 function Landing() { useLanding('music-play'); return null; }
 
 /** A full-window music stage with ambient and measured-audio artwork modes. */
-export default function MusicNowPlaying({ player, onClose, onQueue, suspended = false }: { player: MusicPlayer; onClose: () => void; onQueue: () => void; suspended?: boolean }) {
+export default function MusicNowPlaying({ player, onClose, onQueue, onAlbum, suspended = false }: { player: MusicPlayer; onClose: () => void; onQueue: () => void; onAlbum: () => void; suspended?: boolean }) {
   const { language, t } = useMusicLanguage();
   const settings = useVisualizationSettings();
   const background = settings.background;
@@ -134,6 +134,6 @@ export default function MusicNowPlaying({ player, onClose, onQueue, suspended = 
         <h1 className="music-now-track">{track.title}</h1>
       </div>
     </section> : <section className="music-now-content"><h1>{t('music')}</h1><p>{t('noSongs')}</p></section>)}
-    <div inert={!controlsVisible} aria-hidden={!controlsVisible}><MusicBar player={player} onQueue={onQueue} onFullscreen={onClose} fullscreen /></div>
+    <div inert={!controlsVisible} aria-hidden={!controlsVisible}><MusicBar player={player} onQueue={onQueue} onAlbum={onAlbum} onFullscreen={onClose} fullscreen /></div>
   </main></FocusScreen>;
 }

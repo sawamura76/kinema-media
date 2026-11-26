@@ -156,13 +156,30 @@ test('physical controller media buttons control music',async({page})=>{
   pad.buttons[index].pressed=on;pad.buttons[index].value=on?1:0;
  },{index,on});
  const release=async(index:number)=>{await press(index,false);await pause(page,80,'Observe controller release before next press');};
- await press(7,true);await expect(page.locator('.music-player')).toContainText('Song 2');
+ await press(7,true);await expect(page.locator('.music-player')).toContainText('Song 2');await expect(page.locator('.music-loading')).toHaveCount(0);
  await pause(page,450,'Held trigger should skip once');await expect(page.locator('.music-player')).toContainText('Song 2');await release(7);
  await press(6,true);await expect(page.locator('.music-player')).toContainText('Song 1');await release(6);
  const state=(key:'paused'|'mute')=>page.evaluate((key)=>(window as unknown as {__fakeMpv:{paused:boolean;mute:boolean}}).__fakeMpv[key],key);
  for(const [index,key] of [[3,'paused'],[2,'mute']] as const){
   await press(index,true);await expect.poll(()=>state(key)).toBe(true);
+  if(key==='mute'){await expect(page.locator('.music-player').getByRole('slider',{name:'Volume',exact:true})).toHaveValue('0');await expect(page.locator('.music-player').getByRole('img',{name:'Muted',exact:true})).toBeVisible();}
   await pause(page,450,'Held face button must not repeat');await expect.poll(()=>state(key)).toBe(true);await release(index);
   await press(index,true);await expect.poll(()=>state(key)).toBe(false);await release(index);
+  if(key==='mute')await expect(page.locator('.music-player').getByRole('slider',{name:'Volume',exact:true})).not.toHaveValue('0');
  }
+});
+
+test('playback cover opens its album from another page and fullscreen',async({page})=>{
+ await page.locator('.top-nav').getByRole('button',{name:'Music',exact:true}).click();
+ await page.getByRole('button',{name:'Album',exact:true}).click();
+ await page.getByRole('button',{name:'First album Test artist',exact:true}).click();
+ await page.getByRole('button',{name:'\u25b6 Play',exact:true}).click();
+ await page.locator('.top-nav').getByRole('button',{name:'Games',exact:true}).click();
+ await page.getByRole('button',{name:'Open album: First album',exact:true}).click();
+ await expect(page.locator('.music-album-detail')).toContainText('First album');
+ await expect(page.getByRole('button',{name:'\u25b6 Play',exact:true})).toHaveClass(/focused/);
+ await page.getByRole('button',{name:'Open full-screen music',exact:true}).click();
+ await page.getByRole('button',{name:'Open album: First album',exact:true}).click();
+ await expect(page.locator('.music-album-detail')).toContainText('First album');
+ await expect(page.locator('.music-player')).toContainText('Song 1');
 });

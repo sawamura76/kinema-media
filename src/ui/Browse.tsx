@@ -120,7 +120,7 @@ type View =
   // `section` opens Settings on the review queue, or on the TMDB key field,
   // from the notices on Home.
   | { name: 'home' | 'games' | 'library' | 'search' | 'settings'; section?: SettingsTarget }
-  | { name: 'music'; musicTab?: 'Queue' }
+  | { name: 'music'; musicTab?: 'Queue'; albumTrackId?: number }
   | { name: 'music-player' }
   // One Videos folder, from a tile on the Library page.
   | { name: 'videos'; root: LibraryRoot }
@@ -777,7 +777,7 @@ export default function Browse() {
   }
 
   if (view.name === 'music-player') {
-    return <><div hidden={floating}><MusicNowPlaying suspended={floating} player={music} onClose={goBack} onQueue={() => openView({ name: 'music', musicTab: 'Queue' })} /></div>{floating && <FloatingMusic player={music} />}</>;
+    return <><div hidden={floating}><MusicNowPlaying suspended={floating} player={music} onAlbum={() => openView({ name: 'music', albumTrackId: music.track?.id })} onClose={goBack} onQueue={() => openView({ name: 'music', musicTab: 'Queue' })} /></div>{floating && <FloatingMusic player={music} />}</>;
   }
 
   // Where Home shows its notices: titles there, and no setup pages over them.
@@ -911,7 +911,7 @@ export default function Browse() {
           </FocusScreen>
         )}
 
-        {view.name === 'music' && <FocusScreen key={`music:${view.musicTab ?? 'Artists'}:${musicHomeVisit}`}><MusicPage player={music} initialTab={view.musicTab} onManage={() => openView({ name: 'settings', section: 'music' })} /></FocusScreen>}
+        {view.name === 'music' && <FocusScreen key={`music:${view.musicTab ?? 'Artists'}:${musicHomeVisit}:${view.albumTrackId ?? ''}`}><MusicPage player={music} initialTab={view.musicTab} initialAlbumTrackId={view.albumTrackId} onManage={() => openView({ name: 'settings', section: 'music' })} /></FocusScreen>}
 
         {view.name === 'folders' && (
           <FocusScreen>
@@ -1078,7 +1078,7 @@ export default function Browse() {
         )}
 
         {leaving && <LeaveDialog onClose={() => setLeaving(false)} />}
-        <MusicBar player={music} onQueue={() => openView({ name: 'music', musicTab: 'Queue' })} onFullscreen={() => openView({ name: 'music-player' })} />
+        <MusicBar player={music} onAlbum={() => openView({ name: 'music', albumTrackId: music.track?.id })} onQueue={() => openView({ name: 'music', musicTab: 'Queue' })} onFullscreen={() => openView({ name: 'music-player' })} />
         {/* The menu on cards (cardMenuStore.ts), over whichever screen the card is on. */}
         <CardMenuHost
           onPlay={(title) => void playTitle(title)}

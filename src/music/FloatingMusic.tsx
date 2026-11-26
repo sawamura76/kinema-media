@@ -11,9 +11,9 @@ export default function FloatingMusic({ player }: { player: MusicPlayer }) {
     read(); const timer = window.setInterval(read, 1000); return () => { alive = false; window.clearInterval(timer); };
   }, []);
   const track = player.track;
-  return <FloatingPlayer title={track?.title ?? 'Music'} artist={track?.artist} album={track?.album} artwork={track?.artwork} paused={player.paused} loading={player.loading} error={player.error} volume={volume}
+  return <FloatingPlayer title={track?.title ?? 'Music'} artist={track?.artist} album={track?.album} artwork={track?.artwork} paused={player.paused} loading={player.loading} error={player.error} volume={player.muted ? 0 : volume}
     onPause={player.pause} onPrevious={player.previous} onNext={player.next} onVolume={(value) => {
-      setVolume(value); window.dispatchEvent(new CustomEvent('kinema-music-volume', { detail: value }));
+      setVolume(value); player.unmute(); window.dispatchEvent(new CustomEvent('kinema-music-volume', { detail: value }));
       void mpvCommand('set', ['volume', String(value)]).catch(console.warn);
     }} />;
 }

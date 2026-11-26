@@ -5,8 +5,8 @@ import { getMusicLibrary, MUSIC_LIBRARY_CHANGED } from './api';
 import { nextIndex, shuffled, type Repeat } from './model';
 import { sameMusicPath } from './path';
 
-interface State { queue: MusicTrack[]; index: number; active: boolean; paused: boolean; loading: boolean; position: number; duration: number; repeat: Repeat; error: string | null }
-const EMPTY: State = { queue: [], index: 0, active: false, paused: false, loading: false, position: 0, duration: 0, repeat: 'off', error: null };
+interface State { queue: MusicTrack[]; index: number; active: boolean; paused: boolean; muted: boolean; loading: boolean; position: number; duration: number; repeat: Repeat; error: string | null }
+const EMPTY: State = { queue: [], index: 0, active: false, paused: false, muted: false, loading: false, position: 0, duration: 0, repeat: 'off', error: null };
 
 /** Lives in Browse, above its route pages, so changing pages never unmounts audio. */
 export function useMusicPlayer(videoActive: boolean) {
@@ -49,6 +49,12 @@ export function useMusicPlayer(videoActive: boolean) {
       await setPaused(false);
     }).catch((e) => { if (token === generation.current) patch({ loading: false, error: String(e) }); });
   }, [enqueue, patch]);
+  useEffect(() => {
+    if (!state.active) return;
+    let live = true;
+    void readProperty<boolean>('mute', 'flag').then((muted) => { if (live && muted !== null) patch({ muted }); }).catch(console.warn);
+    return () => { live = false; };
+  }, [state.active, patch]);
   const stop = useCallback(() => {
     ++generation.current;
     const wasActive = current.current.active;
@@ -78,7 +84,7 @@ export function useMusicPlayer(videoActive: boolean) {
       if (!current.current.active || e.repeat || e.ctrlKey || e.altKey || e.metaKey) return;
       if (e.key === 'AudioVolumeMute') {
         e.preventDefault(); e.stopPropagation();
-        void enqueue(async () => setMuted(!(await readProperty<boolean>('mute', 'flag') ?? false))).catch((error) => patch({ error: String(error) }));
+        void enqueue(async () => { const muted = !(await readProperty<boolean>('mute', 'flag') ?? false); await setMuted(muted); patch({ muted }); }).catch((error) => patch({ error: String(error) }));
         return;
       }
       const target = e.target;
@@ -139,6 +145,7 @@ export function useMusicPlayer(videoActive: boolean) {
     jump: (index: number) => load(current.current.queue, index),
     next: () => step(1), previous: () => step(-1), stop,
     pause: togglePause,
+    unmute: () => { void enqueue(async () => { await setMuted(false); patch({ muted: false }); }).catch((error) => patch({ error: String(error) })); },
     seek: (seconds: number) => { void mpvCommand('seek', [String(seconds), 'absolute']).catch((e) => patch({ error: String(e) })); },
     cycleRepeat: () => patch({ repeat: current.current.repeat === 'off' ? 'all' : current.current.repeat === 'all' ? 'one' : 'off' }),
     shuffleQueue: () => {

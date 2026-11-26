@@ -253,3 +253,5 @@
 .music-viz-item .music-viz-check {display:grid;place-items:center;align-self:start;box-sizing:border-box;width:var(--viz-check-size);height:var(--viz-check-size);min-width:var(--viz-check-size);min-height:var(--viz-check-size);padding:0;line-height:1;overflow:hidden;}
 .music-viz-check svg {display:block;width:1.2rem;height:1.2rem;max-width:65%;max-height:65%;pointer-events:none;}
 .music-viz-item button:last-child {min-height:var(--viz-check-size);min-width:0;}
+
+.music-player-video-style button.music-now-art {padding:0;border:0;box-sizing:border-box;}

@@ -22,7 +22,7 @@ import { saveCollectionSort, useCollectionSort } from './collectionSort';
 import './music.css';
 
 type Tab = 'Artists' | 'Albums' | 'Songs' | 'Queue';
-export default function MusicPage({ player, initialTab = 'Artists', onManage }: { player: MusicPlayer; initialTab?: Tab; onManage: () => void }) {
+export default function MusicPage({ player, initialTab = 'Artists', initialAlbumTrackId, onManage }: { player: MusicPlayer; initialTab?: Tab; initialAlbumTrackId?: number; onManage: () => void }) {
   const { language, t } = useMusicLanguage();
   const [library, setLibrary] = useState<MusicLibrary>({ roots: [], tracks: [] });
   const collectionId = useMusicCollection();
@@ -108,16 +108,25 @@ export default function MusicPage({ player, initialTab = 'Artists', onManage }: 
     local.current.future = [];
   };
 
+  const openedAlbum = useRef<number | undefined>(undefined);
   useEffect(() => {
     let live = true, request = 0;
     const refresh = () => {
       const token = ++request;
-      void getMusicLibrary().then((data) => { if (live && token === request) { setLibrary(data); setError(''); } }).catch((e) => { if (live && token === request) setError(String(e)); });
+      void getMusicLibrary().then((data) => { if (live && token === request) { setLibrary(data); setError('');
+        if (initialAlbumTrackId !== undefined && openedAlbum.current !== initialAlbumTrackId) {
+          const found = albumsOf(data.tracks).find((item) => item.tracks.some((track) => track.id === initialAlbumTrackId));
+          if (found) {
+            openedAlbum.current = initialAlbumTrackId;
+            detailArrival.current = true; returnFocusTo('music-album-play', 0);
+            setAlbum(found); setArtist(null);
+          }
+        } } }).catch((e) => { if (live && token === request) setError(String(e)); });
     };
     refresh();
     window.addEventListener(MUSIC_LIBRARY_CHANGED, refresh);
     return () => { live = false; window.removeEventListener(MUSIC_LIBRARY_CHANGED, refresh); };
-  }, []);
+  }, [initialAlbumTrackId]);
   const available = useMemo(() => {
     const ids = selectedCollection !== 0 && library.collection_tracks
       ? new Set(library.collection_tracks.filter((item) => item.collection_id === selectedCollection).map((item) => item.track_id))
