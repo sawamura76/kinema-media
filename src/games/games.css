@@ -51,7 +51,7 @@ select.focused { outline: 2px solid #ba9cff; outline-offset: 2px; }
 .sidebar-games .game-tile.focused, .sidebar-games .game-tile:hover { box-shadow:none; }
 .sidebar-games .game-tile.focused { outline:none; }
 .sidebar-games .game-tile.focused .game-cover { outline:var(--focus-ring) solid #c3a4ff; outline-offset:3px; }
-.sidebar-games .kind-app .game-cover img { object-fit:contain; padding:1rem; box-sizing:border-box; }
+.sidebar-games .game-cover img { object-fit:cover; padding:0; box-sizing:border-box; }
 .games-manager .game-manager-choice { display:grid; gap:.5rem; margin:1.4rem 0 1rem; }
 .games-manager .game-manager-choice select { width:100%; }
 .games-empty { max-width:38rem; padding:2rem 0; color:#bdb8cd; line-height:1.6; }
@@ -59,7 +59,7 @@ select.focused { outline: 2px solid #ba9cff; outline-offset: 2px; }
 :root[data-ui-mode=handheld] .games-page.sidebar-games { padding-inline:1rem; }
 :root[data-ui-mode=handheld] .sidebar-games .games-grid { grid-template-columns:repeat(auto-fill,minmax(155px,1fr)); }
 :root[data-ui-mode=handheld] .sidebar-games .game-cover { max-height:46vh; }
-:root[data-ui-mode=handheld] .sidebar-games .game-cover img { object-fit:contain; }
+:root[data-ui-mode=handheld] .sidebar-games .game-cover img { object-fit:cover; }
 :root[data-ui-mode=handheld] .sidebar-games .game-tile.focused { outline:none; background:transparent; }
 :root[data-ui-mode=handheld] .sidebar-games.games-dense .games-grid { grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); }
 

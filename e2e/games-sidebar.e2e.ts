@@ -36,7 +36,7 @@ test('games and apps match the library sidebar design with platform groups, sear
   expect(await page.evaluate(()=>localStorage.getItem('kinemaMockLaunchedGame'))).toBe('2');
   await sidebar(page).getByRole('button',{name:'Apps (2)',exact:true}).click();
   await expect(page.locator('.game-tile')).toHaveCount(2);
-  await expect(page.locator('.kind-app img').first()).toHaveCSS('object-fit','contain');
+  await expect(page.locator('.kind-app img').first()).toHaveCSS('object-fit','cover');
   await nav(page,'Movies');await nav(page,'Games');
   await expect(sidebar(page).getByRole('button',{name:'Apps (2)',exact:true})).toHaveAttribute('aria-pressed','true');
   await expect(page.getByRole('combobox',{name:'Sort games and apps by',exact:true})).toHaveValue('za');
