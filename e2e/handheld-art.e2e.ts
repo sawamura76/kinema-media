@@ -35,6 +35,7 @@ test('box art previews, crops and cancels without replacing a saved draft',async
  await expect(cropper.getByRole('button',{name:'Use image',exact:true})).toBeEnabled();
  await cropper.getByRole('slider',{name:'Box art horizontal position',exact:true}).fill('100');
  await cropper.getByRole('slider',{name:'Box art zoom',exact:true}).fill('150');
+ const bounds=(await cropper.getByLabel('Cropped box art preview',{exact:true}).boundingBox())!;expect(bounds.width/bounds.height).toBeCloseTo(3/4,1);
  await page.screenshot({path:'work/box-art-cropper.png'});
  await cropper.getByRole('button',{name:'Use image',exact:true}).click();
  await expect(editor.getByRole('img',{name:'Cover preview'})).toHaveAttribute('src',/cropped-game-cover/);

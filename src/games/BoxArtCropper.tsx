@@ -28,7 +28,7 @@ export default function BoxArtCropper({path,onUse,onCancel}:{path:string;onUse:(
     <h2>Preview and crop box art</h2><p>Your original image stays unchanged. Adjust the frame, then use the image. Save the shortcut to keep it.</p>
     <img className="box-art-source" src={convertFileSrc(path)} alt="" onLoad={(event)=>setSize({width:event.currentTarget.naturalWidth,height:event.currentTarget.naturalHeight})} onError={()=>setError('This image could not be displayed. Choose another image.')}/>
     <div className="box-art-workspace">
-      <div className="box-art-preview" style={{aspectRatio:String(ratio)}} aria-label="Cropped box art preview">{size&&crop&&<svg viewBox={`${crop.x*size.width} ${crop.y*size.height} ${crop.width*size.width} ${crop.height*size.height}`}><image href={convertFileSrc(path)} width={size.width} height={size.height}/></svg>}</div>
+      <div className="box-art-preview" style={{aspectRatio:String(ratio),maxWidth:`min(100%, ${44*ratio}vh)`}} aria-label="Cropped box art preview">{size&&crop&&<svg viewBox={`${crop.x*size.width} ${crop.y*size.height} ${crop.width*size.width} ${crop.height*size.height}`}><image href={convertFileSrc(path)} width={size.width} height={size.height}/></svg>}</div>
       <FocusGroup kind="list" className="box-art-controls">
         <label>Shape<FocusSelect label="Box art shape" value={shape} choices={[{value:'portrait',label:'Box art (3:4)'},{value:'square',label:'Square'},{value:'wide',label:'Widescreen'},{value:'original',label:'Original shape'}]} onChange={setShape}/></label>
         <label>Zoom {zoom}%<FocusRange label="Box art zoom" value={zoom} min={100} max={300} step={5} onChange={setZoom}/></label>
