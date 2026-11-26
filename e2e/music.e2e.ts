@@ -33,7 +33,7 @@ test('approved artist and album layouts show clean details and hierarchical Back
   await expect(album.locator('.music-tabs,.music-search,.music-heading,.music-artist-credit')).toHaveCount(0);
   await page.screenshot({path:'work/approved-album-page.png'});
   await page.keyboard.press('Enter');
-  await expect(page.locator('.music-loading')).toHaveCount(0);
+  await expect(page.locator('.music-player')).toHaveAttribute('aria-busy', 'false');
   const playing=await mpvPath(page);
   await page.keyboard.press('Escape');
   await expect(artist).toBeVisible();
@@ -71,7 +71,7 @@ test('top Music navigation returns from artist and album details without stoppin
   await page.getByRole('button', { name: 'Album', exact: true }).click();
   await page.getByRole('button',{name:'First album Test artist'}).click();
   await page.getByRole('button',{name:'▶ Play',exact:true}).click();
-  await expect(page.locator('.music-loading')).toHaveCount(0);
+  await expect(page.locator('.music-player')).toHaveAttribute('aria-busy', 'false');
   const playing=await mpvPath(page);
   await page.getByRole('button',{name:'Music',exact:true}).click();
   await expect(page.getByRole('button',{name:'Album',exact:true})).toHaveAttribute('aria-pressed','true');
@@ -85,7 +85,7 @@ test('missing album art preserves existing covers and refreshes the playing queu
   await page.evaluate(()=>localStorage.setItem('kinemaMockMusicFirstArtwork','C:/mock/existing-cover.jpg'));
   await page.getByRole('button',{name:'Second album Test artist'}).click();
   await page.getByRole('button',{name:'▶ Play',exact:true}).click();
-  await expect(page.locator('.music-loading')).toHaveCount(0);
+  await expect(page.locator('.music-player')).toHaveAttribute('aria-busy', 'false');
   const playing=await mpvPath(page);
   await page.getByRole('button',{name:'Settings',exact:true}).click();
   await page.getByRole('navigation',{name:'Settings sections'}).getByRole('button',{name:'Library',exact:true}).click();
@@ -109,7 +109,7 @@ test('artist slideshow download supplies cached gallery images and rotates them'
   await page.getByRole('button', { name: 'Album', exact: true }).click();
   await page.getByRole('button',{name:'First album Test artist'}).click();
   await page.getByRole('button',{name:'▶ Play',exact:true}).click();
-  await expect(page.locator('.music-loading')).toHaveCount(0);
+  await expect(page.locator('.music-player')).toHaveAttribute('aria-busy', 'false');
   await page.clock.install();
   await page.getByRole('button',{name:'Open full-screen music',exact:true}).click();
   await expect(page.locator('.music-slide')).toHaveCount(3);
@@ -145,7 +145,7 @@ async function background(page: Page, name: string) {
 test('visualizer drawer filters rotation, saves sensitivity and closes on idle or Back', async ({ page }) => {
   await page.getByRole('button', { name: 'First album Test artist' }).click();
   await page.getByRole('button', { name: '▶ Play', exact: true }).click();
-  await expect(page.locator('.music-loading')).toHaveCount(0);
+  await expect(page.locator('.music-player')).toHaveAttribute('aria-busy', 'false');
   await page.clock.install();
   await page.getByRole('button', { name: 'Open full-screen music', exact: true }).click();
   await expect(page.locator('.music-now-toolbar button')).toHaveText(['← Exit full-screen music', 'Visualizer']);
@@ -188,7 +188,7 @@ test('drawer supports controller keys, holds artwork and skips unchecked presets
   await page.evaluate(() => localStorage.setItem('kinemaMockArtistGallery', JSON.stringify(['C:/mock/art-1.jpg', 'C:/mock/art-2.jpg'])));
   await page.getByRole('button', { name: 'First album Test artist' }).click();
   await page.getByRole('button', { name: '▶ Play', exact: true }).click();
-  await expect(page.locator('.music-loading')).toHaveCount(0);
+  await expect(page.locator('.music-player')).toHaveAttribute('aria-busy', 'false');
   await page.clock.install();
   await page.getByRole('button', { name: 'Open full-screen music', exact: true }).click();
   await openPanel(page);
@@ -224,7 +224,7 @@ test('drawer supports controller keys, holds artwork and skips unchecked presets
 test('spectrum styles respond to PCM, resize, pause, silence and capture failure', async ({ page }) => {
   await page.getByRole('button', { name: 'First album Test artist' }).click();
   await page.getByRole('button', { name: '▶ Play', exact: true }).click();
-  await expect(page.locator('.music-loading')).toHaveCount(0);
+  await expect(page.locator('.music-player')).toHaveAttribute('aria-busy', 'false');
   await page.getByRole('button', { name: 'Open full-screen music', exact: true }).click();
   await background(page, 'Butterchurn');
   await background(page, 'Radial spectrum');
@@ -355,7 +355,7 @@ test('music fits the Ally viewport and exposes controller focus', async ({ page 
   await page.getByRole('button', { name: 'First album Test artist' }).click();
   await page.getByRole('button', { name: '▶ Play', exact: true }).click();
   await expect(page.locator('.music-now-title strong')).toHaveText('Song 1');
-  await expect(page.locator('.music-loading')).toHaveCount(0);
+  await expect(page.locator('.music-player')).toHaveAttribute('aria-busy', 'false');
   await page.keyboard.press('ArrowDown');
   await expect(page.locator('.focused')).not.toHaveCount(0);
   await settled(page);
@@ -369,7 +369,7 @@ test('music fits the Ally viewport and exposes controller focus', async ({ page 
 test('video-style transport has track buttons and pointer/keyboard seeking', async ({ page }) => {
   await page.getByRole('button', { name: 'First album Test artist' }).click();
   await page.getByRole('button', { name: '▶ Play', exact: true }).click();
-  await expect(page.locator('.music-loading')).toHaveCount(0);
+  await expect(page.locator('.music-player')).toHaveAttribute('aria-busy', 'false');
   const transport = page.locator('.music-player .player-group-centre');
   await expect(transport.getByRole('button')).toHaveCount(3);
   await expect(transport.getByRole('button').nth(0)).toHaveAccessibleName('Previous song');
@@ -406,7 +406,7 @@ test('Japanese music UI preserves titles and supports kana searches', async ({ p
   await expect(page.getByRole('button', { name: '次の曲', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'リピート: オフ', exact: true })).toBeVisible();
   await expect(page.getByRole('slider', { name: '曲の再生位置', exact: true })).toBeVisible();
-  await expect(page.locator('.music-loading')).toHaveCount(0);
+  await expect(page.locator('.music-player')).toHaveAttribute('aria-busy', 'false');
   await page.screenshot({ path: 'work/music-japanese-preview.png' });
 });
 
@@ -417,7 +417,7 @@ test('native extended paths finish loading and pause can resume repeatedly', asy
   await page.getByRole('button', { name: 'Album', exact: true }).click();
   await page.getByRole('button', { name: 'First album Test artist' }).click();
   await page.getByRole('button', { name: '▶ Play', exact: true }).click();
-  await expect(page.locator('.music-loading')).toHaveCount(0);
+  await expect(page.locator('.music-player')).toHaveAttribute('aria-busy', 'false');
   await expect.poll(() => mpvPath(page)).toBe('C:\\Music\\Song 1.flac');
   for (let i = 0; i < 2; i++) {
     const pause = page.getByRole('button', { name: 'Pause music', exact: true });
@@ -439,7 +439,7 @@ test('full-screen music uses artwork and details, keeps playback, and exits from
   await page.getByRole('button', { name: 'Album', exact: true }).click();
   await page.getByRole('button', { name: 'First album Test artist' }).click();
   await page.getByRole('button', { name: '▶ Play', exact: true }).click();
-  await expect(page.locator('.music-loading')).toHaveCount(0);
+  await expect(page.locator('.music-player')).toHaveAttribute('aria-busy', 'false');
   const playing = await mpvPath(page);
   await page.getByRole('button', { name: 'Open full-screen music', exact: true }).click();
   await expect(page.locator('.music-now-playing')).toBeVisible();
@@ -490,7 +490,7 @@ test('Japanese full-screen controls fit the minimum handheld window', async ({ p
 test('full-screen controls hide, wake on input, and remain at queue end', async ({ page }) => {
   await page.getByRole('button', { name: 'Second album Test artist' }).click();
   await page.getByRole('button', { name: '▶ Play', exact: true }).click();
-  await expect(page.locator('.music-loading')).toHaveCount(0);
+  await expect(page.locator('.music-player')).toHaveAttribute('aria-busy', 'false');
   await page.clock.install();
   await page.getByRole('button', { name: 'Open full-screen music', exact: true }).click();
   const stage = page.locator('.music-now-playing');
@@ -587,8 +587,8 @@ test('Butterchurn renders real presets and pauses without interrupting playback'
   page.on('pageerror', (error) => errors.push(error.message));
   await page.getByRole('button', { name: 'First album Test artist' }).click();
   await page.getByRole('button', { name: '▶ Play', exact: true }).click();
-  await expect(page.locator('.music-loading')).toHaveCount(0);
-  await expect(page.locator('.music-loading')).toHaveCount(0);
+  await expect(page.locator('.music-player')).toHaveAttribute('aria-busy', 'false');
+  await expect(page.locator('.music-player')).toHaveAttribute('aria-busy', 'false');
   const path = await mpvPath(page);
   await page.getByRole('button', { name: 'Open full-screen music', exact: true }).click();
   await page.evaluate(() => Object.defineProperty(window, 'Function', { value: new Proxy(Function, { construct() { throw new Error('Runtime code generation forbidden'); }, apply() { throw new Error('Runtime code generation forbidden'); } }) }));
@@ -656,7 +656,7 @@ test('Butterchurn audio failure falls back to artwork and music keeps playing', 
   await page.evaluate(() => localStorage.setItem('kinemaMockPcmError', 'Audio service unavailable'));
   await page.getByRole('button', { name: 'First album Test artist' }).click();
   await page.getByRole('button', { name: '▶ Play', exact: true }).click();
-  await expect(page.locator('.music-loading')).toHaveCount(0);
+  await expect(page.locator('.music-player')).toHaveAttribute('aria-busy', 'false');
   const path = await mpvPath(page);
   await page.getByRole('button', { name: 'Open full-screen music', exact: true }).click();
   await background(page, 'Butterchurn');
@@ -674,7 +674,7 @@ test('preset rotation can stay fixed or advance and persists through fullscreen'
   await page.clock.install();
   await page.getByRole('button', { name: 'First album Test artist' }).click();
   await page.getByRole('button', { name: '▶ Play', exact: true }).click();
-  await expect(page.locator('.music-loading')).toHaveCount(0);
+  await expect(page.locator('.music-player')).toHaveAttribute('aria-busy', 'false');
   await page.getByRole('button', { name: 'Open full-screen music', exact: true }).click();
   await background(page, 'Butterchurn');
   await expect(page.locator('.music-butterchurn')).toHaveAttribute('data-status', 'live');

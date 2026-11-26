@@ -156,7 +156,7 @@ test('physical controller media buttons control music',async({page})=>{
   pad.buttons[index].pressed=on;pad.buttons[index].value=on?1:0;
  },{index,on});
  const release=async(index:number)=>{await press(index,false);await pause(page,80,'Observe controller release before next press');};
- await press(7,true);await expect(page.locator('.music-player')).toContainText('Song 2');await expect(page.locator('.music-loading')).toHaveCount(0);
+ await press(7,true);await expect(page.locator('.music-player')).toContainText('Song 2');await expect(page.locator('.music-player')).toHaveAttribute('aria-busy', 'false');await expect(page.locator('.music-loading')).toHaveCount(0);
  await pause(page,450,'Held trigger should skip once');await expect(page.locator('.music-player')).toContainText('Song 2');await release(7);
  await press(6,true);await expect(page.locator('.music-player')).toContainText('Song 1');await release(6);
  const state=(key:'paused'|'mute')=>page.evaluate((key)=>(window as unknown as {__fakeMpv:{paused:boolean;mute:boolean}}).__fakeMpv[key],key);

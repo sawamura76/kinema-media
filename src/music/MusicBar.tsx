@@ -32,7 +32,7 @@ export default function MusicBar({ player, onQueue, onFullscreen, onAlbum, fulls
     pending.current = null; dragPath.current = null; setDraft(null);
   };
   const setLevel = (value: number) => { const level = Math.min(100, Math.max(0, value)); setVolume(level); player.unmute(); void mpvCommand('set', ['volume', String(level)]).catch(console.warn); };
-  return <aside className="music-player music-player-video-style" data-sticky-bottom="" aria-label={t('nowPlaying')} lang={language}>
+  return <aside className="music-player music-player-video-style" data-sticky-bottom="" aria-label={t('nowPlaying')} aria-busy={player.loading} lang={language}>
     <div className="player-controls">
       <div className="player-seek-row">
         <span className="player-time">{clock(position)}</span>

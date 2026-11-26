@@ -11,7 +11,7 @@ async function music(page: Page) {
   await page.getByRole('button', { name: 'Album', exact: true }).click();
   await page.getByRole('button', { name: 'First album Test artist' }).click();
   await page.getByRole('button', { name: '▶ Play', exact: true }).click();
-  await expect(page.locator('.music-loading')).toHaveCount(0);
+  await expect(page.locator('.music-player')).toHaveAttribute('aria-busy', 'false');
 }
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => { localStorage.setItem('kinemaMockMusic', '1'); localStorage.setItem('kinema.music.language', 'en'); });
