@@ -207,6 +207,7 @@ export function usePlayerKeys({
         // Volume, on mpv's keys and the obvious ones. While the receiver has
         // the volume they do nothing but bring up the bar that says so.
         case 'm':
+        case 'AudioVolumeMute':
           volumeKey(toggleMute);
           break;
         // Subtitle timing: z earlier, x later, as mpv's own keys.

@@ -3,7 +3,7 @@ const state = vi.hoisted(() => ({ settings: new Map<string,string>(), fullscreen
 vi.mock('../metadata/api', () => ({ getSetting: vi.fn(async (key: string) => state.settings.get(key) ?? null), setSetting: vi.fn(async (key: string, value: string) => { state.settings.set(key,value); }) }));
 vi.mock('../capabilities', () => ({ capabilitiesNow: () => ({ windowed: !state.fixed }), loadCapabilities: async () => ({ windowed: !state.fixed }) }));
 vi.mock('@tauri-apps/api/window', () => ({ getCurrentWindow: () => ({ isFullscreen: async () => state.fullscreen, setFullscreen: async (on: boolean) => { state.fullscreen = on; } }) }));
-import { isTvMode, loadTvMode, setUiMode, uiModeNow, setHandheldScale, clampHandheldScale } from './tv';
+import { isTvMode, loadTvMode, setUiMode, uiModeNow } from './tv';
 beforeEach(() => { state.settings.clear(); state.fullscreen=false; state.fixed=false; vi.stubGlobal('document',{ documentElement: { dataset: {}, style: { setProperty: vi.fn() } } }); });
 describe('device layout modes', () => {
   it('keeps existing TV settings and restores the saved handheld preset', async () => {
@@ -22,9 +22,8 @@ describe('device layout modes', () => {
   });
 });
 
-it('clamps handheld scale and restores it for this device',async()=>{
- expect(clampHandheldScale(500)).toBe(115);expect(clampHandheldScale(NaN)).toBe(100);
+it('resets legacy interface scaling to 100 percent',async()=>{
  state.settings.set('handheld_scale','125');await loadTvMode();
- expect(document.documentElement.style.setProperty).toHaveBeenCalledWith('--handheld-scale','1.15');
- setHandheldScale(115);expect(state.settings.get('handheld_scale')).toBe('115');
+ expect(document.documentElement.style.setProperty).toHaveBeenCalledWith('--handheld-scale','1');
+ expect(state.settings.get('handheld_scale')).toBe('100');
 });

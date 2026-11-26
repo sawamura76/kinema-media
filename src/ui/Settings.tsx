@@ -23,7 +23,6 @@ import LanguageSection from './LanguageSection';
 import VisualizationSettings from './VisualizationSettings';
 import NavigationSettings from './NavigationSettings';
 import MusicFolderSettings, { MusicLanguageSettings } from './MusicSettings';
-import DeviceScaleSettings from './DeviceScaleSettings';
 import DetailsLanguageRow from './DetailsLanguageRow';
 import ChoiceRow, { LandLeftmost } from './ChoiceRow';
 import { getVersion } from '@tauri-apps/api/app';
@@ -1241,7 +1240,6 @@ export default function Settings({
                     }
                   />
                 )}
-                <DeviceScaleSettings />
                 {/* A written exception to "no quality presets" (owner,
                     2026-10-10; lightLook.ts): whether this device keeps up
                     with the effects is hardware, and Auto says what it saw. */}

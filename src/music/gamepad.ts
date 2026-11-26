@@ -9,7 +9,10 @@ export function gamepadKeys(buttons: boolean[], axes: readonly number[]): string
   if (buttons[15] || (axes[0] ?? 0) > 0.6) keys.push('ArrowRight');
   if (buttons[0]) keys.push('Enter');
   if (buttons[1] || buttons[9]) keys.push('Escape');
-  if (buttons[2]) keys.push(' ');
+  if (buttons[2]) keys.push('AudioVolumeMute');
+  if (buttons[3]) keys.push('MediaPlayPause');
+  if (buttons[6]) keys.push('MediaTrackPrevious');
+  if (buttons[7]) keys.push('MediaTrackNext');
   if (buttons[4]) keys.push('KinemaPreviousTab');
   if (buttons[5]) keys.push('KinemaNextTab');
   return keys;

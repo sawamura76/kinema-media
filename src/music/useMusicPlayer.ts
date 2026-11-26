@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { isPaused, mpvCommand, onPlaybackEvent, openPath, readProperty, setPaused, startEngine, stopPlayback } from '../player/engine';
+import { isPaused, mpvCommand, onPlaybackEvent, openPath, readProperty, setPaused, setMuted, startEngine, stopPlayback } from '../player/engine';
 import type { MusicTrack } from './api';
 import { getMusicLibrary, MUSIC_LIBRARY_CHANGED } from './api';
 import { nextIndex, shuffled, type Repeat } from './model';
@@ -76,15 +76,20 @@ export function useMusicPlayer(videoActive: boolean) {
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if (!current.current.active || e.repeat || e.ctrlKey || e.altKey || e.metaKey) return;
+      if (e.key === 'AudioVolumeMute') {
+        e.preventDefault(); e.stopPropagation();
+        void enqueue(async () => setMuted(!(await readProperty<boolean>('mute', 'flag') ?? false))).catch((error) => patch({ error: String(error) }));
+        return;
+      }
       const target = e.target;
-      if (target instanceof HTMLElement && (target.matches('input,textarea,select') || target.isContentEditable)) return;
-      if (e.key === ' ') { e.preventDefault(); e.stopPropagation(); togglePause(); }
-      if (e.key === 'PageDown') { e.preventDefault(); e.stopPropagation(); step(1); }
-      if (e.key === 'PageUp') { e.preventDefault(); e.stopPropagation(); step(-1); }
+      if (!e.key.startsWith('Media') && target instanceof HTMLElement && (target.matches('input,textarea,select') || target.isContentEditable)) return;
+      if (e.key === ' ' || e.key === 'MediaPlayPause') { e.preventDefault(); e.stopPropagation(); togglePause(); }
+      if (e.key === 'PageDown' || e.key === 'MediaTrackNext') { e.preventDefault(); e.stopPropagation(); step(1); }
+      if (e.key === 'PageUp' || e.key === 'MediaTrackPrevious') { e.preventDefault(); e.stopPropagation(); step(-1); }
     };
     window.addEventListener('keydown', key, true);
     return () => window.removeEventListener('keydown', key, true);
-  }, [togglePause, step]);
+  }, [togglePause, step, enqueue, patch]);
   useEffect(() => {
     // All video routes replace the shared engine themselves. Retire the audio
     // owner without issuing a delayed stop which could stop the new movie.

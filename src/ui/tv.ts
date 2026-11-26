@@ -8,14 +8,12 @@ export const TV_MODE_KEY = 'tv_mode';
 export const UI_MODE_KEY = 'ui_mode';
 export type UiMode = 'pc' | 'tv' | 'handheld';
 let mode: UiMode = 'pc';
-let handheldScale = 100;
 export const HANDHELD_SCALE_KEY = 'handheld_scale';
-export const clampHandheldScale = (value: number) => Number.isFinite(value) ? Math.max(85, Math.min(115, Math.round(value / 5) * 5)) : 100;
 const listeners = new Set<() => void>();
 function apply() {
   document.documentElement.dataset.tv = mode === 'tv' ? 'on' : 'off';
   document.documentElement.dataset.uiMode = mode;
-  document.documentElement.style.setProperty('--handheld-scale', String(handheldScale / 100));
+  document.documentElement.style.setProperty('--handheld-scale', '1');
 }
 async function fillScreen(on: boolean) {
   try { const win = getCurrentWindow(); if ((await win.isFullscreen()) !== on) await win.setFullscreen(on); }
@@ -29,7 +27,7 @@ export async function loadTvMode() {
     getSetting(TV_MODE_KEY).catch(() => null), getSetting(UI_MODE_KEY).catch(() => null), getSetting(HANDHELD_SCALE_KEY).catch(() => null), loadCapabilities(),
   ]);
   mode = alwaysTv() ? 'tv' : stored === 'handheld' || stored === 'tv' || stored === 'pc' ? stored : legacy === 'on' ? 'tv' : 'pc';
-  handheldScale = scale === null ? 100 : clampHandheldScale(Number(scale));
+  if (scale !== '100') await setSetting(HANDHELD_SCALE_KEY, '100').catch((error) => console.warn('layout: could not reset scale', error));
   apply(); emit();
   if (mode !== 'pc' && !alwaysTv()) await fillScreen(true);
 }
@@ -48,8 +46,3 @@ export function uiModeNow() { return mode; }
 export function useTvMode() { return useSyncExternalStore(subscribe, () => mode === 'tv'); }
 export function useUiMode() { return useSyncExternalStore(subscribe, () => mode); }
 
-export function setHandheldScale(value: number) {
-  handheldScale = clampHandheldScale(value); apply(); emit();
-  void setSetting(HANDHELD_SCALE_KEY, String(handheldScale)).catch((error) => console.warn('layout: could not save scale', error));
-}
-export function useHandheldScale() { return useSyncExternalStore(subscribe, () => handheldScale); }

@@ -1,19 +1,15 @@
 import {test,expect} from '@playwright/test';
 import {pause} from './kb';
 test.beforeEach(async({page})=>{await page.addInitScript(()=>{localStorage.setItem('kinemaMockMusic','1');localStorage.setItem('kinema.music.language','en');});await page.goto('/');});
-test('handheld scale adjusts text and controls and is restored',async({page})=>{
+test('handheld resets saved scale and removes its slider',async({page})=>{
+ await page.evaluate(()=>localStorage.setItem('kinemaMockPersistedLayout',JSON.stringify([['ui_mode','handheld'],['handheld_scale','115']])));
+ await page.reload();await expect.poll(()=>page.evaluate(()=>getComputedStyle(document.documentElement).fontSize)).toBe('20px');
  await page.getByRole('button',{name:'Settings',exact:true}).click();
  await page.getByRole('navigation',{name:'Settings sections'}).getByRole('button',{name:'Playback',exact:true}).click();
- await page.getByRole('radiogroup',{name:'Where Kinema is used'}).getByRole('button',{name:'Handheld',exact:true}).click();
- const scale=page.getByRole('slider',{name:'Handheld interface scale',exact:true});
- await expect(scale).toHaveAttribute('max','115');await scale.fill('115');await expect.poll(()=>page.evaluate(()=>getComputedStyle(document.documentElement).fontSize)).toBe('23px');
- await scale.focus();await page.keyboard.press('ArrowLeft');await expect(scale).toHaveValue('110');
- await page.reload();await expect.poll(()=>page.evaluate(()=>getComputedStyle(document.documentElement).fontSize)).toBe('22px');
- await page.setViewportSize({width:1280,height:720});
- await page.locator('.top-nav').getByRole('button',{name:'Music',exact:true}).click();
- expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
- await page.screenshot({path:'work/handheld-scale-120.png'});
+ await expect(page.getByRole('slider',{name:'Handheld interface scale',exact:true})).toHaveCount(0);
+ await page.reload();await expect.poll(()=>page.evaluate(()=>getComputedStyle(document.documentElement).fontSize)).toBe('20px');
 });
+
 test('bumper events cycle primary tabs and leave an open dialog alone',async({page})=>{
  const bump=(key:string)=>page.evaluate((key)=>window.dispatchEvent(new KeyboardEvent('keydown',{key,bubbles:true})),key);
  await page.locator('.top-nav').getByRole('button',{name:'Home',exact:true}).click();
@@ -102,9 +98,9 @@ test('physical-style standard gamepad bumpers switch once per press',async({page
  await expect(page.locator('.top-nav .active')).toHaveAttribute('aria-label','Music');
  await press(4,false);
 });
-test('saved excessive scale clamps to 115 and fullscreen buttons remain square',async({page})=>{
+test('saved excessive scale resets to 100 and fullscreen buttons remain square',async({page})=>{
  await page.evaluate(()=>localStorage.setItem('kinemaMockPersistedLayout',JSON.stringify([['ui_mode','handheld'],['handheld_scale','150']])));
- await page.reload();await expect.poll(()=>page.evaluate(()=>getComputedStyle(document.documentElement).fontSize)).toBe('23px');
+ await page.reload();await expect.poll(()=>page.evaluate(()=>getComputedStyle(document.documentElement).fontSize)).toBe('20px');
  await page.setViewportSize({width:1280,height:720});
  await page.locator('.top-nav').getByRole('button',{name:'Music',exact:true}).click();
  await page.getByRole('button',{name:'Album',exact:true}).click();
@@ -143,4 +139,30 @@ for(const scale of [85,100,115])for(const width of [1280,854])test(`visualizer c
   expect(checks.length).toBeGreaterThan(0);for(const check of checks)expect(check).toEqual({square:true,inside:true,centered:true});
  }
  if(scale===115&&width===854)await page.screenshot({path:'work/visualizer-checks-115-handheld.png'});
+});
+
+test('physical controller media buttons control music',async({page})=>{
+ await page.evaluate(()=>{
+  const pad={connected:true,mapping:'standard',axes:[0,0,0,0],buttons:Array.from({length:16},()=>({pressed:false,value:0,touched:false}))};
+  Object.defineProperty(navigator,'getGamepads',{configurable:true,value:()=>[pad]});
+  (window as unknown as {testPad:typeof pad}).testPad=pad;
+ });
+ await page.locator('.top-nav').getByRole('button',{name:'Music',exact:true}).click();
+ await page.getByRole('button',{name:'Album',exact:true}).click();
+ await page.getByRole('button',{name:'First album Test artist',exact:true}).click();
+ await page.getByRole('button',{name:'\u25b6 Play',exact:true}).click();
+ const press=async(index:number,on:boolean)=>page.evaluate(({index,on})=>{
+  const pad=(window as unknown as {testPad:{buttons:{pressed:boolean;value:number}[]}}).testPad;
+  pad.buttons[index].pressed=on;pad.buttons[index].value=on?1:0;
+ },{index,on});
+ const release=async(index:number)=>{await press(index,false);await pause(page,80,'Observe controller release before next press');};
+ await press(7,true);await expect(page.locator('.music-player')).toContainText('Song 2');
+ await pause(page,450,'Held trigger should skip once');await expect(page.locator('.music-player')).toContainText('Song 2');await release(7);
+ await press(6,true);await expect(page.locator('.music-player')).toContainText('Song 1');await release(6);
+ const state=(key:'paused'|'mute')=>page.evaluate((key)=>(window as unknown as {__fakeMpv:{paused:boolean;mute:boolean}}).__fakeMpv[key],key);
+ for(const [index,key] of [[3,'paused'],[2,'mute']] as const){
+  await press(index,true);await expect.poll(()=>state(key)).toBe(true);
+  await pause(page,450,'Held face button must not repeat');await expect.poll(()=>state(key)).toBe(true);await release(index);
+  await press(index,true);await expect.poll(()=>state(key)).toBe(false);await release(index);
+ }
 });

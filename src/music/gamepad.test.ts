@@ -11,3 +11,9 @@ it('maps bumpers to top navigation rather than page scrolling',()=>{
  const buttons:boolean[]=[];buttons[4]=true;expect(gamepadKeys(buttons,[])).toEqual(['KinemaPreviousTab']);
  buttons[4]=false;buttons[5]=true;expect(gamepadKeys(buttons,[])).toEqual(['KinemaNextTab']);
 });
+
+it('maps triggers and face buttons to media controls',()=>{
+ for(const [index,key] of [[2,'AudioVolumeMute'],[3,'MediaPlayPause'],[6,'MediaTrackPrevious'],[7,'MediaTrackNext']] as const){
+ const buttons:boolean[]=[];buttons[index]=true;expect(gamepadKeys(buttons,[])).toEqual([key]);
+ }
+});
