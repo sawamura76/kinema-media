@@ -44,3 +44,33 @@ test('box art previews, crops and cancels without replacing a saved draft',async
  await expect(cropper).toHaveCount(0);await expect(editor).toBeVisible();
  await expect(editor.getByRole('img',{name:'Cover preview'})).toHaveAttribute('src',/cropped-game-cover/);
 });
+
+for(const mode of ['Handheld','TV']) test(`${mode}: highlighting primary tabs opens them and bumpers keep the ring on the menu`,async({page})=>{
+ await page.locator('.top-nav').getByRole('button',{name:'Settings',exact:true}).click();
+ await page.getByRole('navigation',{name:'Settings sections'}).getByRole('button',{name:'Playback',exact:true}).click();
+ await page.getByRole('radiogroup',{name:'Where Kinema is used'}).getByRole('button',{name:mode,exact:true}).click();
+ await page.locator('.top-nav').getByRole('button',{name:'Music',exact:true}).click();
+ await page.evaluate(()=>window.dispatchEvent(new KeyboardEvent('keydown',{key:'KinemaNextTab',bubbles:true})));
+ await expect(page.locator('.top-nav .active')).toHaveAttribute('aria-label','Games');
+ await expect(page.locator('.top-nav .focused')).toHaveAttribute('aria-label','Games');
+ await page.keyboard.press('ArrowLeft');
+ await expect(page.locator('.top-nav .active')).toHaveAttribute('aria-label','Music');
+ await expect(page.locator('.top-nav .focused')).toHaveAttribute('aria-label','Music');
+ await page.keyboard.press('ArrowLeft');
+ await expect(page.locator('.top-nav .active')).toHaveAttribute('aria-label','TV shows');
+ await page.keyboard.press('ArrowRight');
+ await expect(page.locator('.top-nav .active')).toHaveAttribute('aria-label','Music');
+ await page.evaluate(()=>window.dispatchEvent(new KeyboardEvent('keydown',{key:'KinemaPreviousTab',bubbles:true})));
+ await expect(page.locator('.top-nav .focused')).toHaveAttribute('aria-label','TV shows');
+ await expect(page.locator('.top-nav .active')).toHaveAttribute('aria-label','TV shows');
+ await page.screenshot({path:`work/top-nav-auto-${mode}.png`});
+});
+test('PC arrows highlight tabs without opening them until Enter',async({page})=>{
+ await page.locator('.top-nav').getByRole('button',{name:'Music',exact:true}).click();
+ await page.evaluate(()=>window.dispatchEvent(new KeyboardEvent('keydown',{key:'KinemaNextTab',bubbles:true})));
+ await expect(page.locator('.top-nav .focused')).toHaveAttribute('aria-label','Games');
+ await page.keyboard.press('ArrowLeft');
+ await expect(page.locator('.top-nav .focused')).toHaveAttribute('aria-label','Music');
+ await expect(page.locator('.top-nav .active')).toHaveAttribute('aria-label','Games');
+ await page.keyboard.press('Enter');await expect(page.locator('.top-nav .active')).toHaveAttribute('aria-label','Music');
+});

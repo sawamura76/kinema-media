@@ -95,7 +95,7 @@ export function nextSize(size: SubSize): SubSize {
 export const sizeLabel = (size: SubSize) =>
   SUB_SIZES.find((s) => s.id === size)?.label ?? 'Normal';
 
-/** What mpv had before Skrin drew a box, put back when it is turned off. */
+/** What mpv had before Kinema Media drew a box, put back when it is turned off. */
 export interface PlainSubs {
   borderStyle: string;
   backColor: string;
@@ -136,7 +136,7 @@ export function mpvStyleOptions(
       ];
 }
 
-/** What mpv had before Skrin changed it, read once per run. */
+/** What mpv had before Kinema Media changed it, read once per run. */
 let plain: PlainSubs | null = null;
 
 async function set(name: string, value: string): Promise<boolean> {

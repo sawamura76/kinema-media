@@ -16,15 +16,15 @@
  * afterwards in Settings — so nothing here is a gate, and there is no way to
  * get stuck part-way through.
  *
- * A released build carries Skrin's own TMDB key (builtinKey.ts), and there
+ * A released build carries Kinema Media's own TMDB key (builtinKey.ts), and there
  * the key step is gone: a folder is the one thing left to ask. A build from
  * source has no key, and keeps the step, since without it movies stay
  * unidentified.
  *
- * One more step since 2026-10-02, answered in a press: where Skrin will be
+ * One more step since 2026-10-02, answered in a press: where Kinema Media will be
  * watched (TV mode — big text and full screen, which screen switching
  * needs), asked first so the rest is already readable from a sofa. Not
- * asked where Skrin has no window (Android): there it is always the TV.
+ * asked where Kinema Media has no window (Android): there it is always the TV.
  *
  * A quiet line under the lede since round 11 (Discussion #9): "Keep everything
  * on this computer", a page of its own with Use it / Back (PRIVATE-MODE.md
@@ -90,7 +90,7 @@ function KeepPage({ on, onUse, onBack }: { on: boolean; onUse: () => void; onBac
     <section className="first-run-step first-run-keep-page">
       <h2>Keep everything on this computer</h2>
       <p>
-        Skrin will not look up your films and shows online: no posters, plot, cast or trailers
+        Kinema Media will not look up your films and shows online: no posters, plot, cast or trailers
         from the internet.
       </p>
       <p>
@@ -255,9 +255,9 @@ export default function FirstRun({ onScan, onSkip }: Props) {
   return (
     <FocusProvider value={focusKey}>
       <div className="first-run" ref={ref}>
-        <h1>Welcome to Skrin</h1>
+        <h1>Welcome to Kinema Media</h1>
         <p className="first-run-lede">
-          A few questions, then Skrin does the rest: posters, descriptions and all. Every answer
+          A few questions, then Kinema Media does the rest: posters, descriptions and all. Every answer
           can be changed later in Settings.
         </p>
 
@@ -302,7 +302,7 @@ export default function FirstRun({ onScan, onSkip }: Props) {
               ]}
               value={seat}
               onChange={chooseSeat}
-              note="On a TV, Skrin fills the screen with bigger text, made for a remote. At a desk it is a window like any other program."
+              note="On a TV, Kinema Media fills the screen with bigger text, made for a remote. At a desk it is a window like any other program."
             />
           </section>
         )}

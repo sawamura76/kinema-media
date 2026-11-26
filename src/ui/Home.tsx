@@ -165,7 +165,7 @@ export default function Home(props: Props) {
     );
   }
 
-  // Home itself and the pages that stand in for it above are on Skrin's own
+  // Home itself and the pages that stand in for it above are on Kinema Media's own
   // engine (focusEngine.tsx, round 7).
   return (
     <FocusScreen key="home">
@@ -202,30 +202,30 @@ function NothingNamed({
         {files > 0 && offline ? (
           <>
             <h1>
-              Skrin found {count(files, 'file')} but could not reach the internet to name{' '}
+              Kinema Media found {count(files, 'file')} but could not reach the internet to name{' '}
               {files === 1 ? 'it' : 'them'}
             </h1>
             <p className="muted">
-              Check the connection. Skrin asks again at the next scan and every time it starts, so
+              Check the connection. Kinema Media asks again at the next scan and every time it starts, so
               nothing needs renaming.
             </p>
           </>
         ) : files > 0 ? (
           <>
             <h1>
-              Skrin found {count(files, 'file')} but could not name {files === 1 ? 'it' : 'them'}
+              Kinema Media found {count(files, 'file')} but could not name {files === 1 ? 'it' : 'them'}
             </h1>
             <p className="muted">
-              Rather than guess, Skrin leaves a file it is not sure of for you to name. A wrong
+              Rather than guess, Kinema Media leaves a file it is not sure of for you to name. A wrong
               title is worse than none. Look through them and pick the right film or show, or add
               a folder whose files are named after what they are.
             </p>
           </>
         ) : (
           <>
-            <h1>Skrin found no videos in your folders</h1>
+            <h1>Kinema Media found no videos in your folders</h1>
             <p className="muted">
-              The folders added hold no films or shows Skrin can play. Add the folder you keep
+              The folders added hold no films or shows Kinema Media can play. Add the folder you keep
               them in.
             </p>
           </>

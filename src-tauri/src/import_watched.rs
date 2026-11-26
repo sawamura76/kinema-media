@@ -583,7 +583,7 @@ fn token_headers(key: &str) -> [(&'static str, String); 2] {
 }
 
 async fn get_json(url: &str, headers: &[(&str, String)]) -> Result<Value, String> {
-    let client = tracking::http(crate::net::Service::OwnServer).ok_or("Skrin could not make a web request.")?;
+    let client = tracking::http(crate::net::Service::OwnServer).ok_or("Kinema Media could not make a web request.")?;
     let mut req = client.get(url).header("Accept", "application/json");
     for (k, v) in headers {
         req = req.header(*k, v.as_str());

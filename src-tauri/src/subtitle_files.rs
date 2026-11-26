@@ -3,7 +3,7 @@
 //!
 //! Media3, on Android, plays only what it is handed, so the page asks here
 //! before opening a film and hands it the ones found — on a drive the system
-//! opened or a share Skrin opens itself alike (files.rs). mpv finds most of
+//! opened or a share Kinema Media opens itself alike (files.rs). mpv finds most of
 //! them on its own (`sub-auto=fuzzy`, mpvOptions.ts) and is handed the rest
 //! (`exact_name`, engine.ts `addSubtitlesBeside`).
 //!
@@ -180,7 +180,7 @@ pub fn cues_of(text: &str) -> Vec<(f64, f64)> {
 }
 
 /// The span of the subtitle file at `path`; None when it cannot be read or
-/// holds no cues Skrin can read, which says nothing either way.
+/// holds no cues Kinema Media can read, which says nothing either way.
 #[tauri::command]
 pub async fn subtitle_span(path: String) -> Result<Option<SubtitleSpan>, String> {
     crate::jobs::off_main(move || {

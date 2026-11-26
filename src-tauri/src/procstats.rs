@@ -1,5 +1,5 @@
 //! What this process holds, for the self-test's leak runs (`leakSample` in
-//! src/selftest.ts): memory, threads, open files, and Skrin's own counts of
+//! src/selftest.ts): memory, threads, open files, and Kinema Media's own counts of
 //! things it opens and should close again. A number that only ever climbs
 //! across repeated plays is a leak; one that comes back down is not.
 //!
@@ -8,7 +8,7 @@
 
 use serde::Serialize;
 
-/// Skrin's own counts, from the parts that hold something open.
+/// Kinema Media's own counts, from the parts that hold something open.
 #[derive(Serialize, Default, Debug)]
 pub struct Counts {
     /// Requests being answered on the film link (stream.rs).
@@ -131,7 +131,7 @@ pub fn read() -> Stats {
     stats
 }
 
-/// Memory, threads and open files of this process, and Skrin's own counts.
+/// Memory, threads and open files of this process, and Kinema Media's own counts.
 #[tauri::command]
 pub async fn process_stats() -> Result<Stats, String> {
     crate::jobs::off_main(|| Ok(read())).await

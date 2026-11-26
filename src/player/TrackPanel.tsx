@@ -20,7 +20,7 @@ import type { AutoTiming } from './useSubDelay';
 import { nextSize, sizeLabel, type SubStyle } from './subtitleStyle';
 
 /**
- * "Find subtitles online" — present only when this copy of Skrin has an
+ * "Find subtitles online" — present only when this copy of Kinema Media has an
  * OpenSubtitles key and the file is in the library. The player does the
  * work; this only shows it.
  */
@@ -80,7 +80,7 @@ const levelKey = (id: string) => `player-track-panel:level:${id}`;
 
 /**
  * Levelling in four steps and the dialogue lift, for this title. Not offered
- * for a track that goes to the receiver untouched, and said why: Skrin
+ * for a track that goes to the receiver untouched, and said why: Kinema Media
  * never alters the film's own bitstream.
  */
 function LevelRows({
@@ -98,7 +98,7 @@ function LevelRows({
     return (
       <p className="track-note track-level-off">
         Levelling and the dialogue lift are off for this track: it goes to the receiver untouched,
-        and they work only on sound Skrin decodes.
+        and they work only on sound Kinema Media decodes.
       </p>
     );
   }

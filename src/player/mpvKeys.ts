@@ -1,10 +1,10 @@
 /**
- * Keys pressed on mpv's own window, handed on to Skrin.
+ * Keys pressed on mpv's own window, handed on to Kinema Media.
  *
  * Where mpv has a window of its own (Linux: capabilities `own_window`), that
- * window is in front and has the keyboard — a desktop will not let Skrin's
+ * window is in front and has the keyboard — a desktop will not let Kinema Media's
  * window take it back (docs/GOTCHAS.md). So mpv binds each key the player and
- * the focus navigation use, tells Skrin which was pressed, and Skrin presses
+ * the focus navigation use, tells Kinema Media which was pressed, and Kinema Media presses
  * the matching key on its page, exactly as the self-test does: every handler
  * stays as it is.
  *
@@ -12,11 +12,11 @@
  * wrapper reads a client message's arguments past their end and takes the
  * whole program down (docs/GOTCHAS.md). Each binding instead flips a text
  * property between two spellings of the key's number (`9a`, `9b`), which
- * Skrin observes like any other: every press is a change, the same key twice
+ * Kinema Media observes like any other: every press is a change, the same key twice
  * included. Numbers, not names, so no key needs quoting.
  *
  * The property is `term-status-msg` — mpv's status line for a terminal, which
- * Skrin switches off (`terminal=no`), so it is never shown. `user-data`,
+ * Kinema Media switches off (`terminal=no`), so it is never shown. `user-data`,
  * made for this, does not work: its values come back as JSON (`"9a"`, quotes
  * and all), so `cycle-values` never recognises the current one and a key
  * pressed twice is one change. A counter does not work either: mpv refuses
@@ -27,7 +27,7 @@
  * last press.
  */
 
-/** mpv's name for a key, and the DOM `key` Skrin's handlers already know. */
+/** mpv's name for a key, and the DOM `key` Kinema Media's handlers already know. */
 export const MPV_KEYS: ReadonlyArray<readonly [mpv: string, dom: string]> = [
   ['UP', 'ArrowUp'],
   ['DOWN', 'ArrowDown'],

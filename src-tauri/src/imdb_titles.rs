@@ -309,7 +309,7 @@ async fn stream(
     use tauri::Emitter;
     let client = crate::net::client(crate::net::Service::ImdbTitles)?
         .timeout(TIMEOUT)
-        .user_agent(concat!("Skrin/", env!("CARGO_PKG_VERSION")))
+        .user_agent(concat!("Kinema Media/", env!("CARGO_PKG_VERSION")))
         .build()
         .map_err(to_string_err)?;
     let mut response = client

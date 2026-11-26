@@ -1,6 +1,6 @@
-//! A video handed to Skrin from outside: named on the command line (a file
-//! opened from the file manager with Skrin, a file association, a file
-//! dropped on the shortcut), passed on by a second Skrin started that way,
+//! A video handed to Kinema Media from outside: named on the command line (a file
+//! opened from the file manager with Kinema Media, a file association, a file
+//! dropped on the shortcut), passed on by a second Kinema Media started that way,
 //! or dropped on the window.
 //!
 //! The file plays whether or not a library folder holds it. One in the library
@@ -8,7 +8,7 @@
 //! and anything else as a video of its own, resumed by path and size
 //! (`playback::get_loose_progress`).
 //!
-//! When Skrin was started for the file, the page closes it again once the
+//! When Kinema Media was started for the file, the page closes it again once the
 //! file ends or Back is pressed (LOCAL-MEDIA.md, owner's decision 2); when it
 //! was already running, it goes back to where it was.
 
@@ -19,21 +19,21 @@ use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
-/// The event a second Skrin's file arrives on, for the page (`opened.ts`).
-/// Desktop only: Android keeps one Skrin by itself and has no second start.
+/// The event a second Kinema Media's file arrives on, for the page (`opened.ts`).
+/// Desktop only: Android keeps one Kinema Media by itself and has no second start.
 #[cfg(desktop)]
 pub const EVENT: &str = "open-video";
 
-/// The file Skrin was started for, until the page has taken it.
+/// The file Kinema Media was started for, until the page has taken it.
 #[derive(Default)]
 pub struct AtLaunch(pub Mutex<Option<PathBuf>>);
 
 #[derive(Serialize, Clone)]
 pub struct Opened {
     pub path: String,
-    /// Skrin was started for this file, so it closes when the file is done.
+    /// Kinema Media was started for this file, so it closes when the file is done.
     pub launched: bool,
-    /// When this Skrin started (ms since 1970), for the log's "first frame
+    /// When this Kinema Media started (ms since 1970), for the log's "first frame
     /// after starting" — how long a double-click takes to become a picture.
     pub started_ms: u64,
 }
@@ -41,7 +41,7 @@ pub struct Opened {
 /// When `run` began, set once by `mark_start`.
 static STARTED_MS: std::sync::OnceLock<u64> = std::sync::OnceLock::new();
 
-/// Note the moment Skrin started; the first call wins.
+/// Note the moment Kinema Media started; the first call wins.
 pub fn mark_start() {
     let _ = STARTED_MS.get_or_init(crate::util::now_millis);
 }
@@ -71,7 +71,7 @@ where
 
 /// `playable`, waited for at most `files::LOOK_WAIT`. A path whose drive does
 /// not answer is taken at its word when it is named as a video: the player
-/// then says the drive is not answering (`disc_source`), rather than Skrin
+/// then says the drive is not answering (`disc_source`), rather than Kinema Media
 /// freezing on it here or dropping it without a word.
 fn playable_within(path: &Path) -> Option<PathBuf> {
     let owned = path.to_path_buf();
@@ -96,7 +96,7 @@ pub fn playable(path: &Path) -> Option<PathBuf> {
     crate::disc::disc_folder(disc).map(|_| disc.to_path_buf())
 }
 
-/// Take the file Skrin was started for. Once: a page reloaded later must not
+/// Take the file Kinema Media was started for. Once: a page reloaded later must not
 /// play it again.
 #[tauri::command]
 pub fn opened_at_launch(state: tauri::State<AtLaunch>) -> Option<Opened> {

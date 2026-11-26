@@ -1,6 +1,6 @@
 /**
  * The detail page's badges: what a file holds, in three rows — picture, sound,
- * file — the way a Kodi skin or a Zidoo player shows them, in Skrin's own
+ * file — the way a Kodi skin or a Zidoo player shows them, in Kinema Media's own
  * lettering rather than the brands' logos (see HISTORY.md, "Picture and sound
  * badges").
  *

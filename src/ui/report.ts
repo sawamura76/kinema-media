@@ -1,6 +1,6 @@
 /**
  * Send a report (report.rs): the logs and the equipment check in one zip in
- * Downloads. Skrin sends nothing itself; the user attaches the file to the
+ * Downloads. Kinema Media sends nothing itself; the user attaches the file to the
  * bug-report form. The press only saves the zip and says where it is — the
  * form and the file manager open on their own presses, because the browser
  * opening at once covered the note saying which file to attach (owner,
@@ -9,14 +9,14 @@
 import { invoke } from '@tauri-apps/api/core';
 import { openLink } from './links';
 
-export const BUG_REPORT_FORM = 'https://github.com/basswaves/skrin/issues/new?template=bug_report.yml';
+export const BUG_REPORT_FORM = 'https://github.com/sawamura76/kinema-media/issues/new?template=bug_report.yml';
 
 /** Said before the press: what goes in, and what does not happen. */
 export const REPORT_WORDS =
-  'Send a report packs Skrin’s logs from this session and the last (app.log, mpv.log) and the ' +
+  'Send a report packs Kinema Media’s logs from this session and the last (app.log, mpv.log) and the ' +
   'equipment check (screens, sound devices, graphics card) into one zip in your Downloads ' +
   'folder. Your home folder’s name is replaced by ~; film and folder names stay, as they are ' +
-  'often the bug. Skrin sends nothing: it says where the file is, then you open the ' +
+  'often the bug. Kinema Media sends nothing: it says where the file is, then you open the ' +
   'bug-report form and attach the file there.';
 
 export interface Report {
@@ -48,7 +48,7 @@ export function splitReportPath(path: string): { name: string; folder: string } 
 export function reportSaved(made: Report): string {
   const { name, folder } = splitReportPath(made.path);
   return (
-    `Saved ${name} in ${folder || 'Skrin’s data folder'} (${made.files.join(', ')}). ` +
+    `Saved ${name} in ${folder || 'Kinema Media’s data folder'} (${made.files.join(', ')}). ` +
     'Open the report form, describe what happened, and attach this file to it.'
   );
 }

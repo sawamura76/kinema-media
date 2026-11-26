@@ -108,7 +108,7 @@ pub fn existing_file(path: &Path) -> Option<PathBuf> {
     found.into_iter().next()
 }
 
-/// Make Skrin's data folder openable by this account only: the folder 0700,
+/// Make Kinema Media's data folder openable by this account only: the folder 0700,
 /// the library (and its -wal and -shm) and the safety copies 0600.
 ///
 /// The folder holds the sign-ins and keys. Windows gives app data that

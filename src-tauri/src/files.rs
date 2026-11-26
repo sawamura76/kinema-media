@@ -1,11 +1,11 @@
 //! Reading the library's files wherever they are: on a drive or share the
-//! system opened (a plain path), or on a network share Skrin opens itself
+//! system opened (a plain path), or on a network share Kinema Media opens itself
 //! (`smb://…`, netshare.rs).
 //!
 //! Only what the library needs beside a film — is it there, how big, when
 //! written, what is in this folder, the bytes of a small file — so the readers
 //! of `.nfo`, trailer, skip and subtitle files work the same on both without
-//! knowing which they are on. Nothing here writes: a share Skrin opens
+//! knowing which they are on. Nothing here writes: a share Kinema Media opens
 //! itself is read-only to it, as the library promises of every folder.
 
 use crate::netshare;
@@ -112,7 +112,7 @@ pub fn read_dir(path: &Path) -> io::Result<Vec<(PathBuf, bool)>> {
 
 // ---- a look that may not come back -------------------------------------------
 
-/// What Skrin says when the drive or share a film is on does not answer.
+/// What Kinema Media says when the drive or share a film is on does not answer.
 pub const NOT_ANSWERING: &str =
     "The drive this film is on is not answering. Check that it is switched on and connected, then try again.";
 

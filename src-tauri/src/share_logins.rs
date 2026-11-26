@@ -1,4 +1,4 @@
-//! Sign-ins to network shares, kept between runs, for the shares Skrin
+//! Sign-ins to network shares, kept between runs, for the shares Kinema Media
 //! opens itself (netshare.rs).
 //!
 //! The password is kept locked: on Android with a key held by the system's
@@ -7,7 +7,7 @@
 //! A system without a key store keeps a sign-in for the session only; none
 //! needs one yet, since Windows and Linux open shares themselves.
 //!
-//! The kept sign-ins are unlocked into memory when Skrin starts (`load`),
+//! The kept sign-ins are unlocked into memory when Kinema Media starts (`load`),
 //! rather than read when a share is first used: a share can be read while
 //! the library's connection is held (a resume point checking its file), and
 //! reading the sign-in there would wait on that same connection forever.
@@ -71,7 +71,7 @@ pub(crate) fn key_store(command: &str, text: &str) -> Result<String, String> {
     #[cfg(not(target_os = "android"))]
     {
         let _ = (command, text);
-        Err("this system has no key store for Skrin".into())
+        Err("this system has no key store for Kinema Media".into())
     }
 }
 
@@ -102,7 +102,7 @@ pub fn load(app: &tauri::AppHandle) {
                 .and_then(|kept| key_store("unseal", &kept.sealed).map(|password| (kept.user, password)));
             match unlocked {
                 Ok((user, password)) => netshare::set_login(server, &user, &password),
-                // Skrin reinstalled, or its data cleared: the key is gone.
+                // Kinema Media reinstalled, or its data cleared: the key is gone.
                 // The share asks again when it is next used.
                 Err(e) => crate::log!("network: the sign-in for {server} could not be unlocked: {e}"),
             }
@@ -117,7 +117,7 @@ pub struct SavedLogin {
     user: String,
 }
 
-/// The servers Skrin keeps a sign-in for, for Settings.
+/// The servers Kinema Media keeps a sign-in for, for Settings.
 #[tauri::command]
 pub fn share_logins(db: tauri::State<Db>) -> Result<Vec<SavedLogin>, String> {
     let conn = db.0.lock().map_err(to_string_err)?;
@@ -139,7 +139,7 @@ pub fn share_logins(db: tauri::State<Db>) -> Result<Vec<SavedLogin>, String> {
 #[derive(Serialize)]
 pub struct Saved {
     /// Kept for next time; false where this system cannot lock it, and it
-    /// lasts until Skrin closes.
+    /// lasts until Kinema Media closes.
     kept: bool,
 }
 
@@ -157,7 +157,7 @@ pub async fn save_share_login(
     // The SMB library cannot finish a guest's sign-in yet (it waits for a
     // last step a guest never gets); said plainly rather than as its error.
     if user.is_empty() {
-        return Err("Skrin cannot connect as a guest yet. Enter a user name and password.".into());
+        return Err("Kinema Media cannot connect as a guest yet. Enter a user name and password.".into());
     }
     let before = netshare::login(&server);
     let tried = {
@@ -173,12 +173,12 @@ pub async fn save_share_login(
             })
         })
         .await
-        // A fault in Skrin while connecting (it is in the log): said as
+        // A fault in Kinema Media while connecting (it is in the log): said as
         // that, so nobody retypes a password that was never the problem.
         .map_err(|e| {
-            if e.starts_with("Something went wrong inside Skrin") {
+            if e.starts_with("Something went wrong inside Kinema Media") {
                 format!(
-                    "Connecting to {named} failed because of a fault in Skrin, not your user name or password. What happened is in its log (Settings → Advanced → Developer tools → Open log folder)."
+                    "Connecting to {named} failed because of a fault in Kinema Media, not your user name or password. What happened is in its log (Settings → Advanced → Developer tools → Open log folder)."
                 )
             } else {
                 e
@@ -196,7 +196,7 @@ pub async fn save_share_login(
     let sealed = match key_store("seal", &password) {
         Ok(s) => s,
         Err(e) => {
-            crate::log!("network: the sign-in for {server} is kept until Skrin closes: {e}");
+            crate::log!("network: the sign-in for {server} is kept until Kinema Media closes: {e}");
             return Ok(Saved { kept: false });
         }
     };

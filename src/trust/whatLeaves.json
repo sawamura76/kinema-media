@@ -1,6 +1,6 @@
 {
   "title": "What leaves your computer",
-  "intro": "Skrin keeps your library, your settings and what you have watched on this device. It has no account and no server of its own, and it sends no usage statistics. These are every service it can talk to, what it sends, when, and what stops it. If you set a proxy (Settings, Privacy), they all go through it instead of straight out, the pictures too, and fail rather than go direct if the proxy cannot be reached; the one thing that does not is YouTube, below.",
+  "intro": "Kinema Media keeps your library, your settings and what you have watched on this device. It has no account and no server of its own, and it sends no usage statistics. These are every service it can talk to, what it sends, when, and what stops it. If you set a proxy (Settings, Privacy), they all go through it instead of straight out, the pictures too, and fail rather than go direct if the proxy cannot be reached; the one thing that does not is YouTube, below.",
   "keep": "Keep everything on this computer (Settings, Privacy; also offered at the first run) stops every service below but two: IMDb's list of titles and IMDb's ratings, files IMDb publishes for everyone, each with its own switch, and your own media server, whose address is yours. Names are then matched on this computer, against IMDb's list; nothing about your library is sent. With both IMDb files off, nothing is downloaded at all, and names come from the files only. What was fetched before stays until you remove it there.",
   "services": [
     {
@@ -11,7 +11,7 @@
         "api.tmdb.org",
         "image.tmdb.org"
       ],
-      "sends": "The title and year read from a file or folder name (or an IMDb number written in one, or in an NFO beside the file), the TMDB number of a close candidate when asking for its other names, then the TMDB number of each match, and of an actor whose page you open or a title whose posters you list, with Skrin's key or yours. With film and show details in another language than English, that language's code (such as pl-PL) too. Pictures are asked for by their address.",
+      "sends": "The title and year read from a file or folder name (or an IMDb number written in one, or in an NFO beside the file), the TMDB number of a close candidate when asking for its other names, then the TMDB number of each match, and of an actor whose page you open or a title whose posters you list, with Kinema Media's key or yours. With film and show details in another language than English, that language's code (such as pl-PL) too. Pictures are asked for by their address.",
       "when": "When a scan finds a film or show that has not been matched yet, when a title's details are over six months old (TMDB's terms) or a running show's next episode has aired, when you open an actor's page (once a month at most) or a title's poster list, when you change the language of film and show details (every title once more, in the background), and when a poster or backdrop is first shown.",
       "stop": "Keep everything on this computer, in Settings, Privacy: names are then matched on this computer instead, without pictures or plots. A folder you remove is no longer looked up."
     },
@@ -55,7 +55,7 @@
       "hosts": [
         "datasets.imdbws.com"
       ],
-      "sends": "Nothing about your library: Skrin downloads files IMDb publishes for everyone. From the ratings file (about 9 MB) it keeps only the rows for your titles. The list of titles (about 230 MB to download, 76 MB kept) is downloaded only to match names on this computer, with Keep everything on this computer.",
+      "sends": "Nothing about your library: Kinema Media downloads files IMDb publishes for everyone. From the ratings file (about 9 MB) it keeps only the rows for your titles. The list of titles (about 230 MB to download, 76 MB kept) is downloaded only to match names on this computer, with Keep everything on this computer.",
       "when": "Ratings: the first time, then when the file is over 30 days old, or a week after a new title joined the library. List of titles: only with Keep everything on this computer on and its own switch on, then at most once a month.",
       "stop": "Nothing of yours is sent. With Keep everything on this computer on, each file has its own switch there, in Settings, Privacy; the list of titles is not downloaded without it.",
       "offline": "imdb"
@@ -135,7 +135,7 @@
       "id": "winget",
       "name": "winget (installing ffmpeg)",
       "hosts": [],
-      "sends": "Skrin sends nothing itself: it asks winget, Windows' own installer, to fetch ffmpeg from its usual sources.",
+      "sends": "Kinema Media sends nothing itself: it asks winget, Windows' own installer, to fetch ffmpeg from its usual sources.",
       "when": "Only when you press Install ffmpeg.",
       "stop": "Do not press it.",
       "only": "installs_ffmpeg"
@@ -146,7 +146,7 @@
       "hosts": [
         "www.youtube-nocookie.com"
       ],
-      "sends": "The trailer's YouTube number, and the address of the page it plays for, which YouTube requires: Skrin's own (http://tauri.localhost), or on Linux a small page on this computer only (http://127.0.0.1 and a port) that holds the player. YouTube's player then runs as on any website: once a trailer plays, YouTube stores data on this device and may show an ad. Skrin does not block ads. On Android the YouTube app gets the number instead.",
+      "sends": "The trailer's YouTube number, and the address of the page it plays for, which YouTube requires: Kinema Media's own (http://tauri.localhost), or on Linux a small page on this computer only (http://127.0.0.1 and a port) that holds the player. YouTube's player then runs as on any website: once a trailer plays, YouTube stores data on this device and may show an ad. Kinema Media does not block ads. On Android the YouTube app gets the number instead.",
       "when": "Only when you press Trailer on a title with no trailer file beside it. A trailer file always plays first, and nothing goes to YouTube for it.",
       "stop": "Do not press Trailer, or put the trailer file beside the film. Where YouTube refuses, the trailer opens in your browser instead. A proxy set in Settings does not cover this: the trailer plays from YouTube itself."
     },
@@ -158,8 +158,8 @@
         "github.com",
         "release-assets.githubusercontent.com"
       ],
-      "sends": "An ordinary request for the number of Skrin's latest release. When you press Update to Skrin, a download of that release's installer and its checksum, from GitHub's own file servers. Nothing about you or your library.",
-      "when": "Once each time Skrin starts; the download only when you press Update to Skrin.",
+      "sends": "An ordinary request for the number of Kinema Media's latest release. When you press Update to Kinema Media, a download of that release's installer and its checksum, from GitHub's own file servers. Nothing about you or your library.",
+      "when": "Once each time Kinema Media starts; the download only when you press Update to Kinema Media.",
       "stop": "Look for new versions, in Settings, Advanced.",
       "section": "advanced",
       "state": "updates"
@@ -214,7 +214,7 @@
     }
   ],
   "links": {
-    "intro": "Some buttons open a web page in your browser. Skrin itself sends nothing to these; your browser does, as with any link.",
+    "intro": "Some buttons open a web page in your browser. Kinema Media itself sends nothing to these; your browser does, as with any link.",
     "hosts": [
       {
         "host": "www.themoviedb.org",
@@ -242,11 +242,11 @@
       },
       {
         "host": "github.com",
-        "for": "Skrin's release page, Skiptro's page, and reporting a bug"
+        "for": "Kinema Media's release page, Skiptro's page, and reporting a bug"
       },
       {
         "host": "skrin.org",
-        "for": "Skrin's website and its guides, such as how file names are read"
+        "for": "Kinema Media's website and its guides, such as how file names are read"
       },
       {
         "host": "ffmpeg.org",
@@ -258,5 +258,5 @@
       }
     ]
   },
-  "local": "Folders on your own network are read where they are, and the player streams from Skrin on this device only. Neither leaves your home network."
+  "local": "Folders on your own network are read where they are, and the player streams from Kinema Media on this device only. Neither leaves your home network."
 }

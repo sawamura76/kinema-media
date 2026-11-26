@@ -7,7 +7,7 @@
 //! gets a copy made here the first time it is seen and kept in `artwork/thumbs`.
 //! Made when a card is near the screen, so a scan never waits for one.
 //!
-//! Only Skrin's own cache folder is written; the pictures beside a film were
+//! Only Kinema Media's own cache folder is written; the pictures beside a film were
 //! copied there already (local_art.rs) and are not touched. Anything that goes
 //! wrong answers 404 and the page falls back to the picture itself, as it did
 //! before this existed (`Art.tsx`).

@@ -242,7 +242,7 @@ function summaryLine(s: ScanSummary): string {
 function notYet(can: Capabilities): string {
   const { system } = can;
   if (!can.equipment_detection) {
-    return `On ${system}, Skrin cannot yet look at your screen and sound equipment${
+    return `On ${system}, Kinema Media cannot yet look at your screen and sound equipment${
       can.display_switching ? '' : " or change the screen's mode"
     }, so films play with ${system}'s own picture and sound settings.`;
   }
@@ -254,7 +254,7 @@ function notYet(can: Capabilities): string {
     can.audio_direct ? null : `sound goes through ${system}'s own sound settings`,
     can.display_switching ? null : 'the screen stays as it is set',
   ].filter(Boolean);
-  return `On ${system}, Skrin can see your equipment but cannot yet ${missing.join(
+  return `On ${system}, Kinema Media can see your equipment but cannot yet ${missing.join(
     ', or '
   )}: ${meaning.join(', and ')}.`;
 }
@@ -407,7 +407,7 @@ export default function Settings({
   const [art, setArt] = useState<ArtworkStats | null>(null);
   const [tmdbKey, setTmdbKey] = useState('');
   const [omdbKey, setOmdbKey] = useState('');
-  /** TMDB has refused Skrin's own key, so one of the user's own is needed. */
+  /** TMDB has refused Kinema Media's own key, so one of the user's own is needed. */
   const [builtinRejected, setBuiltinRejected] = useState(false);
   const [autoSkip, setAutoSkip] = useState(false);
   const [creditsTail, setCreditsTail] = useState(DEFAULT_CREDITS_TAIL_SECS);
@@ -996,11 +996,11 @@ export default function Settings({
                   <VideoCollectionBar kind="tv" library={videoCollections.library} value={tvCollection} onChange={setTvCollection} />
                   {videoCollections.error && <p role="alert" className="settings-error">{videoCollections.error}</p>}
                   <p className="settings-intro">
-                    Where Skrin finds your movies and TV shows. It checks them every time it
-                    starts, so Scan now is only needed for files added while Skrin is open.
+                    Where Kinema Media finds your movies and TV shows. It checks them every time it
+                    starts, so Scan now is only needed for files added while Kinema Media is open.
                   </p>
                   {roots.length === 0 ? (
-                    <p className="muted">No folders yet. Add one and Skrin scans it straight away.</p>
+                    <p className="muted">No folders yet. Add one and Kinema Media scans it straight away.</p>
                   ) : (
                     <ul className="settings-roots">
                       {roots.map((root) => (
@@ -1144,8 +1144,8 @@ export default function Settings({
                   <section className="settings-section">
                     <h2>Saved network logins</h2>
                     <p className="settings-intro">
-                      The user names and passwords Skrin uses for your network drives, kept
-                      locked on this device. Forget one and Skrin asks again the next time.
+                      The user names and passwords Kinema Media uses for your network drives, kept
+                      locked on this device. Forget one and Kinema Media asks again the next time.
                     </p>
                     <ul className="settings-roots settings-logins">
                       {logins.map((login) => (
@@ -1175,7 +1175,7 @@ export default function Settings({
                 <section className="settings-section">
                   <h2>Needs attention</h2>
                   <p className="settings-intro">
-                    Videos Skrin could not identify for certain. It asks you instead of guessing,
+                    Videos Kinema Media could not identify for certain. It asks you instead of guessing,
                     because a wrong title is harder to spot than a missing one.
                   </p>
                   <FocusButton
@@ -1254,7 +1254,7 @@ export default function Settings({
                   ]}
                   value={look.setting}
                   onChange={setLook}
-                  note="Light turns off blurs, shadows and the zoom on the highlighted picture, and scrolls without gliding, so a slow device keeps up. Everything stays where it is, and the outline round the highlighted picture stays. Auto picks Light on a device with two processor cores or fewer, 2 GB of memory or less, or a screen that drew slowly when Skrin opened."
+                  note="Light turns off blurs, shadows and the zoom on the highlighted picture, and scrolls without gliding, so a slow device keeps up. Everything stays where it is, and the outline round the highlighted picture stays. Auto picks Light on a device with two processor cores or fewer, 2 GB of memory or less, or a screen that drew slowly when Kinema Media opened."
                   hint={
                     look.setting !== 'auto'
                       ? undefined
@@ -1300,7 +1300,7 @@ export default function Settings({
                     setStillWatching(v === 'on');
                     void setSetting(STILL_WATCHING_KEY, v).catch((e) => setError(userError(e)));
                   }}
-                  note="After three episodes in a row that played on by themselves, with no key, mouse or remote pressed, Skrin asks before starting the next one, so a show does not run on to the end of the season for nobody."
+                  note="After three episodes in a row that played on by themselves, with no key, mouse or remote pressed, Kinema Media asks before starting the next one, so a show does not run on to the end of the season for nobody."
                 />
                 {/* The one rendering switch in the app, and it exists only
                     because the right answer depends on hardware this code
@@ -1336,7 +1336,7 @@ export default function Settings({
 
             {shown === 'picture' && (
               <>
-                {/* Each part only where Skrin can do it (capabilities.ts):
+                {/* Each part only where Kinema Media can do it (capabilities.ts):
                     a control that does nothing is worse than none. */}
                 {can?.display_switching && (
                   <ScreenSection onError={setError} system={can.system} />
@@ -1375,7 +1375,7 @@ export default function Settings({
                       void setSetting('skip_mode', v).catch((e) => setError(userError(e)));
                     }}
                     note="Show a Skip button lets you choose each time. Skip them jumps straight past intros and end credits."
-                    hint="Works for episodes where Skrin knows where they are. How it finds out is below."
+                    hint="Works for episodes where Kinema Media knows where they are. How it finds out is below."
                   />
                   <ChoiceRow
                     label="When the end credits are not known, offer the next episode"
@@ -1389,7 +1389,7 @@ export default function Settings({
                       setCreditsTail(next);
                       void setSetting(CREDITS_TAIL_KEY, v).catch((e) => setError(userError(e)));
                     }}
-                    note="For an episode where nothing has found the end credits, Skrin guesses they are the last stretch and offers the next episode this long before the end."
+                    note="For an episode where nothing has found the end credits, Kinema Media guesses they are the last stretch and offers the next episode this long before the end."
                     hint="Where the credits are known, from detection or a chapter named for them, that is used instead. Never for movies, or for the last episode you have."
                   />
                 </section>
@@ -1401,19 +1401,19 @@ export default function Settings({
                     the only ones that know recaps and a film's scene after
                     the credits. */}
                 <section className="settings-section">
-                  <h2>How Skrin finds them</h2>
+                  <h2>How Kinema Media finds them</h2>
                   <p className="settings-intro">
                     Where intros, recaps and end credits are, for the Skip button and for offering
                     the next episode.{' '}
                     {can?.runs_programs
                       ? 'It works by itself: new episodes are checked after every scan. When more than one source knows an episode, the most reliable one is used.'
-                      : `On ${can?.system ?? 'this system'} Skrin cannot listen to the episodes itself, so it asks the two services below the first time an episode or film plays.`}
+                      : `On ${can?.system ?? 'this system'} Kinema Media cannot listen to the episodes itself, so it asks the two services below the first time an episode or film plays.`}
                   </p>
 
-                  {/* ffmpeg's listening: only where Skrin can run a program it did not bring (not Android). */}
+                  {/* ffmpeg's listening: only where Kinema Media can run a program it did not bring (not Android). */}
                   {can?.runs_programs && (
                     <>
-                    <h3>Skrin listens for them</h3>
+                    <h3>Kinema Media listens for them</h3>
                     <ChoiceRow
                       label="Detect intros and credits"
                       choices={[
@@ -1425,13 +1425,13 @@ export default function Settings({
                         setAutoAnalyse(v === 'on');
                         void setSetting(AUTO_ANALYSE_KEY, v).catch((e) => setError(userError(e)));
                       }}
-                      note="Skrin listens to a season's episodes for the music they share: the theme tune near the start, the closing music near the end. It takes a few minutes per season, once."
-                      hint="The only source that measures end credits, and the only one that works on episodes Skrin could not identify. Needs ffmpeg (below). Turning it off keeps everything already found."
+                      note="Kinema Media listens to a season's episodes for the music they share: the theme tune near the start, the closing music near the end. It takes a few minutes per season, once."
+                      hint="The only source that measures end credits, and the only one that works on episodes Kinema Media could not identify. Needs ffmpeg (below). Turning it off keeps everything already found."
                     />
                     <label className="settings-field">
                       <span>
                         Where ffmpeg is{' '}
-                        <span className="muted">(leave empty unless Skrin cannot find it)</span>
+                        <span className="muted">(leave empty unless Kinema Media cannot find it)</span>
                       </span>
                       <FocusInput
                         focusKey={FFMPEG_INPUT_KEY}
@@ -1456,8 +1456,8 @@ export default function Settings({
                     )}
                     <FfmpegLacks resolved={ffmpeg?.available ? ffmpeg.resolved : null} />
                     <p className="settings-hint">
-                      ffmpeg is a free program for reading video and audio. Skrin does not include
-                      it: install it yourself and Skrin finds it. It is also used once per file to
+                      ffmpeg is a free program for reading video and audio. Kinema Media does not include
+                      it: install it yourself and Kinema Media finds it. It is also used once per file to
                       read the resolution, HDR and sound format shown on a title&rsquo;s page.
                       {/* Offered only while it is missing: once found, there is
                           nothing to install. */}
@@ -1493,7 +1493,7 @@ export default function Settings({
                       void setSetting(INTRODB_ENABLED_KEY, v).catch((e) => setError(userError(e)));
                     }}
                     note="Intro and credit times shared by other viewers, looked up the first time you play an episode. It answers straight away, without reading your files."
-                    hint="Popular shows are covered far better than rare ones. Skrin sends only which episode it is, keeps each answer for a month and never looks up your whole library at once. No account or key."
+                    hint="Popular shows are covered far better than rare ones. Kinema Media sends only which episode it is, keeps each answer for a month and never looks up your whole library at once. No account or key."
                   />
                   {/* Attribution they request; it costs one line. */}
                   <p className="settings-hint">
@@ -1514,7 +1514,7 @@ export default function Settings({
                       );
                     }}
                     note="A second collection of times shared by viewers, and a separate service from TheIntroDB. It fills what TheIntroDB does not know, and it is the only source that knows where a film has a scene after its credits."
-                    hint="Skrin sends only which film or episode it is, by its IMDb number, keeps each answer for a month and never looks up your whole library at once. No account or key."
+                    hint="Kinema Media sends only which film or episode it is, by its IMDb number, keeps each answer for a month and never looks up your whole library at once. No account or key."
                   />
                   {/* The attribution they ask for, in their words. */}
                   <p className="settings-hint">
@@ -1564,7 +1564,7 @@ export default function Settings({
                     <p className="settings-hint">
                       {skiptroPath ? (
                         <>
-                          Using <code>{skiptroPath}</code>. Skrin does not include Skiptro: it runs
+                          Using <code>{skiptroPath}</code>. Kinema Media does not include Skiptro: it runs
                           the copy you installed after every scan that finds new episodes, and says
                           so after the scan if it has gone missing.
                         </>
@@ -1610,7 +1610,7 @@ export default function Settings({
                           />
                         </label>
                         <p className="settings-hint">
-                          Exporting writes a small extra file next to every episode with what Skrin
+                          Exporting writes a small extra file next to every episode with what Kinema Media
                           already reads from Skiptro&rsquo;s database. Only worth it if another player
                           should read the same results; type <code>export {'{dir}'}</code> to switch
                           it on.
@@ -1722,7 +1722,7 @@ export default function Settings({
                 <section className="settings-section">
                   <h2>Keep track of what I watch</h2>
                   <p className="settings-intro">
-                    Skrin can add what you finish to a watch history online, on SIMKL or Trakt.
+                    Kinema Media can add what you finish to a watch history online, on SIMKL or Trakt.
                     Both are optional, free, and work without each other.
                   </p>
                 </section>
@@ -1742,10 +1742,10 @@ export default function Settings({
                         'a description, but no posters. A free TMDB key adds posters, ' +
                         'backdrops and cast.'
                       : builtinRejected
-                        ? 'TMDB no longer accepts the key Skrin came with. Until an update ' +
+                        ? 'TMDB no longer accepts the key Kinema Media came with. Until an update ' +
                           'brings a new one, new movies are identified through Wikidata, ' +
                           'without posters. A free key of your own brings them back.'
-                        : 'Skrin looks up movies and TV shows on TMDB with a key of its own, ' +
+                        : 'Kinema Media looks up movies and TV shows on TMDB with a key of its own, ' +
                           'so there is nothing to set up. You can use your own free key instead.'}
                   </p>
                   <FocusGroup kind="row" className="settings-row">
@@ -1763,7 +1763,7 @@ export default function Settings({
                       {BUILTIN_TMDB_KEY ? 'Your own TMDB key ' : 'TMDB key '}
                       <span className="muted">
                         {BUILTIN_TMDB_KEY && !builtinRejected
-                          ? '(optional, used instead of Skrin’s)'
+                          ? '(optional, used instead of Kinema Media’s)'
                           : '(posters, backdrops, cast and episode pictures)'}
                       </span>
                     </span>
@@ -1800,7 +1800,7 @@ export default function Settings({
                   </label>
                   <p className="choice-note">
                     An OMDb key adds Rotten Tomatoes scores to a title&rsquo;s page, and helps
-                    identify movies. A free key allows 1,000 lookups a day and Skrin uses at most
+                    identify movies. A free key allows 1,000 lookups a day and Kinema Media uses at most
                     500, so a large library fills in over a few days.
                   </p>
                   <p className="settings-hint">
@@ -1851,12 +1851,12 @@ export default function Settings({
               <>
                 <section className="settings-section">
                   <h2>Updates</h2>
-                  {version && <p className="settings-intro">This is Skrin {version} (formerly Kinema).</p>}
+                  {version && <p className="settings-intro">This is Kinema Media {version} (formerly Kinema).</p>}
                   {update && !offline && <UpdateNotice update={update} />}
                   {offline ? (
                     <p className="settings-intro">
                       Look for new versions: Off: Keep everything on this computer is on (Settings,
-                      Privacy). New versions are on skrin.org.
+                      Privacy). New versions are on the Kinema Media GitHub releases page.
                     </p>
                   ) : (
                   <ChoiceRow
@@ -1870,7 +1870,7 @@ export default function Settings({
                       setCheckUpdates(v === 'on');
                       void setSetting(UPDATE_CHECK_KEY, v).catch((e) => setError(userError(e)));
                     }}
-                    note="When Skrin starts, it asks GitHub for the number of the latest version and says here if there is a newer one. Nothing is downloaded until you press Update."
+                    note="When Kinema Media starts, it asks GitHub for the number of the latest version and says here if there is a newer one. Nothing is downloaded until you press Update."
                   />
                   )}
                 </section>
@@ -1907,7 +1907,7 @@ export default function Settings({
                   <h2>Sharing with other media apps</h2>
                   <p className="settings-intro">
                     .nfo files are small text files next to a video that say what it is. Kodi,
-                    MediaElch and tinyMediaManager read and write them. Skrin reads them and
+                    MediaElch and tinyMediaManager read and write them. Kinema Media reads them and
                     trusts them over its own guess, which makes one the quickest fix for a movie
                     it keeps getting wrong. It can also write them for other apps to read.
                   </p>
@@ -1945,12 +1945,12 @@ export default function Settings({
                   <p className="settings-intro">
                     {can?.opens_folders ? (
                       <>
-                        For working on Skrin itself, and made for a mouse. For a bug report,
+                        For working on Kinema Media itself, and made for a mouse. For a bug report,
                         Send a report puts what it needs in one file.
                       </>
                     ) : (
                       <>
-                        For working on Skrin itself, and made for a mouse. Skrin&rsquo;s log is
+                        For working on Kinema Media itself, and made for a mouse. Kinema Media&rsquo;s log is
                         what a bug report needs: Share the log sends it to an app of your choice,
                         such as mail or a cloud drive.
                       </>
@@ -2123,7 +2123,7 @@ function SectionList({
             {id === 'advanced' && hasUpdate && <span className="nav-dot" />}
           </FocusButton>
         ))}
-        {version && <p className="settings-version">Skrin {version}</p>}
+        {version && <p className="settings-version">Kinema Media {version}</p>}
       </nav>
     </FocusProvider>
   );

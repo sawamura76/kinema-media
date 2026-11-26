@@ -1,5 +1,5 @@
 /**
- * Settings → Advanced → Updates: "Update to Skrin X" (round 9). Reached and
+ * Settings → Advanced → Updates: "Update to Kinema Media X" (round 9). Reached and
  * pressed by keys alone; says what happens at each step; a copy that cannot
  * update itself keeps the download page; a failed update says why and offers
  * the page.
@@ -26,22 +26,22 @@ async function ringOn(page: Page, name: string) {
 test('a Linux package copy updates by keys, then offers the restart', async ({ page }) => {
   await toUpdates(page, { kinemaMockUpdate: '99.0.0', kinemaMockUpdateInstall: 'deb' }, 'linux');
   const box = page.locator('.settings-update');
-  await expect(box).toContainText('Skrin 99.0.0 is available.');
+  await expect(box).toContainText('Kinema Media 99.0.0 is available.');
   await expect(box.getByRole('button', { name: /download page/ })).toHaveCount(0);
 
-  await ringOn(page, 'Update to Skrin 99.0.0');
+  await ringOn(page, 'Update to Kinema Media 99.0.0');
   await press(page, 'Enter');
   await expect(box).toContainText(/Downloading… \d+ % of 40 MB/);
-  await expect(box).toContainText('Skrin 99.0.0 is installed.');
+  await expect(box).toContainText('Kinema Media 99.0.0 is installed.');
   // The ring followed the pressed button to its successor, by itself.
-  await expect.poll(() => focused(page)).toBe('Restart Skrin');
+  await expect.poll(() => focused(page)).toBe('Restart Kinema Media');
 });
 
-test('the Windows setup copy says Skrin closes for the installer', async ({ page }) => {
+test('the Windows setup copy says Kinema Media closes for the installer', async ({ page }) => {
   await toUpdates(page, { kinemaMockUpdate: '99.0.0', kinemaMockUpdateInstall: 'setup' });
-  await ringOn(page, 'Update to Skrin 99.0.0');
+  await ringOn(page, 'Update to Kinema Media 99.0.0');
   await press(page, 'Enter');
-  await expect(page.locator('.settings-update')).toContainText('Skrin closes now so it can be replaced');
+  await expect(page.locator('.settings-update')).toContainText('Kinema Media closes now so it can be replaced');
 });
 
 test('a copy that cannot update itself keeps the download page', async ({ page }) => {
@@ -57,7 +57,7 @@ test('a failed update says why and offers the download page', async ({ page }) =
     kinemaMockUpdateInstall: 'apk',
     kinemaMockUpdateFails: 'The download did not match the release’s checksum, so it was deleted.',
   });
-  await ringOn(page, 'Update to Skrin 99.0.0');
+  await ringOn(page, 'Update to Kinema Media 99.0.0');
   await press(page, 'Enter');
   const box = page.locator('.settings-update');
   await expect(box.getByRole('alert')).toContainText('did not match the release’s checksum');

@@ -141,7 +141,7 @@ export function loadFailedMessage(
   path?: string
 ): string {
   if (state === 'denied') {
-    return 'Could not play this file: Skrin is not allowed to read it. Check who may read the file.';
+    return 'Could not play this file: Kinema Media is not allowed to read it. Check who may read the file.';
   }
   if (state === 'empty') return 'Could not play this file: it is empty (0 bytes).';
   if (state === 'missing') {
@@ -160,13 +160,13 @@ export function loadFailedMessage(
 /**
  * A Blu-ray disc that did not open, said from what mpv's log gave as the
  * reason. An encrypted disc is named as one, with the system mpv named:
- * Skrin cannot decrypt a disc and says so rather than a vaguer failure.
+ * Kinema Media cannot decrypt a disc and says so rather than a vaguer failure.
  */
 export function discFailedMessage(failure: DiscFailure): string {
   const said = failure.said.length ? ` The player said: “${failure.said.join(' ')}”` : '';
   if (failure.protection) {
     return (
-      `This disc is encrypted (${failure.protection}), and Skrin plays only ` +
+      `This disc is encrypted (${failure.protection}), and Kinema Media plays only ` +
       `Blu-ray discs that are not.${said}`
     );
   }

@@ -1,5 +1,5 @@
 /**
- * Settings' search box (SettingsSearch.tsx), by keyboard, by Skrin's own
+ * Settings' search box (SettingsSearch.tsx), by keyboard, by Kinema Media's own
  * letters in the TV layout, and by mouse: a match opens its section with the
  * ring on that very setting.
  */

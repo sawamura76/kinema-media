@@ -1,7 +1,7 @@
 /**
  * "Your equipment can do better" — the notice on Home.
  *
- * The point of Skrin's native output is that nobody should have to know
+ * The point of Kinema Media's native output is that nobody should have to know
  * which switches make a receiver get Atmos or a TV stop juddering. The checks
  * already know what the connected equipment can do; this compares that with
  * what is switched on and says so, once per piece of equipment:
@@ -106,7 +106,7 @@ export function upgradesFor(
         id: `${action === 'add' ? 'add:' : ''}sound:${device.id}`,
         text:
           action === 'add'
-            ? `${device.name} can take Dolby Atmos and DTS:X untouched, but is not among the receivers Skrin sends sound straight to.`
+            ? `${device.name} can take Dolby Atmos and DTS:X untouched, but is not among the receivers Kinema Media sends sound straight to.`
             : `${device.name} can take Dolby Atmos and DTS:X untouched. Through ${can.system} the height channels are lost.`,
         setting: AUDIO_DIRECT_KEY,
         action,
@@ -127,7 +127,7 @@ export function upgradesFor(
         id: `${motion === 'add' ? 'add:' : ''}motion:${display.id}`,
         text:
           motion === 'add'
-            ? `${display.name} can show movies without judder, but is not among the screens Skrin switches to 23.976 Hz.`
+            ? `${display.name} can show movies without judder, but is not among the screens Kinema Media switches to 23.976 Hz.`
             : `${display.name} can show movies without judder, by switching to 23.976 Hz while one plays.`,
         setting: SWITCH_REFRESH_KEY,
         action: motion,
@@ -141,7 +141,7 @@ export function upgradesFor(
         id: `${hdr === 'add' ? 'add:' : ''}hdr:${display.id}`,
         text:
           hdr === 'add'
-            ? `${display.name} can show HDR, but is not among the screens Skrin turns HDR on for, so HDR videos play in SDR there.`
+            ? `${display.name} can show HDR, but is not among the screens Kinema Media turns HDR on for, so HDR videos play in SDR there.`
             : `${display.name} can show HDR, but ${can.system} has it switched off, so HDR videos play in SDR.`,
         setting: SWITCH_HDR_KEY,
         action: hdr,

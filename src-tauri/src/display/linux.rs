@@ -4,7 +4,7 @@
 //! On Wayland only the desktop may change a screen, so this asks it, through
 //! `desktop.rs`: GNOME, Cinnamon, KDE Plasma and the wlroots desktops, each
 //! in its own way. Where no
-//! desktop Skrin knows answers, switching is not offered at all
+//! desktop Kinema Media knows answers, switching is not offered at all
 //! (`capabilities.rs`).
 
 use super::ScreenNow;
@@ -12,7 +12,7 @@ use crate::desktop::{self, Colour, Screen, ScreenMode};
 use crate::equipment::linux::{display_from, whole_hz};
 use crate::equipment::{rate_meaning, HdrState};
 
-/// Whether a desktop Skrin can ask is running.
+/// Whether a desktop Kinema Media can ask is running.
 pub fn can_switch() -> bool {
     desktop::which().is_some()
 }
@@ -116,7 +116,7 @@ pub fn set(connector: &str, mode: Option<(u32, u32, u32)>, colour: Option<Colour
     desktop::set(connector, mode_id.as_deref(), colour)
 }
 
-/// Skrin's window as it was when the player first floated it — full screen,
+/// Kinema Media's window as it was when the player first floated it — full screen,
 /// decorated — kept until the player closes; and whether it floats now.
 struct Fitted {
     was_fullscreen: bool,
@@ -126,7 +126,7 @@ struct Fitted {
 
 static FITTED: std::sync::Mutex<Option<Fitted>> = std::sync::Mutex::new(None);
 
-/// `display::player_window` on a wlroots desktop. `float`: Skrin's window at
+/// `display::player_window` on a wlroots desktop. `float`: Kinema Media's window at
 /// the screen's size, fixed (hidden and shown again so the desktop sees a
 /// new, fixed-size window, which it floats); `tile`: an ordinary window
 /// again, as the film leaves full screen — but not full screen itself, which
@@ -134,13 +134,13 @@ static FITTED: std::sync::Mutex<Option<Fitted>> = std::sync::Mutex::new(None);
 /// full screen included.
 pub fn player_window(window: &tauri::WebviewWindow, how: &str) -> Result<(), String> {
     let mut fitted = FITTED.lock().map_err(|e| e.to_string())?;
-    let err = |e: tauri::Error| format!("Skrin's window: {e}");
+    let err = |e: tauri::Error| format!("Kinema Media's window: {e}");
     match how {
         "float" => {
             if fitted.as_ref().is_some_and(|f| f.floating) {
                 return Ok(());
             }
-            let monitor = window.current_monitor().map_err(err)?.ok_or("no screen for Skrin's window")?;
+            let monitor = window.current_monitor().map_err(err)?.ok_or("no screen for Kinema Media's window")?;
             let size = monitor.size().to_logical::<f64>(monitor.scale_factor());
             let before = fitted.take().unwrap_or(Fitted {
                 was_fullscreen: window.is_fullscreen().unwrap_or(false),
@@ -162,7 +162,7 @@ pub fn player_window(window: &tauri::WebviewWindow, how: &str) -> Result<(), Str
             window.set_resizable(false).map_err(err)?;
             window.show().map_err(err)?;
             *fitted = Some(Fitted { floating: true, ..before });
-            crate::log!("display: Skrin's window floated at {}×{} for the player", size.width, size.height);
+            crate::log!("display: Kinema Media's window floated at {}×{} for the player", size.width, size.height);
         }
         "tile" | "close" => {
             let Some(before) = fitted.take() else { return Ok(()) };
@@ -178,10 +178,10 @@ pub fn player_window(window: &tauri::WebviewWindow, how: &str) -> Result<(), Str
                 if before.was_fullscreen {
                     window.set_fullscreen(true).map_err(err)?;
                 }
-                crate::log!("display: Skrin's window back as it was");
+                crate::log!("display: Kinema Media's window back as it was");
             } else {
                 *fitted = Some(Fitted { floating: false, ..before });
-                crate::log!("display: Skrin's window tiled again beside the windowed film");
+                crate::log!("display: Kinema Media's window tiled again beside the windowed film");
             }
         }
         other => return Err(format!("player_window: no such request '{other}'")),

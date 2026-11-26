@@ -25,7 +25,7 @@ export default function App() {
   useGamepadNavigation();
   const tv = useTvMode();
   const showShortcuts = useShortcutsOpen();
-  // Skrin's own folder browser, where the system has no picker (folders.ts).
+  // Kinema Media's own folder browser, where the system has no picker (folders.ts).
   const folderRequest = useFolderRequest();
   // A web address the system could not open, shown instead (links.ts).
   const shownLink = useShownLink();
@@ -71,7 +71,7 @@ export default function App() {
   // Comparing the layouts means switching back and forth repeatedly, and doing
   // that through two menus tells you nothing about how either one feels.
   // F11 does the same, because it is the key anyone reaches for to make a
-  // program fill the screen, and the TV layout is Skrin's full-screen mode.
+  // program fill the screen, and the TV layout is Kinema Media's full-screen mode.
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const toggle =

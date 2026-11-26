@@ -2,7 +2,7 @@
  * When the resume point cannot be kept (A5-03): the data folder is full or
  * cannot be written. Said once on screen in plain words, logged with the
  * reason, and the saving carries on every few seconds, so it mends itself as
- * soon as the folder can be written again. Skrin does not say what it does
+ * soon as the folder can be written again. Kinema Media does not say what it does
  * not know: only the two causes the system's own error names get a cause.
  */
 
@@ -10,12 +10,12 @@ export function saveFailureNotice(error: unknown): string {
   const why = String(error instanceof Error ? error.message : error).toLowerCase();
   const head = 'Your place in this film cannot be kept right now';
   if (why.includes('full') || why.includes('no space')) {
-    return `${head}: the disk is full. Skrin keeps trying, and keeps it once there is room.`;
+    return `${head}: the disk is full. Kinema Media keeps trying, and keeps it once there is room.`;
   }
   if (why.includes('readonly') || why.includes('read-only') || why.includes('permission')) {
-    return `${head}: Skrin's folder cannot be written to. Skrin keeps trying, and keeps it once it can.`;
+    return `${head}: Kinema Media's folder cannot be written to. Kinema Media keeps trying, and keeps it once it can.`;
   }
-  return `${head}. Skrin keeps trying, and keeps it once it can.`;
+  return `${head}. Kinema Media keeps trying, and keeps it once it can.`;
 }
 
 /** Tracks a run of failed saves: one notice and one log line per run. */

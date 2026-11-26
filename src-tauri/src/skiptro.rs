@@ -43,7 +43,7 @@ pub fn default_db_path() -> Option<PathBuf> {
     Some(Path::new(&appdata).join("Skiptro").join("skiptro.db"))
 }
 
-/// The database Skrin reads: the one set in Settings, else the usual place.
+/// The database Kinema Media reads: the one set in Settings, else the usual place.
 pub fn db_path(configured: Option<&str>) -> Option<PathBuf> {
     configured
         .map(str::trim)
@@ -52,7 +52,7 @@ pub fn db_path(configured: Option<&str>) -> Option<PathBuf> {
         .or_else(default_db_path)
 }
 
-/// Whether Skiptro's database is where Skrin would read it — the sign that
+/// Whether Skiptro's database is where Kinema Media would read it — the sign that
 /// Skiptro is installed and has been used. The setup pages bring Skiptro up
 /// only then: to anyone else it is a program they have never heard of.
 #[tauri::command]

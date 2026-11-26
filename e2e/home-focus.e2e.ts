@@ -1,5 +1,5 @@
 /**
- * Home and the shelves on Skrin's own focus engine (round 7, focusStore.ts):
+ * Home and the shelves on Kinema Media's own focus engine (round 7, focusStore.ts):
  * what a browser has to show and the unit tests of the moves
  * (focusModel.test.ts) cannot — the ring is always on screen, never under the
  * top bar, one ring only and the DOM focus with it; Tab moves by area;

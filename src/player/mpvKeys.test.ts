@@ -10,7 +10,7 @@ function values(command: string): string[] {
 }
 
 describe('keys through mpv', () => {
-  it('turns both values of each binding back into the key Skrin knows', () => {
+  it('turns both values of each binding back into the key Kinema Media knows', () => {
     MPV_KEYS.forEach(([, dom], index) => {
       const [first, second] = values(keyCommand(index));
       expect(keyFromValue(first)).toBe(dom);

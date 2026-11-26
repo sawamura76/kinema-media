@@ -103,7 +103,7 @@ const DETAIL_VERSION_KEY = 'detail-version';
 const DETAIL_FIRST_EPISODE_KEY = 'detail-first-episode';
 
 /**
- * The page is a column of areas, top to bottom, on Skrin's own engine
+ * The page is a column of areas, top to bottom, on Kinema Media's own engine
  * (focusModel.ts, round 7): Back, the buttons under the title (a row landing
  * on Play), the season row (landing on the season shown, with "Mark season
  * watched" at its end), the episode list (each episode a row of three), the
@@ -184,7 +184,7 @@ export default function TitleDetailView({
   const [trailerPath, setTrailerPath] = useState<string | null>(null);
   /** Extras kept beside the files (extras.rs), read from disk. */
   const [extras, setExtras] = useState<Extra[]>([]);
-  /** A YouTube trailer plays in Skrin (or the YouTube app), not the browser. */
+  /** A YouTube trailer plays in Kinema Media (or the YouTube app), not the browser. */
   /** For a series: the episode the Play button will actually start. */
   const [nextUp, setNextUp] = useState<EpisodeRef | null>(null);
   /** For a series: whether that has been asked yet — see the landing below. */
@@ -848,7 +848,7 @@ export default function TitleDetailView({
                 )}
 
                 {/* YouTube's own player: the YouTube app on Android, the
-                    embed in Skrin's overlay on Windows, the browser elsewhere
+                    embed in Kinema Media's overlay on Windows, the browser elsewhere
                     and whenever YouTube refuses (trailer.ts). */}
                 {!trailerPath && shown.trailer_key && !offline && (
                   <FocusButton

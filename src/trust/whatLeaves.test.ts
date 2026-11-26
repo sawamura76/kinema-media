@@ -2,7 +2,7 @@
  * "What leaves your computer" stays true (notes/CLAUDE.md, CONTRIBUTING).
  *
  * Every host named in the code — Rust, TypeScript, Kotlin, the capability and
- * Tauri config — must be on the page (whatLeaves.json), as a service Skrin
+ * Tauri config — must be on the page (whatLeaves.json), as a service Kinema Media
  * talks to or as a link that opens in the browser, or be here in NOT_CONTACTED
  * with the reason it is never contacted. A new service fails this test until
  * the page says what it sends, when, and what stops it.
@@ -11,13 +11,13 @@ import { describe, expect, it } from 'vitest';
 import page from './whatLeaves.json';
 import { SECTION_NAMES, type SectionId } from '../ui/settingsSections';
 
-/** Named in the code but never contacted by Skrin or opened for the user. */
+/** Named in the code but never contacted by Kinema Media or opened for the user. */
 const NOT_CONTACTED: Record<string, string> = {
   localhost: 'the app’s own pages',
   'asset.localhost': 'the app’s own files',
   'ipc.localhost': 'the app talking to itself',
   'thumb.localhost': 'the app’s own small copies of pictures',
-  '127.0.0.1': 'the player streaming from Skrin on this device',
+  '127.0.0.1': 'the player streaming from Kinema Media on this device',
   '192.168.1.10': 'an example address in the own-server field, never contacted',
   'schema.tauri.app': 'the config file’s schema, read by editors',
   'www.w3.org': 'the SVG namespace',

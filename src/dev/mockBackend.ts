@@ -971,7 +971,7 @@ export function listenerCounts(): Record<string, number> {
  * Android build does (no window, none of the equipment features, and the
  * fake Media3 plays instead of the fake mpv, which is not there to ask),
  * `kinemaMockNoPower=1` is a system
- * that will not sleep or shut down from Skrin, `kinemaMockScreenHdr=on`
+ * that will not sleep or shut down from Kinema Media, `kinemaMockScreenHdr=on`
  * reports the screen in HDR (for the output check; the picture itself is the
  * fake mpv's `extra`), `kinemaMockSkiptro=1` has Skiptro's database on this PC,
  * and `kinemaMockScanErrors`, a JSON list of strings, is what the scan reports
@@ -1296,13 +1296,13 @@ const WINGET = flag('kinemaMockWinget');
 let ffmpegInstalled = flag('kinemaMockFfmpegFound') === '1';
 const MOCK_FFMPEG_PATH = 'C:\\Users\\you\\AppData\\Local\\Microsoft\\WinGet\\Links\\ffmpeg.exe';
 /** Under `kinemaMockEmpty`: whether a folder has been added, then scanned,
- * and which (the picker's, or the one chosen in Skrin's own browser). */
+ * and which (the picker's, or the one chosen in Kinema Media's own browser). */
 const emptyLibrary = { hasRoot: !EMPTY, scanned: false, path: 'C:\\fixture' };
 /** The mock's own library folder's kind, which Settings can change (GitHub #26). */
 const mockRootKind: { kind: 'movies' | 'tv' } = { kind: 'tv' };
 
 /**
- * Android's drives for Skrin's own folder browser (`kinemaMockSystem=android`):
+ * Android's drives for Kinema Media's own folder browser (`kinemaMockSystem=android`):
  * a USB drive with films and a show, and the device's own storage. Android's
  * permission is not yet given, and is given when asked for, unless
  * `kinemaMockStorageRefused=1`; All files access is off until allowed.
@@ -1349,7 +1349,7 @@ const mockDrives: Record<string, { folders: string[]; videos: number; files?: st
   'smb://nas/tv/Example Show/Season 1': { folders: [], videos: 3 },
 };
 /**
- * Network sign-ins kept for shares Skrin opens itself (share_logins.rs).
+ * Network sign-ins kept for shares Kinema Media opens itself (share_logins.rs).
  * `kinemaMockShareLogin=1` starts with one; the server `nas` accepts the
  * password `secret`, any other server is not there.
  */
@@ -2212,7 +2212,7 @@ const handlers: Record<string, Handler> = {
     UPDATE
       ? {
           version: UPDATE,
-          url: 'https://github.com/basswaves/skrin/releases',
+          url: 'https://github.com/sawamura76/kinema-media/releases',
           install: UPDATE_INSTALL || null,
         }
       : null,
@@ -2263,7 +2263,7 @@ const handlers: Record<string, Handler> = {
   read_theme: () => new ArrayBuffer(0),
 
   // A video opened from outside (opened.rs). `kinemaMockOpen` is the path
-  // Skrin was "started for", answered once per page load as the real one is.
+  // Kinema Media was "started for", answered once per page load as the real one is.
   opened_at_launch: () => {
     const path = flag('kinemaMockOpen');
     if (!path || openedTaken) return null;
@@ -2305,7 +2305,7 @@ const handlers: Record<string, Handler> = {
     });
     return null;
   },
-  // Offering Skrin to Windows (default_player.rs): a flag, and the presses.
+  // Offering Kinema Media to Windows (default_player.rs): a flag, and the presses.
   player_offer: () => ({ offered: playerOffered }),
   offer_as_player: () => {
     playerOffered = true;
@@ -2393,7 +2393,7 @@ const handlers: Record<string, Handler> = {
   // Windows' answers unless `kinemaMockSystem` is `linux`, which answers as
   // the Linux build does on a typical desktop: the equipment check, direct
   // sound, sleep and shut down (logind), and no screen switching — the mock
-  // stands for a desktop Skrin cannot ask. `kinemaMockNoPower` is a system
+  // stands for a desktop Kinema Media cannot ask. `kinemaMockNoPower` is a system
   // whose logind will not, or is missing (capabilities.rs, power.rs).
   capabilities: () => {
     if (ON_ANDROID) {
@@ -2614,7 +2614,7 @@ const handlers: Record<string, Handler> = {
   open_log_folder: () => null,
   show_report: () => null,
   make_report: () => ({
-    path: 'C:\\Users\\you\\Downloads\\skrin-report-2026-10-23-1405.zip',
+    path: 'C:\\Users\\you\\Downloads\\kinema-media-report-2026-10-23-1405.zip',
     files: ['app.log', 'app.previous.log', 'mpv.log', 'equipment.txt'],
   }),
   open_backup_folder: () => null,
@@ -2849,7 +2849,7 @@ const handlers: Record<string, Handler> = {
   'plugin:media3|screen': () => fakeMedia3.screen(),
   'plugin:media3|set_mode': (a) => fakeMedia3.setMode(a),
   'plugin:media3|restore_mode': () => fakeMedia3.restoreMode(),
-  // A film on a share Skrin opens itself, read through the core (stream.rs).
+  // A film on a share Kinema Media opens itself, read through the core (stream.rs).
   stream_address: () => 'http://127.0.0.1:47123/stream/1',
   // The page that lets YouTube's trailer play on Linux (trailer_relay.rs).
   trailer_page_address: () => 'http://127.0.0.1:47124/',
@@ -2884,7 +2884,7 @@ const handlers: Record<string, Handler> = {
     modes: 4,
     lastSound: { format: 'DTS-HD 5.1', way: 'decoded' },
   }),
-  // Skrin's own folder browser, on Android (places.rs, StoragePlugin.kt).
+  // Kinema Media's own folder browser, on Android (places.rs, StoragePlugin.kt).
   'plugin:storage|places': () => ({
     places: [
       { path: '/storage/1A2B-3C4D', name: 'USB drive', removable: true },
@@ -2923,7 +2923,7 @@ const handlers: Record<string, Handler> = {
   save_share_login: (a) => {
     const server = String(a.server);
     if (server !== 'nas' && server !== 'laptop') throw new Error(`Could not reach ${server}: no answer`);
-    if (!a.user) throw new Error('Skrin cannot connect as a guest yet. Enter a user name and password.');
+    if (!a.user) throw new Error('Kinema Media cannot connect as a guest yet. Enter a user name and password.');
     if (a.password !== 'secret') throw new Error(`${server} did not accept that user name and password.`);
     const i = shareLogins.findIndex((l) => l.server === server);
     if (i >= 0) shareLogins.splice(i, 1);
@@ -2950,7 +2950,7 @@ const handlers: Record<string, Handler> = {
   },
   list_folders: (a) => {
     const path = String(a.path);
-    // A share on the mock NAS reads only once Skrin is signed in to it.
+    // A share on the mock NAS reads only once Kinema Media is signed in to it.
     if (path.startsWith('smb://') && !shareLogins.some((l) => path.startsWith(`smb://${l.server}/`))) {
       throw new Error(`not allowed to read ${path}`);
     }
@@ -3005,7 +3005,7 @@ export function installMockBackend(): void {
     minimizePlayer: () => { if (floatingKind && !floatingPlayer) { floatingPlayer = true; emitEvent('floating-player', true); } },
     storage,
     looseProgress,
-    /** A second Skrin passing a video on (opened.rs `EVENT`). */
+    /** A second Kinema Media passing a video on (opened.rs `EVENT`). */
     openVideo: (path: string) => emitEvent('open-video', { path, launched: false }),
     /** Files dropped on the window, as Tauri reports them. */
     dropFiles: (paths: string[]) =>
@@ -3013,7 +3013,7 @@ export function installMockBackend(): void {
     playerOffer: () => ({ offered: playerOffered, defaultAppsOpened }),
     posterOf,
   };
-  document.title = 'Skrin (mock backend)';
+  document.title = 'Kinema Media (mock backend)';
 }
 
 

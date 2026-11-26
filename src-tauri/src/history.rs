@@ -336,7 +336,7 @@ pub fn restore(conn: &Connection, file_ids: &[i64]) -> rusqlite::Result<usize> {
     Ok(restored)
 }
 
-/// A film or episode as another player or another Skrin remembered it, by
+/// A film or episode as another player or another Kinema Media remembered it, by
 /// the ids watch_history keeps (import_watched.rs, moving.rs).
 #[derive(Debug, Clone, PartialEq)]
 pub struct Carried {

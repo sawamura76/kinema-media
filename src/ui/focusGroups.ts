@@ -1,6 +1,6 @@
 /**
  * The few kinds of focus group a screen is built from, each with fixed
- * behaviour (TV-FEEL.md, "Proposal"), as areas of Skrin's focus engine
+ * behaviour (TV-FEEL.md, "Proposal"), as areas of Kinema Media's focus engine
  * (focusModel.ts has the rules, focusStore.ts the store):
  *
  * - **menu** — a panel, dialog or picker: a dialog that holds the ring while

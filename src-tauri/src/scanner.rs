@@ -107,7 +107,7 @@ pub(crate) fn has_video_extension(path: &Path) -> bool {
         .is_some_and(|e| VIDEO_EXTENSIONS.contains(&e.to_lowercase().as_str()))
 }
 
-/// The extensions the library scans for, for the file types Skrin offers
+/// The extensions the library scans for, for the file types Kinema Media offers
 /// to open (`default_player.rs`).
 #[cfg_attr(not(windows), allow(dead_code))]
 pub(crate) fn video_extensions() -> &'static [&'static str] {
@@ -395,7 +395,7 @@ fn walk_local(
             entered.push(entry.path().to_path_buf());
         }
 
-        // Android, with Skrin behind another app: the walk waits between
+        // Android, with Kinema Media behind another app: the walk waits between
         // folders (jobs::set_behind). Not for a film, as a share's walk does:
         // a walk of a local disk has never had to.
         if entry.file_type().is_dir() {
@@ -502,7 +502,7 @@ fn refusing_folders(listing: &Path, why: String) -> Vec<Unread> {
     }
 }
 
-/// Every video under a folder on a share Skrin opens itself (netshare.rs).
+/// Every video under a folder on a share Kinema Media opens itself (netshare.rs).
 /// A folder listing there carries each file's size and time, so a file costs
 /// no request of its own — the one stat per file the rules above allow is
 /// already paid for.
@@ -744,7 +744,7 @@ fn gone_from(root: &Path, stale: Vec<(i64, String)>) -> HashMap<PathBuf, GoneFro
 /// - **Gone**, or a folder with other things in it. A disk mounted below the
 ///   library folder, removed with its mount point, looks exactly like a deletion:
 ///   they are hidden, the line says how many from where, and never that they were
-///   deleted, which Skrin cannot know.
+///   deleted, which Kinema Media cannot know.
 fn mark_missing(
     conn: &mut Connection,
     root_id: i64,

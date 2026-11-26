@@ -1,9 +1,9 @@
 /**
- * The mouse on mpv's own window, handed on to Skrin.
+ * The mouse on mpv's own window, handed on to Kinema Media.
  *
  * Where mpv has a window of its own (Linux: capabilities `own_window`), the
- * mouse lands on that window, not on Skrin's page behind it. A small script
- * Skrin loads into mpv (`src-tauri/src/pointer/mouse.lua`) reports every
+ * mouse lands on that window, not on Kinema Media's page behind it. A small script
+ * Kinema Media loads into mpv (`src-tauri/src/pointer/mouse.lua`) reports every
  * press, release, move and wheel turn there; the player maps each onto the
  * page (`overlay.ts` → `pageFromVideo`) and Rust does it again on the page as
  * real mouse input (`pointer.rs`), so every handler is the Windows one.
@@ -13,7 +13,7 @@
  * one go down, and the seek bar could not be dragged. Only a script's
  * bindings are told both.
  *
- * The script writes its last few events to one property, which Skrin
+ * The script writes its last few events to one property, which Kinema Media
  * observes — mpv reports a property's latest value, not every value it had,
  * so a quick click's press and release must both still be in the latest.
  * Each event carries a number, and `newEvents` keeps those not yet seen.

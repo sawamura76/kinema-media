@@ -19,7 +19,7 @@ describe('scanTrouble', () => {
   it('names a folder that could not be read beside the system’s own words', () => {
     expect(scanTrouble(['could not read: D:\\Films\\Locked :: Ingen tilgang. (os error 5)'])).toEqual({
       text: 'Could not read D:\\Films\\Locked (Ingen tilgang. (os error 5))',
-      note: 'Nothing in it was hidden. Skrin tries again at the next scan.',
+      note: 'Nothing in it was hidden. Kinema Media tries again at the next scan.',
     });
   });
 
@@ -78,12 +78,12 @@ describe('scanTrouble', () => {
   it('says a failed background stage in plain words, once, on Home only', () => {
     const raw = 'measuring pictures: Invalid column type Null at index: 0, name: title_id';
     expect(scanTrouble([raw])).toEqual({
-      text: 'Skrin could not measure the pictures’ shape this time',
+      text: 'Kinema Media could not measure the pictures’ shape this time',
       note: 'Your library is fine; it tries again on the next scan.',
       homeOnly: true,
     });
     expect(scanTrouble([raw, 'reading files: locked', raw])).toEqual({
-      text: 'Skrin could not measure the pictures’ shape this time · and 1 more',
+      text: 'Kinema Media could not measure the pictures’ shape this time · and 1 more',
       note: 'Your library is fine; it tries again on the next scan.',
       homeOnly: true,
     });

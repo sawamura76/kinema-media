@@ -1,11 +1,11 @@
 /**
- * Settings → Playback → Opening videos: offering Skrin to Windows as a video
+ * Settings → Playback → Opening videos: offering Kinema Media to Windows as a video
  * player (default_player.rs), and taking the offer back. On Linux, the
  * unpacked folder's way to the app menu and "Open with" (app_menu.rs).
  *
  * Windows does not let a program make itself the default; the offer puts
- * Skrin in each video type's "Open with" and in Default apps, and opens
- * Skrin's page there for the choice. Only where the system has that
+ * Kinema Media in each video type's "Open with" and in Default apps, and opens
+ * Kinema Media's page there for the choice. Only where the system has that
  * (`offers_player`).
  */
 import { useEffect, useState } from 'react';
@@ -41,10 +41,10 @@ export default function VideoPlayerSection({ linux }: { linux: boolean }) {
     <section className="settings-section">
       <h2>Opening videos</h2>
       <p className="settings-intro">
-        Skrin plays any video you open with it from {linux ? 'your file manager' : 'File Explorer'},
+        Kinema Media plays any video you open with it from {linux ? 'your file manager' : 'File Explorer'},
         or drop on its window, whether
         or not it is in your library. One in the library plays as itself; any other is remembered
-        where you stopped. Started for a video, Skrin closes when the video is done.
+        where you stopped. Started for a video, Kinema Media closes when the video is done.
       </p>
       {offered === null && !error ? null : linux ? (
         <>
@@ -52,24 +52,24 @@ export default function VideoPlayerSection({ linux }: { linux: boolean }) {
             {offered ? (
               <ConfirmButton
                 className="btn-secondary"
-                confirmLabel="Yes, take Skrin out"
+                confirmLabel="Yes, take Kinema Media out"
                 onConfirm={() => run(removeAsPlayer)}
               >
-                Take Skrin out of the app menu
+                Take Kinema Media out of the app menu
               </ConfirmButton>
             ) : (
               <FocusButton
                 className="btn-secondary"
                 onSelect={() => run(offerAsPlayer)}
               >
-                Add Skrin to the app menu
+                Add Kinema Media to the app menu
               </FocusButton>
             )}
           </FocusGroup>
           <p className="settings-hint">
             {offered
-              ? 'Skrin is in the app menu and in Open with for video files, from this folder. '
-              : 'Puts this folder’s Skrin in the app menu and in Open with for video files. '}
+              ? 'Kinema Media is in the app menu and in Open with for video files, from this folder. '
+              : 'Puts this folder’s Kinema Media in the app menu and in Open with for video files. '}
             Your file manager is where you choose which program opens each kind of video.
           </p>
         </>
@@ -80,18 +80,18 @@ export default function VideoPlayerSection({ linux }: { linux: boolean }) {
               className="btn-secondary"
               onSelect={() => run(openDefaultApps)}
             >
-              Choose what Skrin opens
+              Choose what Kinema Media opens
             </FocusButton>
             <ConfirmButton
               className="btn-secondary"
-              confirmLabel="Yes, remove Skrin"
+              confirmLabel="Yes, remove Kinema Media"
               onConfirm={() => run(removeAsPlayer)}
             >
               Remove
             </ConfirmButton>
           </FocusGroup>
           <p className="settings-hint">
-            Skrin is in Open with for video files, and in Windows&rsquo; Default apps, where you
+            Kinema Media is in Open with for video files, and in Windows&rsquo; Default apps, where you
             choose which kinds of video it opens. Remove takes it out of both again.
           </p>
         </>
@@ -102,12 +102,12 @@ export default function VideoPlayerSection({ linux }: { linux: boolean }) {
               className="btn-secondary"
               onSelect={() => run(offerAsPlayer)}
             >
-              Offer Skrin as a video player
+              Offer Kinema Media as a video player
             </FocusButton>
           </FocusGroup>
           <p className="settings-hint">
-            Puts Skrin in Open with for video files and opens Windows&rsquo; Default apps, where
-            you choose which kinds of video Skrin opens. Windows does not let a program choose
+            Puts Kinema Media in Open with for video files and opens Windows&rsquo; Default apps, where
+            you choose which kinds of video Kinema Media opens. Windows does not let a program choose
             that for itself.
           </p>
         </>

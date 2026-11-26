@@ -301,7 +301,7 @@ mod desktop {
         let db = app.state::<Db>();
         let files = {
             let Ok(conn) = db.0.lock() else { return };
-            // Files that left the library while Skrin was closed go first.
+            // Files that left the library while Kinema Media was closed go first.
             if dir.exists() {
                 seek_preview::sweep(&conn, &dir);
             }

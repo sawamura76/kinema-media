@@ -25,7 +25,7 @@ const UNREACHABLE = /^root unavailable, skipped: (.+)$/;
 const UNREAD = /^could not read: (.+) :: (.*)$/s;
 const EMPTIED = /^folder now empty: (\d+) :: (.+)$/;
 const GONE = /^videos gone: (\d+) :: (.+)$/;
-const UNREAD_NOTE = 'Nothing in it was hidden. Skrin tries again at the next scan.';
+const UNREAD_NOTE = 'Nothing in it was hidden. Kinema Media tries again at the next scan.';
 const EMPTIED_NOTE =
   'They stay in your library. If a disk belongs there, connect it. If you emptied it yourself, delete the folder.';
 const GONE_NOTE =
@@ -47,9 +47,9 @@ const BUSY_LINE = 'Wikipedia was busy, so some films wait to be matched until th
  * app.log (Browse's "startup scan problems").
  */
 const BACKGROUND: [RegExp, string][] = [
-  [/^reading files: /, 'Skrin could not read the details of some files this time'],
-  [/^intro detection: /, 'Skrin could not look for intros this time'],
-  [/^measuring pictures: /, 'Skrin could not measure the pictures’ shape this time'],
+  [/^reading files: /, 'Kinema Media could not read the details of some files this time'],
+  [/^intro detection: /, 'Kinema Media could not look for intros this time'],
+  [/^measuring pictures: /, 'Kinema Media could not measure the pictures’ shape this time'],
 ];
 const BACKGROUND_NOTE = 'Your library is fine; it tries again on the next scan.';
 

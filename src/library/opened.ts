@@ -1,6 +1,6 @@
 /**
- * A video handed to Skrin from outside (opened.rs): the file Skrin was
- * started for, one a second Skrin passed on, or one dropped on the window.
+ * A video handed to Kinema Media from outside (opened.rs): the file Kinema Media was
+ * started for, one a second Kinema Media passed on, or one dropped on the window.
  *
  * A file a library folder holds plays as that library file — its resume
  * point, its languages, Skip intro. Anything else plays as a video of its own,
@@ -12,11 +12,11 @@ import { getCurrentWebview } from '@tauri-apps/api/webview';
 import { episodeLabel, type PlaybackTarget } from '../player/api';
 import { recoverFromPageEnd } from '../player/pageRecovery';
 
-/** What opened.rs says: a file, and whether Skrin was started for it. */
+/** What opened.rs says: a file, and whether Kinema Media was started for it. */
 export interface Opened {
   path: string;
   launched: boolean;
-  /** When Skrin started, ms since 1970. */
+  /** When Kinema Media started, ms since 1970. */
   started_ms: number;
 }
 
@@ -29,7 +29,7 @@ interface LibraryFile {
   episode_name: string | null;
 }
 
-/** The event opened.rs sends a second Skrin's file on. */
+/** The event opened.rs sends a second Kinema Media's file on. */
 const EVENT = 'open-video';
 
 /** The file's own name, without its folder or extension: `Holiday 2019`. */
@@ -55,16 +55,16 @@ export async function targetFor(path: string): Promise<PlaybackTarget> {
 /** A video and how it came, ready for the player. */
 export interface OpenRequest {
   target: PlaybackTarget;
-  /** Skrin was started for it: it closes when the video is done. */
+  /** Kinema Media was started for it: it closes when the video is done. */
   launched: boolean;
 }
 
 let atLaunch: OpenRequest | null = null;
-/** When the Skrin started for `atLaunch` began; 0 once its frame is logged. */
+/** When the Kinema Media started for `atLaunch` began; 0 once its frame is logged. */
 let launchStarted = 0;
 
 /**
- * Ask once, before the first view is drawn, whether Skrin was started for a
+ * Ask once, before the first view is drawn, whether Kinema Media was started for a
  * video — so it goes straight to the player and Home is never shown first.
  * Never fails: an answer that cannot be had is "no".
  */
@@ -84,24 +84,24 @@ export async function loadLaunchRequest(): Promise<void> {
   if (film && !atLaunch) atLaunch = { target: film, launched: false };
 }
 
-/** The video Skrin was started for, if any (after `loadLaunchRequest`). */
+/** The video Kinema Media was started for, if any (after `loadLaunchRequest`). */
 export function launchRequest(): OpenRequest | null {
   return atLaunch;
 }
 
 /**
- * The player showed its first frame of `path`. For the video Skrin was
+ * The player showed its first frame of `path`. For the video Kinema Media was
  * started for, the log says how long that took from starting — the time from
  * a double-click to a picture, less Windows starting the program.
  */
 export function noteFirstFrame(path: string): void {
   if (!launchStarted || atLaunch?.target.path !== path) return;
-  console.info(`opened: first frame ${Date.now() - launchStarted} ms after Skrin started`);
+  console.info(`opened: first frame ${Date.now() - launchStarted} ms after Kinema Media started`);
   launchStarted = 0;
 }
 
 /**
- * Hear of videos opened while Skrin runs: passed on by a second Skrin, or
+ * Hear of videos opened while Kinema Media runs: passed on by a second Kinema Media, or
  * dropped on the window. Returns the way to stop listening.
  */
 export function listenForVideos(play: (request: OpenRequest) => void): () => void {

@@ -1,5 +1,5 @@
 /**
- * Settings → Privacy: "Send Skrin's lookups through a proxy".
+ * Settings → Privacy: "Send Kinema Media's lookups through a proxy".
  *
  * For someone who wants posters but not TMDB seeing their own address: a
  * VPN's or Tor's local proxy (HTTP(S) or SOCKS5). Off by default. The rule
@@ -58,8 +58,8 @@ export default function ProxySection() {
       setOn(enabled);
       say(
         enabled
-          ? 'On. Skrin’s lookups now go through the proxy. If it stops answering they fail; they do not go direct.'
-          : 'Off. Skrin’s lookups go straight out again.'
+          ? 'On. Kinema Media’s lookups now go through the proxy. If it stops answering they fail; they do not go direct.'
+          : 'Off. Kinema Media’s lookups go straight out again.'
       );
     } catch (e) {
       setOn(false);
@@ -86,7 +86,7 @@ export default function ProxySection() {
     <section className="settings-section proxy-section">
       <h2>Proxy</h2>
       <ChoiceRow
-        label="Send Skrin’s lookups through a proxy"
+        label="Send Kinema Media’s lookups through a proxy"
         choices={[
           { value: 'off', label: 'Off' },
           { value: 'on', label: 'On' },
@@ -94,7 +94,7 @@ export default function ProxySection() {
         value={on ? 'on' : 'off'}
         onChange={(v) => void apply(v === 'on')}
         note="The lookups on the list below, the pictures from them, the update check and the update download go through the address you give: a VPN’s or Tor’s own proxy on this computer, for instance. Addresses at home, such as a NAS or your own server, are not sent through it."
-        hint="If the proxy cannot be reached, lookups fail and Skrin says so; they never go direct. Not covered: a YouTube trailer plays from YouTube itself, and installing ffmpeg with winget uses Windows’ own settings."
+        hint="If the proxy cannot be reached, lookups fail and Kinema Media says so; they never go direct. Not covered: a YouTube trailer plays from YouTube itself, and installing ffmpeg with winget uses Windows’ own settings."
       />
       <label className="settings-field">
         <span>

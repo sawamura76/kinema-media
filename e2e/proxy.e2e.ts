@@ -1,5 +1,5 @@
 /**
- * Settings → Privacy → "Send Skrin's lookups through a proxy" (net.rs), by
+ * Settings → Privacy → "Send Kinema Media's lookups through a proxy" (net.rs), by
  * keyboard alone: the search box finds it, a bad address is refused in words
  * and stays off, "Check" says what happened, and a good address turns it on.
  */
@@ -19,7 +19,7 @@ async function openProxy(page: Page): Promise<void> {
   await page.locator('.top-nav').getByRole('button',{name:'Settings',exact:true}).click();
   await page.getByPlaceholder('Search settings',{exact:true}).focus();
   await page.keyboard.type('proxy');
-  await expect(page.locator('.settings-search-result').first()).toContainText('Send Skrin’s lookups through a proxy');
+  await expect(page.locator('.settings-search-result').first()).toContainText('Send Kinema Media’s lookups through a proxy');
   await press(page, 'Enter');
   await press(page, 'Enter');
   // Below Keep everything on this computer, at the top of Privacy.

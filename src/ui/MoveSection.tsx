@@ -12,7 +12,7 @@ import { userError } from './errors';
 import { useCapabilities } from '../capabilities';
 import { applyMovedMatches, exportMove, importMove, moveWords } from '../metadata/moving';
 
-const FILES = [{ name: 'Skrin library', extensions: ['json'] }];
+const FILES = [{ name: 'Kinema Media library', extensions: ['json'] }];
 
 export default function MoveSection() {
   const can = useCapabilities();
@@ -34,7 +34,7 @@ export default function MoveSection() {
   const exportIt = () =>
     work(async () => {
       const day = new Date().toISOString().slice(0, 10);
-      const path = await save({ defaultPath: `skrin-library-${day}.json`, filters: FILES });
+      const path = await save({ defaultPath: `kinema-media-library-${day}.json`, filters: FILES });
       if (typeof path !== 'string') return null;
       const rows = await exportMove(path);
       return `Saved, with ${rows} watched or begun ${rows === 1 ? 'film or episode' : 'films and episodes'}. Take it to the new computer and choose Take a library in there.`;
@@ -55,7 +55,7 @@ export default function MoveSection() {
     <section className="settings-section">
       <h2>Move to a new computer</h2>
       <p className="settings-intro">
-        One file with what Skrin cannot find again by scanning: what you watched and where you
+        One file with what Kinema Media cannot find again by scanning: what you watched and where you
         stopped, the matches you corrected by hand, your playlists, My list and your settings. No
         sign-in, key or password goes in it, nor this computer&rsquo;s screens and sound devices.
       </p>

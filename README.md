@@ -19,7 +19,7 @@ Requires Windows 11 x64 and WebView2. Data lives in `%APPDATA%/local.brian.kinem
 - Movable, resizable, always-on-top music/video mini-players.
 - Games/app launcher with platform groups and non-destructive box-art preview/cropping.
 - PC, TV and Handheld modes. Handheld has larger controls and a saved scale slider in Settings → Playback.
-- Xbox/Ally D-pad/stick navigation, A to select, B to return, LB/RB to switch primary tabs. Bumpers leave dialogs alone.
+- Xbox/Ally D-pad/stick navigation, A to select, B to return, LB/RB to switch primary tabs and keep the highlight there. In TV/Handheld mode, highlighting a primary tab opens it without pressing A/Enter. Bumpers leave dialogs alone.
 - Upstream 0.21.1 features: seek thumbnails, subtitle timing correction, translated movie/TV details, extras, theme music, offline IMDb matching, proxy controls, protected credentials and reliability fixes.
 
 ## Library backups

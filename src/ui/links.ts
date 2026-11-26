@@ -1,10 +1,10 @@
 /**
- * Web pages Skrin points to: a free TMDB key, a trailer, a sign-in page.
+ * Web pages Kinema Media points to: a free TMDB key, a trailer, a sign-in page.
  *
  * On a desktop the system's browser opens them. A TV box may have nothing
  * that opens a web page at all — an operator's box had only what its owner
  * had installed — and then the button did nothing, silently. So when the
- * system cannot open the address, Skrin shows it instead, with a QR code to
+ * system cannot open the address, Kinema Media shows it instead, with a QR code to
  * open it on a phone (owner, 2026-10-04). The card is `LinkCard.tsx`, shown
  * once, at the top of the tree (App.tsx).
  */

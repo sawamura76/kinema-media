@@ -1,5 +1,5 @@
 /**
- * The message in `index.html` for a web engine too old to read Skrin's scripts.
+ * The message in `index.html` for a web engine too old to read Kinema Media's scripts.
  * A browser here is new, so the engine's failure is put in the way: the script
  * it cannot read is answered with what it would choke on. Real proof on an old
  * WebView needs the emulator (notes/TEST-SETUP.md); this holds the rules.
@@ -17,7 +17,7 @@ test('scripts that cannot be read: says what to do, and nothing there takes focu
   await page.goto('/');
   const box = page.locator('#too-old');
   await expect(box).toBeVisible();
-  await expect(box.locator('h1')).toHaveText('Skrin needs a newer web engine');
+  await expect(box.locator('h1')).toHaveText('Kinema Media needs a newer web engine');
   await expect(box).toContainText('WebView2');
   await expect(box).toContainText('SyntaxError');
   await expect(box.locator('a, button, input, select, textarea, [tabindex]')).toHaveCount(0);
@@ -40,7 +40,7 @@ test('on Android, and at a TV page’s size, it names the WebView and all of it 
   await unreadable(page);
   await page.goto('/');
   const box = page.locator('#too-old');
-  await expect(box.locator('h1')).toHaveText('Skrin needs a newer Android System WebView');
+  await expect(box.locator('h1')).toHaveText('Kinema Media needs a newer Android System WebView');
   await expect(box).toContainText('Google Play');
   const fits = await box.evaluate((el) => el.scrollHeight <= el.clientHeight);
   expect(fits).toBe(true);

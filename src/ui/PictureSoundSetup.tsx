@@ -1,7 +1,7 @@
 /**
  * The first run's picture-and-sound step (agreed 2026-10-02).
  *
- * Skrin can send a film's sound to a receiver untouched, match the screen
+ * Kinema Media can send a film's sound to a receiver untouched, match the screen
  * to the film's frame rate and turn HDR on for an HDR film — each only where
  * the equipment can. The Home notice used to be the only place that said so,
  * and only once the equipment was there; this says it up front, whatever is
@@ -11,7 +11,7 @@
  * Each item says what it gives and what it costs in a line each, and asks one
  * of three answers (`devicePolicy.ts`): every device that can, only this
  * setup (named), or off. Nothing is chosen for the person, and nothing is
- * saved until they choose: skipping leaves Skrin as it was, with screen
+ * saved until they choose: skipping leaves Kinema Media as it was, with screen
  * switching off. Only what this system can do is asked (capabilities.ts).
  *
  * An answer is stored as the setting itself, so Settings → Picture & sound
@@ -119,7 +119,7 @@ export default function PictureSoundSetup() {
   return (
     <>
       <p className="muted">
-        Skrin can get the most out of a TV and an AV receiver, now or whenever this PC is
+        Kinema Media can get the most out of a TV and an AV receiver, now or whenever this PC is
         connected to one. Choose for each, or go on with Next: what is not chosen stays off, and all
         of it is in Settings → Picture &amp; sound at any time.
       </p>
@@ -149,7 +149,7 @@ export default function PictureSoundSetup() {
                       ? `${here.map((d) => `${d.name} ${d.detail}`).join('; ')}. `
                       : ''
                   }${item.costs}`
-                : `${item.costs} Nothing connected now can; with the first choice, Skrin uses it when something that can is connected.`
+                : `${item.costs} Nothing connected now can; with the first choice, Kinema Media uses it when something that can is connected.`
             }
           />
         );

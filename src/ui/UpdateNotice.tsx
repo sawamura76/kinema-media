@@ -1,7 +1,7 @@
 /**
- * "Skrin X is available" with the one-press update (Settings → Advanced).
+ * "Kinema Media X is available" with the one-press update (Settings → Advanced).
  *
- * Pressing "Update to Skrin X" downloads the release's file for this kind of
+ * Pressing "Update to Kinema Media X" downloads the release's file for this kind of
  * copy, checks it against the release's checksum and hands it to the system's
  * own installer (updates.rs). Never on its own. A copy that cannot update
  * itself (the Windows ZIP, a tar.gz) keeps "Open the download page".
@@ -68,11 +68,11 @@ export default function UpdateNotice({ update }: { update: Release }) {
       body = update.install ? (
         <>
           <FocusButton focusKey="update-go" className="btn-primary" onSelect={start}>
-            Update to Skrin {update.version}
+            Update to Kinema Media {update.version}
           </FocusButton>
           {step.s === 'permission' && (
             <p className="settings-update-note">
-              Allow Skrin to install apps on the screen that opened, then press Update again.
+              Allow Kinema Media to install apps on the screen that opened, then press Update again.
             </p>
           )}
         </>
@@ -94,7 +94,7 @@ export default function UpdateNotice({ update }: { update: Release }) {
     case 'closing':
       body = (
         <span className="settings-update-note" role="status">
-          The installer is open. Skrin closes now so it can be replaced; your library and
+          The installer is open. Kinema Media closes now so it can be replaced; your library and
           settings stay.
         </span>
       );
@@ -110,14 +110,14 @@ export default function UpdateNotice({ update }: { update: Release }) {
       body = (
         <>
           <span className="settings-update-note" role="status">
-            Skrin {update.version} is installed.
+            Kinema Media {update.version} is installed.
           </span>
           <FocusButton
             focusKey="update-restart"
             className="btn-primary"
             onSelect={() => void invoke('restart_after_update')}
           >
-            Restart Skrin
+            Restart Kinema Media
           </FocusButton>
         </>
       );
@@ -136,7 +136,7 @@ export default function UpdateNotice({ update }: { update: Release }) {
 
   return (
     <div className="settings-update">
-      <strong>Skrin {update.version} is available.</strong>
+      <strong>Kinema Media {update.version} is available.</strong>
       {body}
     </div>
   );

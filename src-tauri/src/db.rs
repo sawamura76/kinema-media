@@ -30,13 +30,13 @@ impl std::fmt::Display for DbError {
             DbError::Sqlite(e) => write!(f, "{e}"),
             DbError::TooNew { found, supported } => write!(
                 f,
-                "This library was last used by a newer version of Skrin \
+                "This library was last used by a newer version of Kinema Media \
                  (database version {found}; this version understands {supported}). \
                  It was not changed, and that newer version can still use it."
             ),
             DbError::Backup(reason) => write!(
                 f,
-                "This version of Skrin needs to upgrade your library, and it \
+                "This version of Kinema Media needs to upgrade your library, and it \
                  makes a safety copy first. The copy could not be made, so \
                  nothing was changed.\n\n{reason}"
             ),
@@ -1122,7 +1122,7 @@ pub fn open(path: &Path) -> Result<Connection, DbError> {
     }
     migrate(&conn)?;
     clamp_future_times(&conn, crate::util::now_secs())?;
-    // Statistics an older Skrin took before matching keep Home slow until the
+    // Statistics an older Kinema Media took before matching keep Home slow until the
     // next scan; check them at every start too (two counts when they are fine).
     // Best effort: the library works without. A7-01, Linux test PC.
     let started = std::time::Instant::now();
@@ -1371,7 +1371,7 @@ pub fn open_secondary(path: &Path) -> rusqlite::Result<Connection> {
 ///
 /// Cheap when nothing changed (two counts over an index), so it can run after
 /// every scan; that is also what repairs a library whose statistics were taken
-/// by an older Skrin. `analysis_limit` keeps the refresh itself short on a
+/// by an older Kinema Media. `analysis_limit` keeps the refresh itself short on a
 /// big library or a slow device: an estimate is all the planner needs.
 ///
 /// The refreshed statistics reach only this connection. Another one keeps the
@@ -1431,7 +1431,7 @@ pub fn refresh_statistics_if_stale(conn: &Connection) -> rusqlite::Result<bool> 
 /// Make this connection read the planner's statistics again, after another
 /// connection refreshed them. Each connection loads them once, when it first
 /// reads the schema, and an ANALYZE elsewhere does not tell it: without this
-/// the window's connection would keep the old ones until Skrin restarts.
+/// the window's connection would keep the old ones until Kinema Media restarts.
 pub fn reload_statistics(conn: &Connection) -> rusqlite::Result<()> {
     conn.execute_batch("ANALYZE sqlite_schema")
 }
@@ -2223,7 +2223,7 @@ mod tests {
         assert!(!refresh_statistics_if_stale(&conn).unwrap());
     }
 
-    /// A library left with the old statistics by an older Skrin is repaired
+    /// A library left with the old statistics by an older Kinema Media is repaired
     /// when it is opened, not only after the next scan (Linux test PC: Home
     /// took 11–15 s at 5000 titles until a scan ran).
     #[test]
@@ -2283,7 +2283,7 @@ mod tests {
     }
 
     /// The scan refreshes on its own connection; the window's connection must
-    /// be told, or it keeps the old statistics until Skrin restarts.
+    /// be told, or it keeps the old statistics until Kinema Media restarts.
     #[test]
     fn the_other_connection_uses_refreshed_statistics_once_reloaded() {
         let (path, window) = scanned_library("two-connections", 2000);

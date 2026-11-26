@@ -97,7 +97,7 @@ export function media3Groups(facts: PlayerFacts, modeRates: number[] = []): Stat
         {
           label: 'Frame rate',
           value: num(video.fps, 3, ' fps'),
-          // Media3's Matroska reader has none to give; Skrin then works it
+          // Media3's Matroska reader has none to give; Kinema Media then works it
           // out from the frames' times, and says so.
           note:
             video.fps === null

@@ -148,7 +148,7 @@ export const INTRODB_APP_ENABLED_KEY = 'introdb_app_enabled';
 
 /**
  * Setting key: where ffmpeg is. Empty means "whatever is on PATH" — and on
- * Windows, where an install made since Skrin started put it (ffmpeg.rs).
+ * Windows, where an install made since Kinema Media started put it (ffmpeg.rs).
  *
  * Used by this app's own intro/credits analysis, by ffprobe beside it for a
  * title's picture and sound details, and to measure each film's picture.
@@ -172,7 +172,7 @@ export const ffmpegStatus = (configured: string) =>
   invoke<FfmpegStatus>('ffmpeg_status', { configured });
 
 /**
- * The formats this ffmpeg cannot decode, of those Skrin decodes itself
+ * The formats this ffmpeg cannot decode, of those Kinema Media decodes itself
  * (`hevc`, `h264`, `eac3`, `ac3`, `dts`, `truehd`); empty when it has them
  * all or could not be asked. Fedora's own ffmpeg-free lacks HEVC and E-AC-3.
  */
@@ -189,7 +189,7 @@ export interface FfmpegInstallReport {
   exit_code: number | null;
   /** winget's last lines, as it wrote them. */
   tail: string[];
-  /** Whether Skrin can run ffmpeg now, asked after winget finished. */
+  /** Whether Kinema Media can run ffmpeg now, asked after winget finished. */
   ffmpeg: FfmpegStatus;
 }
 
@@ -206,7 +206,7 @@ export interface FfmpegInstallProgress {
 export const installFfmpeg = (configured: string) =>
   invoke<FfmpegInstallReport>('install_ffmpeg', { configured });
 
-/** Whether Skiptro's database is where Skrin would read it (skiptro.rs). */
+/** Whether Skiptro's database is where Kinema Media would read it (skiptro.rs). */
 export const skiptroFound = (configured: string) =>
   invoke<boolean>('skiptro_found', { configured });
 

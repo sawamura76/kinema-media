@@ -4,7 +4,7 @@
  *
  * There, Android turns the TV's HDR on for an HDR film by itself, and Media3
  * sends the sound to a receiver untouched wherever Android says the HDMI
- * output takes it. Skrin adds one thing, matching the screen's mode to the
+ * output takes it. Kinema Media adds one thing, matching the screen's mode to the
  * film — the same rule as on Windows and Linux (`displayMode.ts`: the film's
  * frame rate, and the resolution only ever upwards) — behind one switch, on
  * unless switched off (owner, 2026-10-04: nobody watches anything else on a
@@ -22,7 +22,7 @@ export function matchOn(stored: string | null): boolean {
   return stored !== 'off';
 }
 
-/** The switch as `displayMode.ts` takes it. HDR is never Skrin's here. */
+/** The switch as `displayMode.ts` takes it. HDR is never Kinema Media's here. */
 export function switchSettings(on: boolean): SwitchSettings {
   return { refresh: on, resolution: on ? 'auto' : 'off', hdr: false };
 }
@@ -57,7 +57,7 @@ const list = (items: string[]) =>
 
 export function matchNote(out: SystemOutput | null): string | null {
   if (out && out.modes <= 1) {
-    return "This device shows apps only one screen mode, so there is nothing for Skrin to switch. What the TV gets is up to the device's own display settings.";
+    return "This device shows apps only one screen mode, so there is nothing for Kinema Media to switch. What the TV gets is up to the device's own display settings.";
   }
   return null;
 }
@@ -73,14 +73,14 @@ export function pictureNote(out: SystemOutput | null, system: string): string {
   if (out.hdr.length === 0) {
     return `${system} says this screen takes no HDR, so ${system} shows HDR films in ordinary colour (SDR). If the TV can show HDR, restart this device with the TV on, so it checks the TV again.`;
   }
-  return `${system} says this screen takes ${list(out.hdr)}. ${system} sends such a film to it as it is; Skrin leaves that to it.`;
+  return `${system} says this screen takes ${list(out.hdr)}. ${system} sends such a film to it as it is; Kinema Media leaves that to it.`;
 }
 
 export function soundNote(out: SystemOutput | null, system: string): string {
   if (!out || out.sound.length === 0) {
     return `${system} does not report that the TV or receiver takes any surround format untouched, so films' sound is played through ${system}.`;
   }
-  return `${system} reports that the TV or receiver takes ${list(out.sound)} untouched, so Skrin sends those on as they are. The device's own sound settings can still decide otherwise; where it refuses, Skrin plays the sound through ${system} instead.`;
+  return `${system} reports that the TV or receiver takes ${list(out.sound)} untouched, so Kinema Media sends those on as they are. The device's own sound settings can still decide otherwise; where it refuses, Kinema Media plays the sound through ${system} instead.`;
 }
 
 /** What happened to the last film's sound, as the player opened it; null before any film. */

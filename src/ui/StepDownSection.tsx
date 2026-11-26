@@ -1,7 +1,7 @@
 /**
  * Settings → Advanced → Picture steps given up: what the player gave up to
  * keep up on a graphics card that fell behind (player/stepDown.ts), and a
- * line that forgets it. A reset, not a choice of quality: Skrin still picks
+ * line that forgets it. A reset, not a choice of quality: Kinema Media still picks
  * every rendering option itself, and steps down again only if frames drop.
  *
  * Only where mpv draws the picture; Media3 has no steps.

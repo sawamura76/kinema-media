@@ -1,7 +1,7 @@
 /**
  * Versions: the same film or episode in more than one file (owner,
  * 2026-10-24: one title with versions). versions.rs lists the files and keeps
- * the choice; this names each version in Skrin's own words and decides which
+ * the choice; this names each version in Kinema Media's own words and decides which
  * one Play means.
  *
  * Which one: the version picked last time for the title; the first time, the
@@ -97,7 +97,7 @@ function hdrWord(facts: FileFacts | null): string | null {
 const CODEC_WORDS: Record<string, string> = { hevc: 'HEVC', h264: 'AVC', av1: 'AV1', vp9: 'VP9' };
 
 /**
- * Names each file in Skrin's words, from the badges' facts: resolution, HDR
+ * Names each file in Kinema Media's words, from the badges' facts: resolution, HDR
  * and edition; where two would read the same, the video codec, then the
  * source, then the file's name are added; then the size.
  */
@@ -113,7 +113,7 @@ export function nameVersions(files: FileRead[]): Version[] {
     base.push(...(release?.editions ?? []));
     const codec = video ? (CODEC_WORDS[video.codec] ?? video.codec.toUpperCase()) : null;
     const source = release ? sourceLabel(release) : null;
-    // Last, the file's own name: what tells two apart when nothing Skrin
+    // Last, the file's own name: what tells two apart when nothing Kinema Media
     // reads does (an edition guessit does not know, two alike encodes).
     const name = file.path.split(/[\\/]/).pop()?.replace(/\.[^.]+$/, '') ?? null;
     return { base, extra: [codec, source, name] };

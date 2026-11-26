@@ -1,8 +1,8 @@
 /**
  * Wikidata — movies, keyless. The fallback when there is no TMDB key to use.
  *
- * A released Skrin carries a TMDB key of its own (builtinKey.ts), so this is
- * for the two cases where it cannot: TMDB has refused that key, or Skrin was
+ * A released Kinema Media carries a TMDB key of its own (builtinKey.ts), so this is
+ * for the two cases where it cannot: TMDB has refused that key, or Kinema Media was
  * built from source without one. Movies are still identified — title, year,
  * running time, genres, cast, and the opening of the film's Wikipedia article
  * as its description — but without posters or backdrops: Wikipedia's film
@@ -18,8 +18,8 @@
  * answer "too many" (HTTP 429 or 503). All three are done here.
  *
  * `maxlag` is not sent. Wikimedia asks it of bots that *edit*, so they pause
- * while the database copies catch up; Skrin only reads. Wikidata also counts
- * the lag of its separate query service in it, which Skrin never uses — and
+ * while the database copies catch up; Kinema Media only reads. Wikidata also counts
+ * the lag of its separate query service in it, which Kinema Media never uses — and
  * that lag sat above the threshold for long stretches, so every read was
  * answered "busy" while the same read without the flag was answered at once
  * (checked 2026-10-09: 7.65 s lagged, three refusals, three answers).
@@ -30,7 +30,7 @@ import { CAST_LIMIT, fetchPolitely, makeQueue, type TitleMetadata } from './prov
 const WIKIDATA_API = 'https://www.wikidata.org/w/api.php';
 const WIKIPEDIA_API = 'https://en.wikipedia.org/w/api.php';
 
-const HEADERS = { 'Api-User-Agent': 'Skrin (https://github.com/basswaves/skrin)' };
+const HEADERS = { 'Api-User-Agent': 'Kinema Media (https://github.com/basswaves/skrin)' };
 
 /** One at a time, as Wikimedia asks, with a short breath between. */
 const wikidataQueued = makeQueue(100);
@@ -225,7 +225,7 @@ async function wikipediaIntro(article: string): Promise<string | null> {
   return data.query?.pages?.[0]?.extract?.trim() || null;
 }
 
-/** Everything Skrin stores about a film, from its Wikidata item. */
+/** Everything Kinema Media stores about a film, from its Wikidata item. */
 export async function wikidataGetMovie(id: string): Promise<TitleMetadata> {
   const entity = (await getEntities([id], 'labels|descriptions|claims|sitelinks'))[id];
   if (!entity || entity.missing !== undefined) throw new Error(`Wikidata has no item ${id}`);

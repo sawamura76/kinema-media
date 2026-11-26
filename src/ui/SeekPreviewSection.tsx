@@ -39,7 +39,7 @@ export function jobLine(job: PreviewJobStatus, bytes: number | null): string {
       return `Waiting for the film to end: ${of} done${space}.`;
     case 'finished':
       return job.unreachable > 0
-        ? `${of} done${space}. ${count(job.unreachable, 'file')} could not be reached; they are tried again when Skrin starts.`
+        ? `${of} done${space}. ${count(job.unreachable, 'file')} could not be reached; they are tried again when Kinema Media starts.`
         : `Every file has its pictures: ${of}${space}.`;
     case 'idle':
       return `Starting soon: ${of} done${space}.`;
@@ -94,7 +94,7 @@ export default function SeekPreviewSection() {
       <p className="settings-intro">
         {usage?.limit != null ? (
           <>
-            The seek bar shows a small picture of where it points. Skrin makes them while you watch,
+            The seek bar shows a small picture of where it points. Kinema Media makes them while you watch,
             one every ten seconds of the film, and keeps them on this device in up to{' '}
             {formatBytes(usage.limit)}, set from its free space; when that is full, the pictures of
             the films watched longest ago go first ({count(usage.files, 'picture')},{' '}
@@ -102,7 +102,7 @@ export default function SeekPreviewSection() {
           </>
         ) : (
           <>
-            The seek bar shows a small picture of where it points. Skrin makes them while you watch,
+            The seek bar shows a small picture of where it points. Kinema Media makes them while you watch,
             one every ten seconds of the film, and keeps them on this computer until the file leaves
             the library
             {usage ? ` (${count(usage.files, 'picture')}, ${formatBytes(usage.bytes)})` : ''}. Deleting
@@ -123,7 +123,7 @@ export default function SeekPreviewSection() {
             .then(setJob)
             .catch((e: unknown) => setError(userError(e)));
         }}
-        note="Skrin makes the pictures of every film and episode in the background, one file at a time, so the seek bar has them before you watch. It stops for any film you play, rests between pictures, and picks up where it stopped after a restart. Off stops it."
+        note="Kinema Media makes the pictures of every film and episode in the background, one file at a time, so the seek bar has them before you watch. It stops for any film you play, rests between pictures, and picks up where it stopped after a restart. Off stops it."
       >
         {job && jobLine(job, usage?.bytes ?? null) && (
           <p className="settings-ok" role="status">

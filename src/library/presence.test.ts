@@ -35,7 +35,7 @@ afterEach(() => {
   engine = 'media3';
 });
 
-describe('Skrin on the screen or behind another app', () => {
+describe('Kinema Media on the screen or behind another app', () => {
   it('holds the library back while behind, and tells the native side', async () => {
     const { isBehindScreen } = await fresh();
     hear?.({ behind: true });
@@ -46,7 +46,7 @@ describe('Skrin on the screen or behind another app', () => {
     expect(told).toContainEqual({ command: 'set_behind', args: { on: false } });
   });
 
-  it('a page started while Skrin is behind waits too', async () => {
+  it('a page started while Kinema Media is behind waits too', async () => {
     inFront = false;
     const { isBehindScreen } = await fresh();
     expect(isBehindScreen()).toBe(true);

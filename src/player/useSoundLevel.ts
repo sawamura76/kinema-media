@@ -60,7 +60,7 @@ export function useSoundLevel({
         if (!live) return;
         setNotApplied(n);
         // Listed for passthrough is not passed through: a device that says
-        // no gets decoded sound, and then the level is Skrin's to apply.
+        // no gets decoded sound, and then the level is Kinema Media's to apply.
         if (n === 'passthrough') {
           check = window.setTimeout(() => {
             void decodedAfterAll().then(async (decoded) => {

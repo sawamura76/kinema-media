@@ -3,14 +3,14 @@
  *
  * Two things Home used to keep quiet about:
  *
- *  - **Videos Skrin could not identify.** They were absent from Home and
+ *  - **Videos Kinema Media could not identify.** They were absent from Home and
  *    listed only halfway down Settings, so a library with twenty refusals
  *    looked like a library missing twenty films. Refusing to guess is only
  *    fair if the refusals are in plain sight.
  *  - **Equipment that could do better** than the current settings let it —
  *    see `qualityNotice.ts`.
  *
- * And one that should never appear: TMDB refusing the key Skrin came with
+ * And one that should never appear: TMDB refusing the key Kinema Media came with
  * (builtinKey.ts), which leaves new movies to Wikidata — no posters — until an
  * update or a key of the user's own.
  *
@@ -63,7 +63,7 @@ export function reviewNoticeWords(total: number, worth: number): { head: string;
   if (unidentified === 0) {
     return {
       head: `${count(w, 'match', 'matches')} worth a second look,`,
-      tail: ' made by Skrin before an update. They are on Home as matched; looking takes a few seconds each.',
+      tail: ' made by Kinema Media before an update. They are on Home as matched; looking takes a few seconds each.',
     };
   }
   const notOnHome = `so ${unidentified === 1 ? 'it is' : 'they are'} not on Home yet.`;
@@ -107,7 +107,7 @@ export default function HomeNotices({
   // Not a place to move to while empty — see ContinueRail.tsx.
   // Windows installs ffmpeg from the notice itself (FfmpegInstall.tsx).
   const installs = Boolean(useCapabilities()?.installs_ffmpeg);
-  // On Skrin's engine a column of rows, one per notice: Left and Right
+  // On Kinema Media's engine a column of rows, one per notice: Left and Right
   // inside a notice, Up and Down between them (NAV-MAP), Down from the hero
   // the top one and Up from the rails the bottom one, as they stand.
   const { ref, focusKey } = useNavGroup<HTMLElement>(
@@ -159,7 +159,7 @@ export default function HomeNotices({
               !
             </span>
             <div className="home-notice-text">
-              <strong>TMDB no longer accepts the key Skrin came with.</strong>
+              <strong>TMDB no longer accepts the key Kinema Media came with.</strong>
               <span className="muted">
                 {' '}
                 New movies are identified through Wikidata instead, without posters, until an
@@ -206,7 +206,7 @@ export default function HomeNotices({
             <div className="home-notice-text">
               <strong>
                 {onlyAdds
-                  ? 'Something connected can do more than Skrin is set to use'
+                  ? 'Something connected can do more than Kinema Media is set to use'
                   : 'Your equipment can do better than it is set to'}
               </strong>
               <ul>
@@ -245,14 +245,14 @@ export default function HomeNotices({
               +
             </span>
             <div className="home-notice-text">
-              <strong>Two things need ffmpeg, which Skrin cannot find.</strong>
+              <strong>Two things need ffmpeg, which Kinema Media cannot find.</strong>
               <span className="muted">
                 {' '}
-                Without it a title&rsquo;s page has no picture and sound details, and Skrin
+                Without it a title&rsquo;s page has no picture and sound details, and Kinema Media
                 cannot find intros and credits by itself. Everything else works.{' '}
                 {installs
                   ? `ffmpeg is a free program. ${FFMPEG_INSTALL_WORDS}`
-                  : 'ffmpeg is a free program you install yourself; Skrin never installs anything.'}
+                  : 'ffmpeg is a free program you install yourself; Kinema Media never installs anything.'}
               </span>
               {installs && <FfmpegInstallStatus />}
             </div>

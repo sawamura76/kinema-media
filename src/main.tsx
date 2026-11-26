@@ -24,7 +24,7 @@ function start(): void {
   void installBackButton();
   void watchPresence();
   installContextMenu();
-  // A video Skrin was started for decides the first view (opened.ts): asked
+  // A video Kinema Media was started for decides the first view (opened.ts): asked
   // before drawing, so Home never shows for a moment first.
   void loadLaunchRequest().then(() =>
     ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(<App />)

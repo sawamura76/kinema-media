@@ -8,7 +8,7 @@
  * channel, where films put the speech, and lowers the others by as much.
  * A default in Settings; changed per title from the player's panel.
  *
- * Only on sound Skrin decodes. A track that goes to the receiver untouched
+ * Only on sound Kinema Media decodes. A track that goes to the receiver untouched
  * (`audio-spdif`) is never altered — the film's own sound is the receiver's
  * to decode — so the filters are left off for it and the panel says why.
  * Built-in ffmpeg filters through mpv's `af` (`dynaudnorm`, `pan`): no new
@@ -182,7 +182,7 @@ export function describeLevel(level: SoundLevel, layout?: string | null): string
 /**
  * Whether a track listed for passthrough was refused and decoded after all:
  * the device said no, and mpv fell back to PCM (`audio-out-params/format` is
- * not `spdif-*` once the sound is open). Then it is Skrin's sound again,
+ * not `spdif-*` once the sound is open). Then it is Kinema Media's sound again,
  * and the level applies; null while the sound is not open yet.
  */
 export async function decodedAfterAll(): Promise<boolean | null> {
@@ -211,7 +211,7 @@ export function boostFilter(db: number): string {
   return `@skrinboost:lavfi=[volume@boost=volume=${db}dB,alimiter=limit=${LIMIT}:level=0]`;
 }
 
-/** The boost asked for, put on whenever the sound is Skrin's to change. */
+/** The boost asked for, put on whenever the sound is Kinema Media's to change. */
 let boost: number | null = null;
 
 /** The whole chain for mpv's `af`: levelling and lift, then the boost. */

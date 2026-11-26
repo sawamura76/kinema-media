@@ -112,7 +112,7 @@ fn prop<T: TryFrom<OwnedValue>>(props: &HashMap<String, OwnedValue>, key: &str) 
 }
 
 /// The session bus, with a short timeout: this is asked at startup, and a
-/// desktop that does not answer must not hold Skrin up.
+/// desktop that does not answer must not hold Kinema Media up.
 fn bus() -> Result<Connection, String> {
     connection::Builder::session()
         .and_then(|b| b.method_timeout(Duration::from_secs(2)).build())
@@ -165,7 +165,7 @@ pub fn state(service: Service) -> Result<State, String> {
     })
 }
 
-/// GNOME's or Cinnamon's screens in the shape the rest of Skrin reads
+/// GNOME's or Cinnamon's screens in the shape the rest of Kinema Media reads
 /// (`desktop.rs`).
 pub fn screens(service: Service) -> Result<Vec<crate::desktop::Screen>, String> {
     Ok(to_screens(&state(service)?))
@@ -278,7 +278,7 @@ pub fn config_for(state: &State, change: &Change) -> Result<Vec<LogicalConfig>, 
 
 /// Apply `change`, temporarily: Mutter does not write it to `monitors.xml`,
 /// so the desktop's own configuration is never touched and comes back at the
-/// next login whatever happens to Skrin.
+/// next login whatever happens to Kinema Media.
 pub fn apply(service: Service, state: &State, change: &Change) -> Result<(), String> {
     const TEMPORARY: u32 = 1;
     let layout = config_for(state, change)?;

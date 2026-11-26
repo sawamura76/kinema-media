@@ -1,21 +1,21 @@
 //! Installing ffmpeg with one press, through winget (Windows only).
 //!
-//! **Skrin still downloads nothing itself.** On a press — and only on one —
+//! **Kinema Media still downloads nothing itself.** On a press — and only on one —
 //! it asks Windows' own package manager to install Gyan's ffmpeg build, the
 //! way a person would type it in a terminal. winget fetches it from the
 //! package's own source, checks its hash, and records it as an app of its own:
 //! it is listed and removed with winget like anything else, and uninstalling
-//! Skrin leaves it alone (other programs may use it). See notes on the
+//! Kinema Media leaves it alone (other programs may use it). See notes on the
 //! binaries rule in CONTRIBUTING.md.
 //!
 //! **Essentials, not the full build.** `Gyan.FFmpeg.Essentials` has every
-//! decoder Skrin needs (AC-3, E-AC-3, DTS, TrueHD, HEVC) and the
+//! decoder Kinema Media needs (AC-3, E-AC-3, DTS, TrueHD, HEVC) and the
 //! `cropdetect`/`blackdetect` filters, at about half the full build's size.
 //!
 //! **Per user, no questions.** `--scope user` needs no administrator prompt;
 //! the agreement flags are the person's press on a button that says what will
 //! happen, never accepted for anyone who did not press it. The program lands
-//! where `ffmpeg.rs` looks for an install made since Skrin started, so it is
+//! where `ffmpeg.rs` looks for an install made since Kinema Media started, so it is
 //! found at once.
 
 use crate::ffmpeg::{self, FfmpegStatus};
@@ -36,7 +36,7 @@ pub const PACKAGE_ID: &str = "Gyan.FFmpeg.Essentials";
 const TAIL_LINES: usize = 12;
 
 /// winget's own codes for "it is installed already" — a second press, or an
-/// ffmpeg installed with winget that Skrin could not find for some reason.
+/// ffmpeg installed with winget that Kinema Media could not find for some reason.
 /// winget answers an `install` of an installed package by trying to upgrade
 /// it, and "no newer version" comes back as UPDATE_NOT_APPLICABLE.
 const PACKAGE_ALREADY_INSTALLED: u32 = 0x8A15_0061;
@@ -63,7 +63,7 @@ pub struct InstallReport {
     pub exit_code: Option<i32>,
     /// winget's last lines, as it wrote them.
     pub tail: Vec<String>,
-    /// Whether Skrin can now run ffmpeg, asked after winget finished.
+    /// Whether Kinema Media can now run ffmpeg, asked after winget finished.
     pub ffmpeg: FfmpegStatus,
 }
 
@@ -83,7 +83,7 @@ pub async fn install_ffmpeg(
     configured: Option<String>,
 ) -> Result<InstallReport, String> {
     if !cfg!(windows) {
-        return Err("Installing ffmpeg from Skrin is only for Windows.".into());
+        return Err("Installing ffmpeg from Kinema Media is only for Windows.".into());
     }
     if crate::jobs::playing() {
         return Err("Not while a film is playing.".into());
@@ -171,8 +171,8 @@ fn install_with(say: &dyn Fn(String), configured: Option<&str>) -> InstallReport
 
 /// What winget's exit code and a fresh look for ffmpeg add up to.
 ///
-/// **Success is only claimed when Skrin can run what was installed.** winget
-/// saying "installed" while Skrin still cannot find the program is a failure
+/// **Success is only claimed when Kinema Media can run what was installed.** winget
+/// saying "installed" while Kinema Media still cannot find the program is a failure
 /// from where the person sits, and is said as one.
 fn judge(code: Option<i32>, found: bool) -> (Outcome, Option<String>) {
     let code_u = code.map(|c| c as u32);
@@ -186,8 +186,8 @@ fn judge(code: Option<i32>, found: bool) -> (Outcome, Option<String>) {
         (Some(_), false) => (
             Outcome::Failed,
             Some(
-                "Windows' app installer says ffmpeg is installed, but Skrin cannot find it. \
-                 Restarting Skrin may help; if not, type where ffmpeg.exe is below."
+                "Windows' app installer says ffmpeg is installed, but Kinema Media cannot find it. \
+                 Restarting Kinema Media may help; if not, type where ffmpeg.exe is below."
                     .into(),
             ),
         ),
@@ -227,7 +227,7 @@ enum Spawn {
 }
 
 /// Where winget is: on the `PATH` (it is an app alias in the user's
-/// WindowsApps folder), or that folder named directly when Skrin was started
+/// WindowsApps folder), or that folder named directly when Kinema Media was started
 /// with a `PATH` that lacks it.
 fn winget_candidates() -> Vec<PathBuf> {
     let mut found = vec![PathBuf::from("winget")];
@@ -394,7 +394,7 @@ mod tests {
     /// **The real install — never on a computer of the owner's.** Run in a
     /// throwaway Windows (Windows Sandbox, or a CI runner) with winget:
     /// `kinema_lib-*.exe ffmpeg_install::tests::a_real_winget_install
-    /// --ignored --nocapture`. Started, like a running Skrin, with a `PATH`
+    /// --ignored --nocapture`. Started, like a running Kinema Media, with a `PATH`
     /// that has no ffmpeg, and it must find the one just installed anyway.
     #[cfg(windows)]
     #[test]
@@ -417,7 +417,7 @@ mod tests {
         let ffmpeg = ffmpeg::resolve(None);
         let probe = ffmpeg::probe_binary(&ffmpeg);
         assert!(ffmpeg::is_available(&probe), "ffprobe at {}", probe.display());
-        // Essentials decodes everything Skrin decodes itself.
+        // Essentials decodes everything Kinema Media decodes itself.
         assert!(ffmpeg::lacking_decoders(&ffmpeg).is_empty());
         // A second press: already installed, still found.
         let again = install_with(&|_| {}, None);
@@ -437,7 +437,7 @@ mod tests {
         }
     }
 
-    /// Skrin never claims an install it cannot use.
+    /// Kinema Media never claims an install it cannot use.
     #[test]
     fn installed_but_not_found_is_a_failure_and_says_so() {
         let (outcome, reason) = judge(Some(0), false);

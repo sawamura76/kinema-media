@@ -158,7 +158,7 @@ export const BASE_MPV_OPTIONS: Record<string, string | boolean | number> = {
   // ---- Nothing is fetched that the file only points to -------------------
   // A text file named `.mkv` holding an M3U, PLS, CUE or mpv EDL playlist is
   // opened by mpv as that playlist, and mpv then fetches what it names — any
-  // address on the internet — when it is played. Skrin hands mpv only real
+  // address on the internet — when it is played. Kinema Media hands mpv only real
   // files, `bd://` (a stream, not a reference) and subtitle files, and reads
   // its own playlists itself, so nothing here needs mpv to follow a
   // reference. Off, those files end as "Could not play this file".

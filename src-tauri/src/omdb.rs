@@ -1,7 +1,7 @@
 //! Rotten Tomatoes scores, looked up through OMDb with the user's own key.
 //!
 //! OMDb returns a title's Tomatometer beside its IMDb rating. Its free keys
-//! allow 1,000 lookups a day, which is why there is no key of Skrin's own
+//! allow 1,000 lookups a day, which is why there is no key of Kinema Media's own
 //! here (HISTORY.md, "Picture and sound badges"): one key shared by every copy
 //! would run out within hours. With a key of the user's own, the lookups are
 //! theirs to spend — and this is spent carefully: one lookup per title, again

@@ -6,7 +6,7 @@
 //! ask the desktop to — and every desktop is asked its own way: GNOME over
 //! D-Bus (`mutter.rs`), KDE Plasma through its own `kscreen-doctor`
 //! (`kscreen.rs`). Each answers in its own shape; this is the one shape the
-//! rest of Skrin sees. Sway, Hyprland and the other wlroots desktops share
+//! rest of Kinema Media sees. Sway, Hyprland and the other wlroots desktops share
 //! one protocol for it (`wlroots.rs`). Cinnamon's Muffin is a fork of GNOME's
 //! Mutter and is asked the same way under its own name, in its X11 session
 //! as well as on Wayland.
@@ -78,7 +78,7 @@ pub enum Colour {
 /// on the session bus, else Cinnamon if Muffin does, else KDE Plasma if this
 /// is a Plasma session and its `kscreen-doctor` answers, else a desktop
 /// offering wlr-output-management (Sway, Hyprland…). Not taken from the
-/// desktop's name alone — a desktop Skrin cannot actually talk to must not
+/// desktop's name alone — a desktop Kinema Media cannot actually talk to must not
 /// be offered a switch.
 pub fn which() -> Option<Desktop> {
     static WHICH: OnceLock<Option<Desktop>> = OnceLock::new();
@@ -111,7 +111,7 @@ pub fn screens() -> Result<Vec<Screen>, String> {
         Some(Desktop::Cinnamon) => crate::mutter::screens(Service::Cinnamon),
         Some(Desktop::Kde) => crate::kscreen::screens(),
         Some(Desktop::Wlroots) => crate::wlroots::screens(),
-        None => Err("this desktop is not one Skrin can ask (GNOME, Cinnamon, KDE Plasma, Sway, Hyprland and the other wlroots desktops so far)".into()),
+        None => Err("this desktop is not one Kinema Media can ask (GNOME, Cinnamon, KDE Plasma, Sway, Hyprland and the other wlroots desktops so far)".into()),
     }
 }
 
@@ -123,7 +123,7 @@ pub fn set(connector: &str, mode_id: Option<&str>, colour: Option<Colour>) -> Re
         Some(Desktop::Cinnamon) => crate::mutter::set(Service::Cinnamon, connector, mode_id, colour),
         Some(Desktop::Kde) => crate::kscreen::set(connector, mode_id, colour),
         Some(Desktop::Wlroots) => crate::wlroots::set(connector, mode_id, colour),
-        None => Err("this desktop is not one Skrin can ask".into()),
+        None => Err("this desktop is not one Kinema Media can ask".into()),
     }
 }
 

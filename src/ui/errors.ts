@@ -31,7 +31,7 @@ function refusedAccess(): string {
     case 'Linux':
       return 'Linux refused access. Check that your account can open the folder in the file manager, then try again.';
     case 'Android':
-      return 'Android refused access. Check that Skrin is allowed to read files and media in Android’s settings for apps, then try again.';
+      return 'Android refused access. Check that Kinema Media is allowed to read files and media in Android’s settings for apps, then try again.';
     default:
       return 'Windows refused access. Check that the folder can be opened in File Explorer, then try again.';
   }
@@ -70,7 +70,7 @@ export function smbWords(raw: string): string {
     case 'c000006d': // LOGON_FAILURE
       return `${server} did not accept that user name and password.`;
     case 'c0000022': // ACCESS_DENIED
-      return `${server} let Skrin in, but that user may not read this folder. On ${server}, give the user permission to read the shared folder.`;
+      return `${server} let Kinema Media in, but that user may not read this folder. On ${server}, give the user permission to read the shared folder.`;
     case 'c000006e': // ACCOUNT_RESTRICTION: most often a user with no password
       return `${server} does not let that user sign in over the network — most often because the user has no password. Give it one on ${server}, or use another user.`;
     case 'c0000072': // ACCOUNT_DISABLED
@@ -93,7 +93,7 @@ export function smbWords(raw: string): string {
     case 'c000035c': // NETWORK_SESSION_EXPIRED
       return `${server} closed the connection. Try again.`;
     default:
-      return `${server} refused with an error Skrin has no words for yet (code ${code ? `0x${code}` : 'unknown'}). Try again, or send a report.`;
+      return `${server} refused with an error Kinema Media has no words for yet (code ${code ? `0x${code}` : 'unknown'}). Try again, or send a report.`;
   }
 }
 
@@ -109,13 +109,13 @@ const RULES: [RegExp, string | ((raw: string) => string)][] = [
   ],
   [
     /os error [23]\b|cannot find the (file|path)|no such file/i,
-    'A file or folder Skrin needed isn’t there. If it is on a network drive or USB disk, check that it is connected.',
+    'A file or folder Kinema Media needed isn’t there. If it is on a network drive or USB disk, check that it is connected.',
   ],
   [
     /os error 5\b|access is denied|permission denied/i,
     refusedAccess,
   ],
-  [/database is locked|database table is locked/i, 'Skrin was busy. Try again in a moment.'],
+  [/database is locked|database table is locked/i, 'Kinema Media was busy. Try again in a moment.'],
   [
     /HTTP 401\b|invalid api key/i,
     'The TMDB key was not accepted. Check it in Settings → Posters & ratings.',
@@ -124,9 +124,9 @@ const RULES: [RegExp, string | ((raw: string) => string)][] = [
   // message can also contain.
   [
     /Wikimedia is busy/,
-    'Wikipedia is busy right now. Skrin tries again on the next scan, or try again in a minute.',
+    'Wikipedia is busy right now. Kinema Media tries again on the next scan, or try again in a minute.',
   ],
-  [/HTTP 429\b/, 'The online service asked Skrin to slow down. Try again in a minute.'],
+  [/HTTP 429\b/, 'The online service asked Kinema Media to slow down. Try again in a minute.'],
   [/HTTP 5\d\d\b/, 'The online service had a problem at its end. Try again later.'],
   [
     /error sending request|dns error|timed out|connection (refused|reset|closed)|failed to fetch/i,

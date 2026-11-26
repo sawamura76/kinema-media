@@ -1,10 +1,10 @@
-//! The few things Skrin must say before its window exists: a restore's
+//! The few things Kinema Media must say before its window exists: a restore's
 //! outcome, a library that will not open, a start that failed.
 //!
 //! They are said on the main thread, inside `setup`, and wait for an answer. On
 //! Linux the dialog plugin cannot do that: its dialog is drawn by the GTK loop
 //! that this very thread runs, which is blocked waiting for it, so nothing ever
-//! appears and Skrin hangs with no window (seen under a headless X server,
+//! appears and Kinema Media hangs with no window (seen under a headless X server,
 //! 2026-11). There a GTK dialog is run directly; `run` turns the loop itself.
 //! Elsewhere the plugin's own dialog waits in its own loop.
 
@@ -101,7 +101,7 @@ fn gtk_dialog(title: &str, message: &str, kind: Kind, ok: &str, cancel: Option<&
         gtk::ButtonsType::None,
         title,
     );
-    dialog.set_title("Skrin");
+    dialog.set_title("Kinema Media");
     dialog.set_secondary_text(Some(message));
     if let Some(cancel) = cancel {
         dialog.add_button(cancel, gtk::ResponseType::Reject);

@@ -159,7 +159,7 @@ export const SETTINGS_INDEX: SettingEntry[] = [
   {
     section: 'picture',
     label: 'Your equipment',
-    about: 'TV receiver screens sound what Skrin found',
+    about: 'TV receiver screens sound what Kinema Media found',
     when: (can) => can.equipment_detection,
   },
 
@@ -322,7 +322,7 @@ export const SETTINGS_INDEX: SettingEntry[] = [
   },
   {
     section: 'privacy',
-    label: 'Send Skrin’s lookups through a proxy',
+    label: 'Send Kinema Media’s lookups through a proxy',
     find: 'Proxy',
     about: 'proxy VPN Tor SOCKS5 HTTP address hide IP private',
     values: ['On', 'Off'],
@@ -338,7 +338,7 @@ export const SETTINGS_INDEX: SettingEntry[] = [
     section: 'advanced',
     label: 'Version',
     find: 'Look for new versions',
-    about: 'about which version number release build what version am I running Skrin',
+    about: 'about which version number release build what version am I running Kinema Media',
   },
   {
     section: 'advanced',

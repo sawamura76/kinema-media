@@ -238,7 +238,7 @@ for (const system of ['android', 'windows'] as const) {
   });
 }
 
-test('Android: a folder on a USB drive, chosen in Skrin’s own browser', async ({ page }) => {
+test('Android: a folder on a USB drive, chosen in Kinema Media’s own browser', async ({ page }) => {
   await page.setViewportSize({ width: 960, height: 540 });
   await page.addInitScript(() => {
     localStorage.setItem('kinemaMockSystem', 'android');
@@ -358,7 +358,7 @@ test('Android: refused, the folder browser says where to allow it', async ({ pag
   await page.goto('/');
   await expect.poll(() => focused(page)).toBe('Add movies folder');
   await press(page, 'Enter');
-  await expect(page.locator('.folder-browser')).toContainText('Apps → Skrin → Permissions');
+  await expect(page.locator('.folder-browser')).toContainText('Apps → Kinema Media → Permissions');
   await expect.poll(() => focused(page)).toBe('Ask again');
   await press(page, 'Escape');
   await expect(page.locator('.folder-browser')).toHaveCount(0);
@@ -395,7 +395,7 @@ test('Android: always the TV layout, never asked', async ({ page }) => {
   expect(await tv()).toBe('on');
 
   // Nothing to ask about picture and sound: the pages start at intros.
-  // (A folder first: the USB drive itself, in Skrin's own browser.)
+  // (A folder first: the USB drive itself, in Kinema Media's own browser.)
   await press(page, 'Enter');
   await expect.poll(() => focused(page)).toBe('USB driveUSB drive or card');
   await press(page, 'Enter');
@@ -424,7 +424,7 @@ test('Android: always the TV layout, never asked', async ({ page }) => {
   for (let i = 0; i < 6 && (await focused(page)) !== 'Playback'; i++) await press(page, 'ArrowDown');
   await press(page, 'Enter');
   await expect(page.locator('.settings-section h2').first()).toHaveText('Playback');
-  await expect(page.locator('.settings-section')).not.toContainText('Where Skrin is used');
+  await expect(page.locator('.settings-section')).not.toContainText('Where Kinema Media is used');
   await press(page, '?');
   await expect(page.locator('.shortcuts')).toBeVisible();
   await expect(page.locator('.shortcuts')).not.toContainText('F11');

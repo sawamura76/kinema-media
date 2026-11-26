@@ -44,7 +44,7 @@ describe('yielding to playback', () => {
     expect(told).toEqual([true, false]);
   });
 
-  it('waits while Skrin is behind another app, and goes on when it is back', async () => {
+  it('waits while Kinema Media is behind another app, and goes on when it is back', async () => {
     vi.useFakeTimers();
     setBehindScreen(true);
     let resumed = false;
@@ -72,7 +72,7 @@ describe('yielding to playback', () => {
     expect(resumed).toBe(true);
   });
 
-  it('says when Skrin is back, and only then', () => {
+  it('says when Kinema Media is back, and only then', () => {
     const back = vi.fn();
     const stop = onBackOnScreen(back);
     setBehindScreen(true);

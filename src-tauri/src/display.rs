@@ -28,7 +28,7 @@ use serde::{Deserialize, Serialize};
 /// Whether this build can change the screen's refresh rate, resolution and
 /// HDR at all (`capabilities.rs`). Where it cannot, Settings does not offer
 /// to. On Linux that depends on the desktop, so it is asked: only a desktop
-/// Skrin knows how to ask counts.
+/// Kinema Media knows how to ask counts.
 pub fn switches() -> bool {
     #[cfg(windows)]
     return true;
@@ -79,7 +79,7 @@ pub struct ScreenNow {
     pub modes: Vec<Mode>,
 }
 
-/// What the screen was before Skrin changed anything.
+/// What the screen was before Kinema Media changed anything.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Original {
     pub gdi_name: String,
@@ -166,7 +166,7 @@ fn same_signal(a: Option<(u32, u32, f64)>, b: Option<(u32, u32, f64)>) -> bool {
 
 /// The screen the picture is on, now. `screen` names it where the picture is
 /// mpv's own window (Linux: mpv's `display-names`); on Windows it is the
-/// screen Skrin's window is on, and `screen` is not needed.
+/// screen Kinema Media's window is on, and `screen` is not needed.
 #[tauri::command]
 pub fn screen_now(window: tauri::WebviewWindow, screen: Option<String>) -> Result<ScreenNow, String> {
     #[cfg(windows)]
@@ -425,14 +425,14 @@ pub async fn restore_screen(app: tauri::AppHandle) -> Result<bool, String> {
     .await
 }
 
-/// Skrin's window while the player is open, on a tiling desktop.
+/// Kinema Media's window while the player is open, on a tiling desktop.
 ///
 /// Where mpv has a window of its own, the player's controls are a photo of
-/// Skrin's window drawn over the film at mpv's size. Sway and Hyprland tile
-/// windows, so when the film's window appears Skrin's is squeezed beside it
+/// Kinema Media's window drawn over the film at mpv's size. Sway and Hyprland tile
+/// windows, so when the film's window appears Kinema Media's is squeezed beside it
 /// and the photo comes out the wrong shape, blown up (seen on the test TV).
 /// Both float a window whose size is fixed when it appears (sway
-/// `wants_floating`, Hyprland `shouldBeFloated`), so for the player Skrin's
+/// `wants_floating`, Hyprland `shouldBeFloated`), so for the player Kinema Media's
 /// window is shown again — hidden first, which is what makes it a new window
 /// to them — at the screen's size and not resizable, and put back as it was
 /// when the player closes. Elsewhere (GNOME, Plasma, Windows) nothing is done:
@@ -455,7 +455,7 @@ fn fitted(window: (i32, i32, i32, i32), screen: (i32, i32, i32, i32)) -> Option<
     (window != screen).then_some(screen)
 }
 
-/// Skrin's window, when it is full screen, to the size of its screen as
+/// Kinema Media's window, when it is full screen, to the size of its screen as
 /// Windows reports it now. Called after every switch and restore, and
 /// whenever Windows says a screen changed mode (`watch_screen_changes`), so
 /// the window follows what Windows reports rather than a guess at when it is

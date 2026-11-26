@@ -18,7 +18,7 @@ export const IMDB_RATINGS_ALLOWED_KEY = 'imdb_ratings_allowed';
 
 /** What a refused request says (net.rs KEPT_HERE). */
 export const KEPT_HERE =
-  'Keep everything on this computer is on, so Skrin does not ask the internet for this.';
+  'Keep everything on this computer is on, so Kinema Media does not ask the internet for this.';
 
 export interface OfflineState {
   offline: boolean;

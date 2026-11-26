@@ -115,7 +115,7 @@ pub enum Outcome {
     Unsure,
     /// The film is too short to check.
     TooShort,
-    /// The subtitle file has too few lines Skrin can read the times of.
+    /// The subtitle file has too few lines Kinema Media can read the times of.
     NoLines,
 }
 

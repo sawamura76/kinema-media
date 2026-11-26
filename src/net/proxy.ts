@@ -1,7 +1,7 @@
 /**
  * The proxy setting, as the page sees it (Rust side: net.rs).
  *
- * Settings → Privacy → "Send Skrin's lookups through a proxy". Rust's clients
+ * Settings → Privacy → "Send Kinema Media's lookups through a proxy". Rust's clients
  * start from `net::builder()`; the page's own requests do too, through this:
  * `proxyFetchOptions()` goes into every `fetch` of tauri-plugin-http, and a
  * picture from the internet is asked of Rust (`remoteImage`) rather than

@@ -75,7 +75,7 @@ export default function LanguageSection({ onError }: { onError: (message: string
         value={subs}
         onChange={(v) => save(SUBS_DEFAULT_KEY, v, setSubs)}
         note="When needed turns subtitles on when the audio is in another language. Otherwise it shows only forced subtitles, the ones for signs and lines in a foreign language."
-        hint="If you change the audio or subtitles while watching a show, Skrin remembers that for the show, and it wins over these."
+        hint="If you change the audio or subtitles while watching a show, Kinema Media remembers that for the show, and it wins over these."
       />
     </>
   );

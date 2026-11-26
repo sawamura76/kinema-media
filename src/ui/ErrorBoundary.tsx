@@ -1,7 +1,7 @@
 /**
  * What is on screen when the screen itself fails.
  *
- * A drawing error in React unmounts the whole tree. Skrin's window is
+ * A drawing error in React unmounts the whole tree. Kinema Media's window is
  * transparent so mpv can render behind it, which means an empty tree is not a
  * blank window but the desktop showing through, with nothing to say what
  * happened or how to leave. This catches the error, writes it to `app.log`, and
@@ -101,7 +101,7 @@ function CrashScreen({ onRetry }: { onRetry: () => void }) {
     <div className="crash-screen" role="alert">
       <h1>Something went wrong</h1>
       <p>
-        Skrin could not draw this screen. Nothing in your library was changed, and what went wrong
+        Kinema Media could not draw this screen. Nothing in your library was changed, and what went wrong
         is written to the log.
       </p>
       <div className="crash-actions" ref={row}>
@@ -144,7 +144,7 @@ function CrashScreen({ onRetry }: { onRetry: () => void }) {
           className="btn-secondary"
           onClick={() => void powerAction('close').catch(() => undefined)}
         >
-          Close Skrin
+          Close Kinema Media
         </button>
       </div>
       {report && <p className="crash-report">{report.text}</p>}

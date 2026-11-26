@@ -1,13 +1,13 @@
 /**
- * A YouTube trailer playing inside Skrin (trailer.ts says when): YouTube's
- * embedded player in a frame, driven from Skrin's own keys. OK pauses, the
+ * A YouTube trailer playing inside Kinema Media (trailer.ts says when): YouTube's
+ * embedded player in a frame, driven from Kinema Media's own keys. OK pauses, the
  * arrows seek ten seconds, Back or Esc closes, and Down reaches the buttons.
  * Any error YouTube reports, or no answer in a few seconds, closes it and
  * opens the trailer in the browser instead.
  *
  * The frame is another site's page: once it holds the keyboard, keys go to it
  * and never come back. So it is kept out of the tab order, and when a click
- * hands it the keyboard anyway, Skrin takes it straight back — the click
+ * hands it the keyboard anyway, Kinema Media takes it straight back — the click
  * itself still reaches YouTube's own controls.
  */
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';

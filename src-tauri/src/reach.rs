@@ -9,7 +9,7 @@
 //! connection, a certificate that was not TMDB's — and the chain goes to the log
 //! in full.
 //!
-//! Only the hosts Skrin already talks to for matching can be asked about, so
+//! Only the hosts Kinema Media already talks to for matching can be asked about, so
 //! this adds nothing to "What leaves your computer".
 
 use std::time::Duration;
@@ -56,7 +56,7 @@ pub(crate) fn classify(chain: &str, timeout: bool) -> &'static str {
 #[tauri::command]
 pub async fn check_reach(host: String) -> Result<Reach, String> {
     if !HOSTS.contains(&host.as_str()) {
-        return Err(format!("not a host Skrin checks: {host}"));
+        return Err(format!("not a host Kinema Media checks: {host}"));
     }
     // Asked only when a lookup failed; in the mode there are none to explain.
     let client = crate::net::client(crate::net::Service::Tmdb)?
@@ -86,7 +86,7 @@ pub async fn check_reach(host: String) -> Result<Reach, String> {
 }
 
 /// Whether a proxy is set where a browser would use one and this request may
-/// not: a browser that gets through while Skrin does not is often that, or
+/// not: a browser that gets through while Kinema Media does not is often that, or
 /// the browser's own DNS-over-HTTPS. Only whether each is set — never the
 /// address, which is the user's own network.
 fn proxy_note() -> String {

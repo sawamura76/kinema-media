@@ -45,7 +45,7 @@ const uhdHdr = () => read(1, 3840, 2160, { hdr: true, size: 58 * GB });
 const fullHd = () => read(2, 1920, 1080, { codec: 'h264', size: 12 * GB });
 
 describe('nameVersions', () => {
-  it("names each in Skrin's words with the size", () => {
+  it("names each in Kinema Media's words with the size", () => {
     const [a, b] = nameVersions([
       uhdHdr(),
       read(2, 1920, 800, { editions: ["Director's Cut"], size: 9.4 * GB }),

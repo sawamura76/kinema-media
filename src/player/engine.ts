@@ -1,9 +1,9 @@
 /**
  * The player engine: the one file that talks to mpv.
  *
- * Everything else in Skrin reaches the player through here, in two layers.
+ * Everything else in Kinema Media reaches the player through here, in two layers.
  *
- * **Skrin's own terms** — open a file, pause, seek, stop, and the events that
+ * **Kinema Media's own terms** — open a file, pause, seek, stop, and the events that
  * say what happened. This is what any engine has to provide; the player's own
  * files (Player.tsx and its `use…` hooks) use nothing else, but for frame
  * timing, which is mpv's own setting and says so where it is set. On Android
@@ -21,7 +21,7 @@
  * replacing it would touch one file.
  *
  * **On Android the engine is Media3** (`media3.ts`, capabilities `engine`).
- * Skrin's terms go to it instead; mpv's terms are not there to call.
+ * Kinema Media's terms go to it instead; mpv's terms are not there to call.
  */
 import {
   command,
@@ -129,7 +129,7 @@ const OBSERVED = [
   // A key pressed on mpv's own window (mpvKeys.ts). Never changes where mpv
   // has no window of its own.
   [KEY_PROPERTY, 'string', 'none'],
-  // The mouse on mpv's own window (mpvMouse.ts), written by Skrin's script
+  // The mouse on mpv's own window (mpvMouse.ts), written by Kinema Media's script
   // there. Never changes where mpv has no window of its own.
   [MOUSE_PROPERTY, 'string', 'none'],
 ] as const;
@@ -157,7 +157,7 @@ export function startEngine(): Promise<string> {
         // A build with no engine at all says so instead of failing inside
         // the plugin.
         if (capabilitiesNow()?.engine === 'none') {
-          throw new Error('This version of Skrin cannot play films on this device yet.');
+          throw new Error('This version of Kinema Media cannot play films on this device yet.');
         }
         return initialOptions();
       })
@@ -173,7 +173,7 @@ export function startEngine(): Promise<string> {
 async function startMpv(options: MpvConfig['initialOptions']): Promise<string> {
   // Already there means this page replaced one whose process ended, and mpv
   // has gone on (pageRecovery.ts). It is set up already: `init` changes nothing
-  // and Skrin's mouse script must not be loaded into it twice.
+  // and Kinema Media's mouse script must not be loaded into it twice.
   const already = await invoke<boolean>('mpv_started').catch(() => false);
   const label = await init({ initialOptions: options, observedProperties: OBSERVED });
   if (already) return label;
@@ -198,7 +198,7 @@ async function startMpv(options: MpvConfig['initialOptions']): Promise<string> {
 }
 
 /**
- * Bind every key Skrin uses to a message back to Skrin (mpvKeys.ts). One
+ * Bind every key Kinema Media uses to a message back to Kinema Media (mpvKeys.ts). One
  * refused key — a name this mpv does not know — costs that key only.
  */
 async function bindKeys(): Promise<void> {
@@ -214,7 +214,7 @@ async function bindKeys(): Promise<void> {
 }
 
 /**
- * Load Skrin's mouse script into mpv (mpvMouse.ts), and keep mpv from
+ * Load Kinema Media's mouse script into mpv (mpvMouse.ts), and keep mpv from
  * moving its window when the film is dragged on: a drag there is the seek
  * bar's. Either failing costs that part only, and says so in app.log.
  */
@@ -231,7 +231,7 @@ async function watchMouse(): Promise<void> {
 }
 
 
-// ---- Skrin's terms ----------------------------------------------------------
+// ---- Kinema Media's terms ----------------------------------------------------------
 
 /** What the engine says happened. */
 export type PlaybackEvent =
@@ -388,7 +388,7 @@ export async function openFile(
   share: number | null = null
 ): Promise<void> {
   if (isMedia3()) return media3.open(path, start, share);
-  // The one error Skrin answers with is a drive that does not answer
+  // The one error Kinema Media answers with is a drive that does not answer
   // (disc.rs): said as it is, rather than opening a file mpv cannot read.
   const source = await invoke<DiscSource>('disc_source', { path }).catch(
     (e): DiscSource => {
@@ -577,9 +577,9 @@ export async function filmPlayingNow(): Promise<{
 
 /**
  * Whether the picture fills the screen. Where the engine has a window of its
- * own (Linux), that window is the picture and Skrin's is hidden behind it —
+ * own (Linux), that window is the picture and Kinema Media's is hidden behind it —
  * and may be full screen for reasons of its own (overlay.ts) — so the
- * engine's window is the one asked. Elsewhere the picture is in Skrin's.
+ * engine's window is the one asked. Elsewhere the picture is in Kinema Media's.
  */
 export async function isPictureFullscreen(): Promise<boolean> {
   // Android has no windows: the picture always fills the screen, and there is
@@ -596,7 +596,7 @@ export async function isPictureFullscreen(): Promise<boolean> {
 export async function setPictureFullscreen(on: boolean): Promise<void> {
   if (isMedia3()) return;
   if (capabilitiesNow()?.mpv_video.own_window) {
-    // Skrin's window floats only while the picture is full screen: over a
+    // Kinema Media's window floats only while the picture is full screen: over a
     // windowed film it would sit on top of it (seen in a nested Sway).
     if (!on) await fitWindowForPlayer('tile');
     await setProperty('fullscreen', on);
@@ -607,7 +607,7 @@ export async function setPictureFullscreen(on: boolean): Promise<void> {
 }
 
 /**
- * Where mpv has a window of its own, keep Skrin's window the screen's size
+ * Where mpv has a window of its own, keep Kinema Media's window the screen's size
  * while the picture is full screen — its photo is the player's controls — by
  * floating it on a tiling desktop (Sway, Hyprland), where it would otherwise
  * be squeezed beside the film's window (`display.rs` → `player_window`).
@@ -616,7 +616,7 @@ export async function setPictureFullscreen(on: boolean): Promise<void> {
 export async function fitWindowForPlayer(how: 'float' | 'tile' | 'close'): Promise<void> {
   if (!capabilitiesNow()?.mpv_video.own_window) return;
   await invoke('player_window', { how }).catch((e) =>
-    console.warn('display: Skrin’s window not fitted for the player', e)
+    console.warn('display: Kinema Media’s window not fitted for the player', e)
   );
 }
 
@@ -663,10 +663,10 @@ export async function hasReachedEnd(): Promise<boolean> {
 
 // ---- tracks, subtitles, volume, chapters --------------------------------------
 //
-// Still Skrin's terms: what the track panel, the volume control and the
+// Still Kinema Media's terms: what the track panel, the volume control and the
 // credits ladder need, said the same way whichever engine plays. Formats are
 // named as FFmpeg names them — `truehd`, `eac3`, "DTS-HD MA" — which is
-// Skrin's own vocabulary for them already (ffprobe's badges speak it too),
+// Kinema Media's own vocabulary for them already (ffprobe's badges speak it too),
 // so an engine that says them otherwise translates into it.
 
 /** One audio, subtitle or video track of the open file. */
@@ -877,7 +877,7 @@ export async function setMuted(muted: boolean): Promise<void> {
 
 /**
  * Whether the sound is going to the receiver as an untouched bitstream, where
- * Skrin's volume does nothing — the receiver's own control is the one.
+ * Kinema Media's volume does nothing — the receiver's own control is the one.
  */
 export async function soundGoesUntouched(): Promise<boolean> {
   if (isMedia3()) return (await media3.state()).untouched;

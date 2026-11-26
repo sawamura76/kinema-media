@@ -367,7 +367,7 @@ export async function prepareTitle(
     throw new Error('TVmaze has no movie data. Use TMDB or OMDb for a movie.');
   }
   if (isSeries && provider === 'wikidata') {
-    throw new Error('Skrin reads only movies from Wikidata. Use TMDB or TVmaze for a series.');
+    throw new Error('Kinema Media reads only movies from Wikidata. Use TMDB or TVmaze for a series.');
   }
 
   if (provider === 'imdb') {

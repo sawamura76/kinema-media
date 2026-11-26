@@ -1,5 +1,5 @@
 /**
- * A title's page, an actor's page and the dialogs over them on Skrin's own
+ * A title's page, an actor's page and the dialogs over them on Kinema Media's own
  * focus engine (round 7, F2): what a browser has to show and the unit tests of
  * the moves (focusModel.test.ts) cannot — the ring always on screen, never
  * under the top bar or the sticky Back, one ring with the DOM focus; Back

@@ -93,7 +93,7 @@ test('no decoder for the sound: said, not taken for an output that refused it', 
   await expect(notice).toContainText('This system cannot decode TrueHD sound', { timeout: 10_000 });
   // The file's AC-3 commentary is one it can play.
   await expect(notice).toContainText('Another sound track is in Audio & subtitles.');
-  // Windows' libraries are Skrin's own: no pointer to a Linux build.
+  // Windows' libraries are Kinema Media's own: no pointer to a Linux build.
   await expect(notice).not.toContainText('RPM Fusion');
   await pause(page, 3_000, 'past the sound check and where a fallback would have run');
   await expect(notice).not.toContainText('going through Windows instead');

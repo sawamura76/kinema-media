@@ -4,7 +4,7 @@
  *
  * The Library page holds one tile per Videos folder, then Playlists
  * (PlaylistsPages.tsx) and Folders, so the top bar never grows again. Folders
- * depends on the layout (owner, 2026-10-18): in the TV layout it is Skrin's
+ * depends on the layout (owner, 2026-10-18): in the TV layout it is Kinema Media's
  * own browser (FoldersPage.tsx), as a sofa has no Explorer; at a desk it is
  * "Add a folder" — the system's folder window at once, then the same
  * questions (AddFolder.tsx) — as a mouse expects. A Videos folder's
@@ -278,7 +278,7 @@ export function VideosPage({
           />
         )}
         {videos !== null && videos.length === 0 && (
-          <p className="muted">No videos here yet. Skrin scans this folder every time it starts.</p>
+          <p className="muted">No videos here yet. Kinema Media scans this folder every time it starts.</p>
         )}
         {groups.map((group) => (
           <section key={group.dir} className="videos-group">
@@ -376,7 +376,7 @@ export function VideoTile({
       <span className="video-tile-name">{videoName(video.file_name)}</span>
       {date && (
         <span className="video-tile-date">
-          {/* As the other dates in Skrin are written (AccountSection). */}
+          {/* As the other dates in Kinema Media are written (AccountSection). */}
           {date.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
         </span>
       )}

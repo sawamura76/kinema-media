@@ -306,33 +306,33 @@ export function describeDolbyVision(profile: number | null): StatRow | null {
       return {
         label,
         value: 'profile 5 → converted to HDR10',
-        note: 'no HDR10 layer in the file, so its own Dolby Vision metadata maps it; Skrin cannot send Dolby Vision itself',
+        note: 'no HDR10 layer in the file, so its own Dolby Vision metadata maps it; Kinema Media cannot send Dolby Vision itself',
       };
     case 7:
       return {
         label,
         value: 'profile 7 → HDR10 base layer',
-        note: 'the disc’s HDR10 layer is shown and the enhancement layer is not used; Skrin cannot send Dolby Vision itself',
+        note: 'the disc’s HDR10 layer is shown and the enhancement layer is not used; Kinema Media cannot send Dolby Vision itself',
       };
     case 8:
       return {
         label,
         value: 'profile 8 → HDR10 base layer',
-        note: 'made to fall back to HDR10 (or HLG), which is shown; Skrin cannot send Dolby Vision itself',
+        note: 'made to fall back to HDR10 (or HLG), which is shown; Kinema Media cannot send Dolby Vision itself',
       };
     default:
       return {
         label,
         value: `profile ${profile} → HDR10`,
-        note: 'Skrin cannot send Dolby Vision itself',
+        note: 'Kinema Media cannot send Dolby Vision itself',
       };
   }
 }
 
 /**
- * Which processing steps Skrin gave up to keep up, and why — only when one is
+ * Which processing steps Kinema Media gave up to keep up, and why — only when one is
  * in force for this film (stepDown.ts). The rows around it show the values mpv
- * is using; this says they are not the ones Skrin chose, and who changed them.
+ * is using; this says they are not the ones Kinema Media chose, and who changed them.
  * A step that cannot show in an SDR film's picture is not listed for it.
  */
 export function describeStepDown(state: StepState, hdrSource: boolean): StatRow | null {
@@ -388,13 +388,13 @@ function levellingRow(): StatRow {
     return {
       label: 'Levelling',
       value: 'off for this track',
-      note: 'the sound goes to the receiver untouched; levelling works only on sound Skrin decodes',
+      note: 'the sound goes to the receiver untouched; levelling works only on sound Kinema Media decodes',
     };
   }
   return {
     label: 'Levelling',
     value: af ? describeLevel(level, layout ?? null) : 'none',
-    note: af ? 'on the decoded sound, before it leaves Skrin' : undefined,
+    note: af ? 'on the decoded sound, before it leaves Kinema Media' : undefined,
   };
 }
 
@@ -619,7 +619,7 @@ async function readOutputCheck(from: {
   const [fullscreen, screen, policies, audioSettings, equipment, inCount, outCount] =
     await Promise.all([
       // Where mpv has a window of its own it is started full screen (engine.ts);
-      // Skrin's own window is not the one on show.
+      // Kinema Media's own window is not the one on show.
       capabilitiesNow()?.mpv_video.own_window
         ? Promise.resolve(true)
         : getCurrentWindow()
@@ -696,7 +696,7 @@ export interface PageDrawing {
 
 /**
  * The row saying how the page (and so the controls over the film) is drawn,
- * where Skrin chooses that (Linux). Null elsewhere, or when unknown.
+ * where Kinema Media chooses that (Linux). Null elsewhere, or when unknown.
  */
 export function describeDrawing(d: PageDrawing | null): StatRow | null {
   if (!d) return null;
@@ -722,7 +722,7 @@ export function describeDrawing(d: PageDrawing | null): StatRow | null {
   if (d.mode === 'given') {
     return {
       label,
-      value: 'set outside Skrin',
+      value: 'set outside Kinema Media',
       note: `WEBKIT_DISABLE_DMABUF_RENDERER=${d.value ?? ''}`,
     };
   }

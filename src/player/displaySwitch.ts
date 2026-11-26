@@ -43,7 +43,7 @@ import {
 import { DISPLAY_MATCH_KEY, matchOn, switchSettings } from './systemOutput';
 import { readPictureVerdict } from './decodeCheck';
 
-/** Android's way (`systemOutput.ts`) rather than Skrin's own. */
+/** Android's way (`systemOutput.ts`) rather than Kinema Media's own. */
 const bySystem = () => capabilitiesNow()?.system_output === true;
 
 export const SWITCH_REFRESH_KEY = 'display_switch_refresh';
@@ -179,7 +179,7 @@ export async function mayswitch(): Promise<boolean> {
 /**
  * The screen mpv's picture is on, where the picture is mpv's own window
  * (Linux): mpv's `display-names`, "HDMI-1". Null where the picture is in
- * Skrin's window, whose screen the backend finds itself.
+ * Kinema Media's window, whose screen the backend finds itself.
  */
 async function pictureScreen(): Promise<string | null> {
   if (!capabilitiesNow()?.mpv_video.own_window) return null;

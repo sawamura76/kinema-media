@@ -119,7 +119,7 @@ export default function KeepOnDeviceSection({ onGo }: { onGo: (section: string) 
     if (simkl || trakt) {
       const names = simkl && trakt ? 'SIMKL and Trakt' : simkl ? 'SIMKL' : 'Trakt';
       setMessage({
-        text: `Disconnect ${names} first, in Keep track of what I watch: with this on, Skrin could not tell ${simkl && trakt ? 'them' : 'it'} what you watch.`,
+        text: `Disconnect ${names} first, in Keep track of what I watch: with this on, Kinema Media could not tell ${simkl && trakt ? 'them' : 'it'} what you watch.`,
         bad: true,
         go: true,
       });
@@ -127,7 +127,7 @@ export default function KeepOnDeviceSection({ onGo }: { onGo: (section: string) 
     }
     try {
       await keepOnDevice();
-      setMessage({ text: 'On. Skrin looks nothing up online from now on. IMDb’s list of titles is downloaded now.', bad: false });
+      setMessage({ text: 'On. Kinema Media looks nothing up online from now on. IMDb’s list of titles is downloaded now.', bad: false });
       // Start the list now rather than at the next scan; progress is shown below.
       void refreshImdbTitles().catch(() => undefined);
       setTimeout(readList, 500);

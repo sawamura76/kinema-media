@@ -3,7 +3,7 @@
  * cannot, saying so instead of a black picture or silence (review A3-01/02).
  *
  * mpv decodes with the codec libraries it was built against. On Windows those
- * come with Skrin; on Linux they are the system's own, and some systems'
+ * come with Kinema Media; on Linux they are the system's own, and some systems'
  * builds leave out the patented formats (Fedora's `libavcodec-free` has no
  * HEVC or E-AC-3, and decodes H.264 only through OpenH264, which cannot do
  * 10-bit, interlaced or 8K). mpv then plays on without the track and says so

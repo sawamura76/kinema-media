@@ -14,7 +14,7 @@
  * The list is kept in one place rather than beside each handler on purpose. Two
  * lists drift, and the one that drifts is always the documentation.
  *
- * Where Skrin is never in a window (Android: always on a TV, `windowed`),
+ * Where Kinema Media is never in a window (Android: always on a TV, `windowed`),
  * the list is the remote's — what is in the hand there — with the keyboard's
  * keys as one line under it, since a keyboard plugged into a box works too.
  * Same keys, same handlers; only the names differ (OK, not Enter).
@@ -43,7 +43,7 @@ const GROUPS: Group[] = [
       [['Esc'], 'Go back'],
       [['?'], 'Show this list'],
       [['L'], 'Put the highlighted film or show on My list, or take it off (also on its page)'],
-      [['S'], 'Play something: Skrin picks, you say Play or Another (Home, a genre or a shelf)'],
+      [['S'], 'Play something: Kinema Media picks, you say Play or Another (Home, a genre or a shelf)'],
       [['F11'], 'Switch between desk and TV layout (TV is full screen)', 'windowed'],
       [['Ctrl', 'Shift', 'T'], 'The same, another way', 'windowed'],
     ],

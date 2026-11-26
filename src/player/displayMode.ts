@@ -11,7 +11,7 @@
  *    next to 3:2 on every frame.
  *  - **Resolution** (Auto by default): Auto only ever switches *up*, when the
  *    desktop has fewer pixels than the film and the screen can show more — a
- *    1080p desktop on a 4K TV playing a 4K film, where staying put means Skrin
+ *    1080p desktop on a 4K TV playing a 4K film, where staying put means Kinema Media
  *    shrinks the film and the TV blows it back up. Never past the screen's own
  *    resolution, where the system says what it is. Match content always uses
  *    the film's own resolution, for a TV or a video processor (a madVR Envy)

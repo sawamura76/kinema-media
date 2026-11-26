@@ -1,5 +1,5 @@
 /**
- * Skrin's own focus engine (round 7, notes FOCUS-REWORK.md): one store that
+ * Kinema Media's own focus engine (round 7, notes FOCUS-REWORK.md): one store that
  * says which control holds the ring, the live tree of areas the screens
  * declare, and the keys, pointer and scrolling around it. Where an arrow goes
  * is focusModel.ts, a pure function of that tree; how the page scrolls is
@@ -550,7 +550,7 @@ let installed = false;
 function install(): void {
   if (installed) return;
   installed = true;
-  // A mouse's side "Back" button and Alt+Left are the same Back as Escape: Skrin
+  // A mouse's side "Back" button and Alt+Left are the same Back as Escape: Kinema Media
   // keeps its own screen stack, so the web view's history has nothing behind it.
   // Sent on as `BrowserBack`, which every screen already answers.
   const sendBack = () => {

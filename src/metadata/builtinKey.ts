@@ -1,7 +1,7 @@
 import { getSetting, setSetting } from './api';
 
 /**
- * Skrin's own TMDB key, so a library works without anyone registering for one.
+ * Kinema Media's own TMDB key, so a library works without anyone registering for one.
  *
  * Baked in when the app is built, from `VITE_TMDB_API_KEY`: a GitHub Actions
  * secret in release.yml, or a git-ignored `.env.local` for a local build. It is
@@ -13,7 +13,7 @@ import { getSetting, setSetting } from './api';
  * assumed away.
  *
  * A key entered in Settings always wins. A build without this one — anyone
- * building from source — behaves as Skrin always did: TMDB with a key from
+ * building from source — behaves as Kinema Media always did: TMDB with a key from
  * Settings, TVmaze for TV without one.
  */
 export const BUILTIN_TMDB_KEY: string | null =

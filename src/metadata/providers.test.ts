@@ -404,7 +404,7 @@ describe('OMDb Rotten Tomatoes score', () => {
   it('does not turn an unreadable answer into "no score" (A6-07)', async () => {
     const said = await ask(200, null);
     expect(said).toBeInstanceOf(Error);
-    expect((said as Error).message).toBe('OMDb sent an answer Skrin could not read');
+    expect((said as Error).message).toBe('OMDb sent an answer Kinema Media could not read');
   });
 
   it('stops the pass on a wrong key or a spent allowance', async () => {

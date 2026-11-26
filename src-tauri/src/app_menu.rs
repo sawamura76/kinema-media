@@ -1,4 +1,4 @@
-//! Skrin in a Linux desktop's app menu and in "Open with" for videos, for the
+//! Kinema Media in a Linux desktop's app menu and in "Open with" for videos, for the
 //! folder unpacked from the .tar.gz (LOCAL-MEDIA.md phase 1). The .deb and
 //! .rpm do this themselves: their `.desktop` file (`linux/skrin.desktop`,
 //! named in `tauri.linux.conf.json`) lists the same video types.
@@ -19,7 +19,7 @@
 
 use std::path::{Path, PathBuf};
 
-/// The video types Skrin opens, for `MimeType=`: the same extensions the
+/// The video types Kinema Media opens, for `MimeType=`: the same extensions the
 /// library scans for (`scanner.rs`), by their shared-mime-info names. The
 /// packages' list in `linux/skrin.desktop` is checked against this one.
 pub const MIME_TYPES: &[&str] = &[
@@ -73,7 +73,7 @@ fn entry(exe: &str) -> String {
     format!(
         "[Desktop Entry]\n\
          Type=Application\n\
-         Name=Skrin\n\
+         Name=Kinema Media\n\
          Comment=A local, serverless media library for movies and TV shows\n\
          Exec={} %F\n\
          Icon=kinema\n\
@@ -104,7 +104,7 @@ fn icon_path(data: &Path) -> PathBuf {
     data.join("icons/hicolor/128x128/apps/kinema.png")
 }
 
-/// Skrin installed by a package (`/usr/bin/skrin`): the package's own entry
+/// Kinema Media installed by a package (`/usr/bin/skrin`): the package's own entry
 /// already does all this, so the button is not offered. A folder unpacked
 /// under `/usr/local` or `/opt` is not a package.
 pub fn packaged() -> bool {
@@ -113,7 +113,7 @@ pub fn packaged() -> bool {
 
 fn exe() -> Result<String, String> {
     let exe = std::env::current_exe().map_err(|e| e.to_string())?;
-    exe.into_os_string().into_string().map_err(|_| "Skrin's folder has a name the desktop cannot read.".into())
+    exe.into_os_string().into_string().map_err(|_| "Kinema Media's folder has a name the desktop cannot read.".into())
 }
 
 /// This button's entry, if there is one.
@@ -133,7 +133,7 @@ pub fn add() -> Result<(), String> {
 fn write(data: &Path, exe: &str) -> Result<(), String> {
     let path = entry_path(data);
     if path.exists() && ours(data).is_none() {
-        return Err(format!("{} is not Skrin's own; it was left as it is.", path.display()));
+        return Err(format!("{} is not Kinema Media's own; it was left as it is.", path.display()));
     }
     let icon = icon_path(data);
     for p in [&path, &icon] {
@@ -162,7 +162,7 @@ pub fn remove() -> Result<(), String> {
     Ok(())
 }
 
-/// The entry names another place for Skrin: the folder was moved.
+/// The entry names another place for Kinema Media: the folder was moved.
 fn stale(data: &Path, exe: &str) -> bool {
     ours(data).is_some_and(|text| !text.contains(&format!("Exec={} %F", exec_arg(exe))))
 }
@@ -172,7 +172,7 @@ pub fn refresh() {
     let (Some(data), Ok(exe)) = (data_home(), exe()) else { return };
     if stale(&data, &exe) {
         match write(&data, &exe) {
-            Ok(()) => crate::log!("app menu: Skrin has moved; the entry now names {exe}"),
+            Ok(()) => crate::log!("app menu: Kinema Media has moved; the entry now names {exe}"),
             Err(e) => crate::log!("app menu: could not update the entry: {e}"),
         }
     }
@@ -193,7 +193,7 @@ mod tests {
 
     #[test]
     fn exec_is_quoted_as_the_spec_says() {
-        assert_eq!(exec_arg("/home/a/Skrin/kinema"), "\"/home/a/Skrin/kinema\"");
+        assert_eq!(exec_arg("/home/a/Kinema Media/kinema"), "\"/home/a/Kinema Media/kinema\"");
         assert_eq!(exec_arg("/a b/100%/$x"), "\"/a b/100%%/\\\\$x\"");
         assert_eq!(exec_arg("/a\\b"), "\"/a\\\\\\\\b\"");
     }

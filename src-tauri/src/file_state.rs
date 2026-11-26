@@ -1,5 +1,5 @@
 //! What is the matter with a file the player could not open: it is not there,
-//! it is empty, Skrin is not allowed to read it, or it is there and readable
+//! it is empty, Kinema Media is not allowed to read it, or it is there and readable
 //! (so it is damaged or not a video). Asked only after a failure (A3-04, A5-06).
 
 use serde::Serialize;

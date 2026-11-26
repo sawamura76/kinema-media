@@ -1,5 +1,5 @@
 //! Moving to a new computer (PLAN.md phase 2): what exists nowhere else, as
-//! one file, taken in by another Skrin.
+//! one file, taken in by another Kinema Media.
 //!
 //! The file holds the watch history and resume points (by the providers'
 //! ids, as `watch_history` keeps them), the matches and "not a film"
@@ -302,7 +302,7 @@ fn files_named(conn: &Connection, name: &str, size: Option<i64>) -> rusqlite::Re
 pub fn import(conn: &mut Connection, file: &MoveFile) -> Result<MoveReport, String> {
     if file.kinema_move != FORMAT {
         return Err(format!(
-            "This file was made by a newer Skrin (format {}). Update Skrin here first.",
+            "This file was made by a newer Kinema Media (format {}). Update Kinema Media here first.",
             file.kinema_move
         ));
     }

@@ -181,7 +181,7 @@ let lastApplied = '';
 
 /**
  * The device the sound is going to, as mpv names it and as a person would,
- * when Skrin knows it: the one named in the plan, or Windows' default when
+ * when Kinema Media knows it: the one named in the plan, or Windows' default when
  * the plan says `auto` there. Null where `auto` is a sound server that picks
  * for itself (Linux), and after a fallback. For soundWatch.ts.
  */

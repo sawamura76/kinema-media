@@ -58,7 +58,7 @@ const column = (children: A['children'], extra: Partial<AreaSpec> = {}): A => ({
   children,
 });
 
-/** Home as Skrin builds it: the top bar, then the page. */
+/** Home as Kinema Media builds it: the top bar, then the page. */
 function home(notices = true) {
   return build(
     column([

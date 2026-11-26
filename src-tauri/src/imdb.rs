@@ -11,7 +11,7 @@
 //! 3. **A credit line**, "Information courtesy of IMDb (https://www.imdb.com).
 //!    Used with permission." — in Settings, beside TMDB's.
 //!
-//! Each copy of Skrin fetches the file for itself, and not often: when it
+//! Each copy of Kinema Media fetches the file for itself, and not often: when it
 //! has never been fetched, when it is over 30 days old, or when a title has
 //! joined the library since the last fetch and that was over a week ago. A
 //! title the file was searched for and did not have is remembered as such
@@ -19,7 +19,7 @@
 //! megabytes down every week for ever.
 //!
 //! Why this and not OMDb, which has IMDb's rating per title: OMDb's free keys
-//! allow 1,000 lookups a day, and one key built into every copy of Skrin
+//! allow 1,000 lookups a day, and one key built into every copy of Kinema Media
 //! would run out within hours for everyone (see HISTORY.md, "Picture and sound
 //! badges"). OMDb stays, with the user's own key, for Rotten Tomatoes.
 
@@ -182,7 +182,7 @@ pub async fn refresh_imdb_ratings(app: tauri::AppHandle) -> Result<ImdbReport, S
     crate::jobs::wait_for_turn_async().await;
     let client = crate::net::client(crate::net::Service::ImdbRatings)?
         .timeout(TIMEOUT)
-        .user_agent(concat!("Skrin/", env!("CARGO_PKG_VERSION")))
+        .user_agent(concat!("Kinema Media/", env!("CARGO_PKG_VERSION")))
         .build()
         .map_err(to_string_err)?;
     let response = client

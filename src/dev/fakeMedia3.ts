@@ -6,7 +6,7 @@
  * a production build never contains.
  *
  * It answers the `plugin:media3|…` commands `Media3Plugin.kt` answers, and
- * says what happened as that plugin does — one `playback` event in Skrin's
+ * says what happened as that plugin does — one `playback` event in Kinema Media's
  * own terms, through a plugin listener — in the same order: `loaded` once
  * the file's tracks are known, `duration` each time the player is ready, `restarted` at
  * the first frame and after each seek, `position` four times a second while
@@ -34,17 +34,17 @@ export interface FakeMedia3State {
   commands: Array<{ name: string; args: Record<string, unknown> }>;
   /** The film's picture, as Media3 reports it once it has chosen the video. */
   video: { width: number; height: number; fps: number | null; hdr: boolean };
-  /** 0–100, and mute, as Skrin set them. */
+  /** 0–100, and mute, as Kinema Media set them. */
   volume: number;
   muted: boolean;
   /**
    * The sound goes to the receiver untouched once a file is open — set it to
-   * stand in for a box passing it through, where Skrin's volume does nothing.
+   * stand in for a box passing it through, where Kinema Media's volume does nothing.
    */
   untouched: boolean;
   /** Whether subtitles show; hiding them keeps the track chosen. */
   subtitlesShown: boolean;
-  /** The chosen audio and subtitle track, by Skrin's number; 0 for none. */
+  /** The chosen audio and subtitle track, by Kinema Media's number; 0 for none. */
   chosen: { audio: number; sub: number };
   /** Subtitle files handed over with the film or added since, as Media3 has them. */
   files: { uri: string; language: string | null; label: string | null; forced: boolean }[];
@@ -99,7 +99,7 @@ const state: FakeMedia3State = {
 
 /**
  * The tracks every fixture file has, as Media3Plugin.kt reports them — in
- * Skrin's terms, with Media3's two-letter languages and what Media3 can say
+ * Kinema Media's terms, with Media3's two-letter languages and what Media3 can say
  * of a format: E-AC-3 with Atmos, but not which DTS-HD.
  */
 const TRACKS = [
@@ -207,7 +207,7 @@ export function open(args: Record<string, unknown>): null {
   state.ended = false;
   started = false;
   // The last film's choices are not this one's: Media3 picks its own until
-  // Skrin puts the remembered languages on.
+  // Kinema Media puts the remembered languages on.
   state.chosen = { audio: 1, sub: 0 };
   state.files = ((args.subtitles as Record<string, unknown>[] | undefined) ?? []).map((f) => ({
     uri: String(f.uri),
@@ -386,7 +386,7 @@ export function screen() {
   return { ...mode(state.screen), gdi_name: 'display 0', hdr: 'unknown', modes: state.modes.map(mode) };
 }
 
-/** Skrin asked for a mode, so `restoreMode` has something to undo. */
+/** Kinema Media asked for a mode, so `restoreMode` has something to undo. */
 let asked = false;
 
 export function setMode(args: Record<string, unknown>) {

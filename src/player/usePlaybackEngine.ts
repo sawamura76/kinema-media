@@ -237,7 +237,7 @@ export function usePlaybackEngine({
         }
         if (cancelled) return;
 
-        // On a tiling desktop Skrin's window would be squeezed beside the
+        // On a tiling desktop Kinema Media's window would be squeezed beside the
         // film's, and the controls drawn from it with it (displaySwitch.ts).
         if (await isPictureFullscreen().catch(() => false)) await fitWindowForPlayer('float');
         if (cancelled) return;

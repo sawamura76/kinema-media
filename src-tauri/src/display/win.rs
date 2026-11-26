@@ -262,7 +262,7 @@ fn rect(r: RECT) -> (i32, i32, i32, i32) {
 }
 
 /// Hear Windows say a screen changed mode (`WM_DISPLAYCHANGE`, sent to every
-/// top-level window once the change is made), whoever changed it: Skrin's
+/// top-level window once the change is made), whoever changed it: Kinema Media's
 /// own switch and restore, HDR moving the mode by itself, or someone in
 /// Windows' settings. `then` runs on its own thread, since asking Tauri
 /// whether the window is full screen from inside the window's own message

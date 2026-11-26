@@ -27,7 +27,7 @@ export function noticeFor(why: string, filmBack: boolean): string {
   const cause = why === 'memory' ? 'used too much memory' : 'stopped unexpectedly';
   const film = filmBack ? ' Your film went on from where it was.' : '';
   return (
-    `The part of Skrin that draws this window ${cause}, so it was started again.${film} ` +
+    `The part of Kinema Media that draws this window ${cause}, so it was started again.${film} ` +
     'Your library is not affected. If this keeps happening, the computer may be short of memory.'
   );
 }

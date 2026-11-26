@@ -34,7 +34,7 @@ export type SoundLoss = 'device' | 'output';
 
 /**
  * Whether the sound went away between `before` and `now`. `watched` is mpv's
- * name for the device the sound was sent to, when Skrin knows it. A device
+ * name for the device the sound was sent to, when Kinema Media knows it. A device
  * that was never seen in the list does not count as gone: a name that does
  * not match mpv's spelling must never pause a film.
  */

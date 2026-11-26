@@ -5,7 +5,7 @@
  * Five checks, each a plain verdict with the reason and the fix in words, for
  * the top of the stats panel:
  *
- *  - **Picture size** — 1:1, scaled up by Skrin, or shrunk.
+ *  - **Picture size** — 1:1, scaled up by Kinema Media, or shrunk.
  *  - **HDR** — sent as mastered, tone mapped for an SDR screen, or lost to a
  *    Windows setting.
  *  - **Motion** — the film's frame rate divides evenly into the screen's, or
@@ -115,7 +115,7 @@ export function checkPicture(f: OutputFacts): Check | null {
     return {
       label,
       verdict: 'info',
-      value: `${film} video scaled up ×${scale.toFixed(2)} by Skrin`,
+      value: `${film} video scaled up ×${scale.toFixed(2)} by Kinema Media`,
       why: 'Classical resampling (spline36): no detail invented, none sharpened in.',
       fix:
         f.switches.resolution !== 'match'
@@ -173,8 +173,8 @@ export function checkHdr(f: OutputFacts): Check {
             // True on every system: no PC playback path sends a Dolby
             // Vision signal, mpv included.
             dv === 5
-              ? 'Skrin cannot send a Dolby Vision signal, and this profile has no HDR10 layer, so it is converted to HDR10 with its own metadata.'
-              : 'Skrin cannot send a Dolby Vision signal, so the video’s HDR10 layer is sent as mastered.',
+              ? 'Kinema Media cannot send a Dolby Vision signal, and this profile has no HDR10 layer, so it is converted to HDR10 with its own metadata.'
+              : 'Kinema Media cannot send a Dolby Vision signal, so the video’s HDR10 layer is sent as mastered.',
         };
       }
       return { label, verdict: 'native', value: 'HDR10 as mastered; the screen tone maps it' };
@@ -237,7 +237,7 @@ export function checkHdr(f: OutputFacts): Check {
       }
       if (f.screen?.screenHdr) {
         // An HDR TV on a desktop with no HDR at all (Cinnamon; GNOME on an
-        // old driver): nothing in Skrin or its settings can change that.
+        // old driver): nothing in Kinema Media or its settings can change that.
         return {
           label,
           verdict: 'info',
@@ -298,7 +298,7 @@ export function checkMotion(f: OutputFacts): Check | null {
       verdict: 'limited',
       value,
       why:
-        `${why} Skrin asked the screen for ${asked}, which fits the video, and ${owner} ` +
+        `${why} Kinema Media asked the screen for ${asked}, which fits the video, and ${owner} ` +
         (s.error ? 'refused it.' : `kept ${formatRate(s.got!.rate)} Hz.`) +
         ' Usually the connection has no room for that mode: every part of the chain — graphics card, cable, receiver, TV input — must carry it.',
       fix:
@@ -331,7 +331,7 @@ export function checkMotion(f: OutputFacts): Check | null {
       label,
       verdict: 'info',
       value,
-      why: `${why} This screen offers an even rate only at ${m.width}×${m.height}, and Skrin will not lower the resolution to get it.`,
+      why: `${why} This screen offers an even rate only at ${m.width}×${m.height}, and Kinema Media will not lower the resolution to get it.`,
     };
   }
   return {
@@ -399,7 +399,7 @@ export function checkColourDepth(f: OutputFacts): Check | null {
     fix:
       'In the graphics driver’s settings, set the output colour depth to 10 or 12 bpc. If only 8 is ' +
       'offered, set the output colour format to YCbCr 4:2:2 first: some drivers offer more than ' +
-      '8 bits at 4K only then. Skrin cannot change either: there is no way to do that which works ' +
+      '8 bits at 4K only then. Kinema Media cannot change either: there is no way to do that which works ' +
       'the same on every make of graphics card.',
   };
 }
@@ -452,7 +452,7 @@ export function checkSound(f: OutputFacts): Check | null {
     return {
       label,
       verdict: 'limited',
-      value: `decoded by Skrin${folded ? `, folded from ${a.inChannels} to ${a.outChannels} channels` : ''}`,
+      value: `decoded by Kinema Media${folded ? `, folded from ${a.inChannels} to ${a.outChannels} channels` : ''}`,
       why: `Windows does not let programs take exclusive control of ${a.device?.name ?? 'the device'}, which sending ${CODEC_NAME[stream!] ?? stream} untouched needs, so any Atmos or DTS:X height sound is lost.`,
       fix: 'Windows Settings → System → Sound → More sound settings → Playback → this device → Properties → Advanced → tick “Allow applications to take exclusive control of this device”, then start the film again.',
     };
@@ -461,7 +461,7 @@ export function checkSound(f: OutputFacts): Check | null {
     return {
       label,
       verdict: 'limited',
-      value: `decoded by Skrin${folded ? `, folded from ${a.inChannels} to ${a.outChannels} channels` : ''}`,
+      value: `decoded by Kinema Media${folded ? `, folded from ${a.inChannels} to ${a.outChannels} channels` : ''}`,
       why: `${a.device?.name ?? 'The device'} takes ${CODEC_NAME[stream!] ?? stream} untouched, but the sound goes through ${system}, so any Atmos or DTS:X height sound is lost.`,
       fix: 'Settings → Picture & sound → Sound → Send sound straight to the receiver.',
     };

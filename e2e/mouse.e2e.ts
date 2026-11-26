@@ -155,7 +155,7 @@ test('the player by mouse: controls, pause, full screen, seek bar, volume and Ba
   await expect(page.locator('.player')).toHaveCount(0);
 });
 
-test('Android: Skrin’s own folder browser by mouse', async ({ page }) => {
+test('Android: Kinema Media’s own folder browser by mouse', async ({ page }) => {
   await page.setViewportSize({ width: 960, height: 540 });
   await page.addInitScript(() => {
     localStorage.setItem('kinemaMockSystem', 'android');
@@ -263,7 +263,7 @@ test('right-click: Copy on marked text, a text field keeps its own menu, nothing
     w.__menus = [];
     w.__copied = [];
     w.__ctrlC = [];
-    // Last in line, so it sees what Skrin's own listener decided.
+    // Last in line, so it sees what Kinema Media's own listener decided.
     window.addEventListener('contextmenu', (e) => w.__menus.push(e.defaultPrevented));
     window.addEventListener('keydown', (e) => {
       if (e.ctrlKey && e.key === 'c') w.__ctrlC.push(e.defaultPrevented);
@@ -284,12 +284,12 @@ test('right-click: Copy on marked text, a text field keeps its own menu, nothing
   const title = page.locator('.detail h1');
   await expect(title).toBeVisible();
 
-  // Right-click on a button: no browser menu, and no Skrin one either.
+  // Right-click on a button: no browser menu, and no Kinema Media one either.
   await page.locator('.detail-actions button').first().click({ button: 'right' });
   await expect(page.locator('.text-menu')).toHaveCount(0);
   expect(await seen('__menus')).toEqual([true]);
 
-  // Marked text: Skrin's menu, whose Copy copies it; Escape closes it and is not Back.
+  // Marked text: Kinema Media's menu, whose Copy copies it; Escape closes it and is not Back.
   await title.dblclick({ position: { x: 5, y: 10 } });
   const marked = await page.evaluate(() => String(window.getSelection()).trim());
   expect(marked.length).toBeGreaterThan(0);

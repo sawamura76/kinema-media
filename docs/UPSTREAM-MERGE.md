@@ -11,3 +11,7 @@ Additional changes: 20px base handheld UI with 85–150% adjustment; saved scale
 The pre-merge source and EXE backup is local in Backups/2026-11-25-Before-Upstream-Merge. User data, artwork, keys and build output are not published.
 
 Latest-build hardware testing on the Ally is pending. Browser tests use mocks; native tests exercise database, credential, crop and playback helpers. They do not certify every GPU, TV, AVR or Android device.
+
+## 0.22.1 correction
+
+Restored Kinema Media names, original Kinema K icons and red accent throughout the app. TV/Handheld primary navigation tabs now activate on controller/keyboard highlight. Bumpers switch tabs and retain menu focus without a deferred callback overriding subsequent input. PC arrows still require Enter. Upload remains on hold while these corrections are tested.

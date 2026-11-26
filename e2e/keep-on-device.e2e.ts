@@ -88,7 +88,7 @@ test('Settings → Privacy: on says every service is off, the IMDb files have th
   await expect.poll(() => focused(page)).toBe('On');
   await press(page, 'Enter');
   await expect.poll(() => setting(page, 'keep_on_device')).toBe('1');
-  await expect(section).toContainText('Skrin looks nothing up online from now on');
+  await expect(section).toContainText('Kinema Media looks nothing up online from now on');
 
   // Every service row but IMDb's and the own server: off, saying why.
   const offRows = page.locator('.what-leaves-state', {

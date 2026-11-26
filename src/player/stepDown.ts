@@ -1,5 +1,5 @@
 /**
- * Stepping down on a weak graphics card — the only place Skrin lowers the
+ * Stepping down on a weak graphics card — the only place Kinema Media lowers the
  * picture, and only because the alternative is worse.
  *
  * mpvOptions.ts picks every rendering option for the picture, never for the
@@ -8,7 +8,7 @@
  * them is the one thing that cannot be told in advance, and a film that
  * drops frames is further from the creator's intent than a chroma scaler a
  * notch simpler. So when — and only when — frames are measurably being
- * dropped, Skrin gives up the cheapest part of the picture first, one rung
+ * dropped, Kinema Media gives up the cheapest part of the picture first, one rung
  * at a time, and says exactly which in the details panel (stats.ts).
  *
  * The ladder (`STEPS`) is ordered by what it costs the picture, least first.

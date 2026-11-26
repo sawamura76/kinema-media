@@ -5,7 +5,7 @@
  * reaches here (TitleDetail.tsx plays it through mpv). Then: where the system
  * opens videos in an app of its own (Android), the YouTube app gets the id;
  * where the page is served over http(s) (Windows' `http://tauri.localhost`),
- * YouTube's embedded player plays it in Skrin's overlay (TrailerOverlay.tsx);
+ * YouTube's embedded player plays it in Kinema Media's overlay (TrailerOverlay.tsx);
  * anywhere else, and whenever YouTube refuses, the browser gets the page, as
  * before. Linux serves the page from a scheme of its own (`tauri://`), which
  * YouTube's embed does not take as an address it may play for ("Error 153",
@@ -14,7 +14,7 @@
  * embed and passes messages through; if that page cannot start, the browser.
  *
  * The overlay talks to YouTube's player the way YouTube's IFrame API does, by
- * messages to its frame, without loading YouTube's script into Skrin's own
+ * messages to its frame, without loading YouTube's script into Kinema Media's own
  * page: nothing of YouTube's runs where it could reach the library. Ads are
  * YouTube's to show; nothing here blocks them (notes on this in CONTRIBUTING).
  */

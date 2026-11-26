@@ -27,7 +27,7 @@ describe('which screen the settings are for', () => {
     };
     expect(switchSettingsFor(p, 'tv')).toEqual({ refresh: true, resolution: 'auto', hdr: true });
     expect(switchSettingsFor(p, 'desk')).toEqual({ refresh: false, resolution: 'auto', hdr: true });
-    // A screen Skrin cannot name is left alone by "only these".
+    // A screen Kinema Media cannot name is left alone by "only these".
     expect(switchSettingsFor(p, null).refresh).toBe(false);
   });
 });

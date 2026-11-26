@@ -190,10 +190,10 @@ test("the startup scan's notice: Wikipedia's line goes once nothing waits", asyn
 });
 
 for (const [label, system, noPower, choices] of [
-  ['windows', 'windows', false, ['Close Skrin', 'Put the PC to sleep', 'Shut down the PC', 'Cancel']],
-  ['linux', 'linux', false, ['Close Skrin', 'Put the PC to sleep', 'Shut down the PC', 'Cancel']],
-  // A system whose logind will not let Skrin, or has none (power.rs).
-  ['linux without logind', 'linux', true, ['Close Skrin', 'Cancel']],
+  ['windows', 'windows', false, ['Close Kinema Media', 'Put the PC to sleep', 'Shut down the PC', 'Cancel']],
+  ['linux', 'linux', false, ['Close Kinema Media', 'Put the PC to sleep', 'Shut down the PC', 'Cancel']],
+  // A system whose logind will not let Kinema Media, or has none (power.rs).
+  ['linux without logind', 'linux', true, ['Close Kinema Media', 'Cancel']],
 ] as const) {
   test(`Leave offers what ${label} can do`, async ({ page }) => {
     if (noPower) await page.addInitScript(() => localStorage.setItem('kinemaMockNoPower', '1'));
@@ -201,7 +201,7 @@ for (const [label, system, noPower, choices] of [
     await tvMode(page);
     await press(page, 'Escape');
     await expect(page.locator('.leave-choice')).toHaveText([...choices]);
-    await expect.poll(() => focused(page)).toBe('Close Skrin');
+    await expect.poll(() => focused(page)).toBe('Close Kinema Media');
     await press(page, 'ArrowDown', choices.length - 1);
     await expect.poll(() => focused(page)).toBe('Cancel');
   });

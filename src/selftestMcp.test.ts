@@ -1,5 +1,5 @@
 /**
- * The Skrin MCP (scripts/mcp/) is never part of what users run. It reaches
+ * The Kinema Media MCP (scripts/mcp/) is never part of what users run. It reaches
  * the app through WebView2's debugging port, which only its launcher opens,
  * and through hooks the page puts up only under an interactive self-test
  * plan. These checks fail if any of that leaks into a normal start: a
@@ -24,7 +24,7 @@ const CARGO = import.meta.glob('/src-tauri/Cargo.toml', {
   eager: true,
 }) as Record<string, string>;
 
-describe('the Skrin MCP stays out of normal starts', () => {
+describe('the Kinema Media MCP stays out of normal starts', () => {
   it('opens no debugging port and no devtools from the app itself', () => {
     expect(Object.keys(CONFIGS).length).toBeGreaterThan(0);
     expect(Object.keys(APP_CODE).length).toBeGreaterThan(100);

@@ -13,7 +13,7 @@
 //!    Where the clip's CLPI is still beside it, the languages are read here.
 //!  * An encrypted disc (AACS, BD+) does not open, and the reason is only in
 //!    mpv's log: `[e][bd] AACS encryption detected but cannot find libaacs.`
-//!    Skrin cannot decrypt a disc and does not try; it says what mpv said.
+//!    Kinema Media cannot decrypt a disc and does not try; it says what mpv said.
 //!
 //! Desktop only: Android's player has no Blu-ray support, so there a disc
 //! folder stays out of the library as before (`scanner.rs`).
@@ -249,7 +249,7 @@ fn mpv_log(app: &tauri::AppHandle) -> Result<PathBuf, String> {
 }
 
 /// Asked by the player as it opens a file: a few stat calls, no reading of
-/// the video. Files on a share Skrin opens itself (`smb://`) are never discs:
+/// the video. Files on a share Kinema Media opens itself (`smb://`) are never discs:
 /// mpv's Blu-ray support reads only what the system can open.
 ///
 /// Off the window's thread, and given up on after `files::LOOK_WAIT`: on a

@@ -2,7 +2,7 @@
  * Rotten Tomatoes scores, through the user's own OMDb key.
  *
  * Only with a key of their own: OMDb's free keys allow 1,000 lookups a day,
- * and a key built into every copy of Skrin would run out within hours for
+ * and a key built into every copy of Kinema Media would run out within hours for
  * everyone (HISTORY.md, "Picture and sound badges"). The lookups are the
  * user's to spend, so they are spent sparingly:
  *

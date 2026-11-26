@@ -1,4 +1,4 @@
-//! Whether a newer Skrin has been released, and the one-press update.
+//! Whether a newer Kinema Media has been released, and the one-press update.
 //!
 //! The check asks GitHub for the latest release, once per launch: a failure of
 //! any kind — offline, rate limited, a response that no longer parses — is
@@ -6,13 +6,13 @@
 //! nothing breaks. Settings can switch it off; the frontend does not call this
 //! then.
 //!
-//! The update itself happens only when the user presses "Update to Skrin X"
+//! The update itself happens only when the user presses "Update to Kinema Media X"
 //! (never silently, never on its own: "automatic updates stay out" holds). It
 //! downloads the same kind of file this copy was installed from, checks it
 //! against the release's own `.sha256`, and hands it to the system's own
 //! installer, which asks the user before anything changes:
 //! - Windows, installed with the setup (an `uninstall.exe` beside the program):
-//!   the setup is started and Skrin closes so it can be replaced.
+//!   the setup is started and Kinema Media closes so it can be replaced.
 //! - Linux, a .deb or .rpm the system's package database says owns this
 //!   program, with `pkexec` and `apt-get` / `dnf` present: the package goes to
 //!   `pkexec apt-get|dnf install`, which asks for the password.
@@ -215,7 +215,7 @@ fn client() -> Option<tauri_plugin_http::reqwest::Client> {
         .ok()?
         .connect_timeout(TIMEOUT)
         // GitHub refuses API requests without one.
-        .user_agent(concat!("Skrin/", env!("CARGO_PKG_VERSION")))
+        .user_agent(concat!("Kinema Media/", env!("CARGO_PKG_VERSION")))
         .build()
         .ok()
 }
@@ -326,7 +326,7 @@ async fn download(
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Handed {
-    /// "closing" (Windows: the setup is open, Skrin closes), "installed"
+    /// "closing" (Windows: the setup is open, Kinema Media closes), "installed"
     /// (Linux: restart to use it), "opened" (Android: its installer is open),
     /// "permission" (Android: allow installing apps first, then press again).
     state: &'static str,
@@ -341,8 +341,8 @@ pub async fn install_update(app: tauri::AppHandle) -> Result<Handed, String> {
         .lock()
         .unwrap_or_else(|e| e.into_inner())
         .clone()
-        .ok_or("No newer version was found this time Skrin started.")?;
-    let kind = install_kind().ok_or("This copy of Skrin cannot update itself; use the download page.")?;
+        .ok_or("No newer version was found this time Kinema Media started.")?;
+    let kind = install_kind().ok_or("This copy of Kinema Media cannot update itself; use the download page.")?;
     let testing = test_feed().is_some();
     let (file, sum) = files_for(&release, kind, testing).ok_or("The release has no file for this copy.")?;
     let client = client().ok_or("Could not start a download.")?;
@@ -384,7 +384,7 @@ async fn hand_over(app: &tauri::AppHandle, _kind: &str, path: &std::path::Path) 
         .spawn()
         .map_err(|e| format!("Could not start the installer: {e}"))?;
     // Closed a moment later, so the page can say why first; the setup then
-    // finds no Skrin running and replaces it, keeping the library.
+    // finds no Kinema Media running and replaces it, keeping the library.
     let app = app.clone();
     std::thread::spawn(move || {
         std::thread::sleep(std::time::Duration::from_millis(1500));
@@ -437,10 +437,10 @@ async fn hand_over(_app: &tauri::AppHandle, _kind: &str, path: &std::path::Path)
 
 #[cfg(not(any(windows, target_os = "linux", target_os = "android")))]
 async fn hand_over(_app: &tauri::AppHandle, _kind: &str, _path: &std::path::Path) -> Result<Handed, String> {
-    Err("This system cannot update Skrin itself.".into())
+    Err("This system cannot update Kinema Media itself.".into())
 }
 
-/// Starts the newly installed Skrin (Linux, after "installed").
+/// Starts the newly installed Kinema Media (Linux, after "installed").
 #[tauri::command]
 pub fn restart_after_update(app: tauri::AppHandle) {
     crate::log!("updates: restarting into the new version");
@@ -511,7 +511,7 @@ mod tests {
 
     #[test]
     fn downloads_only_from_github_unless_testing() {
-        let gh = "https://github.com/basswaves/skrin/releases/download/v1.0.0/kinema-media-android.apk";
+        let gh = "https://github.com/sawamura76/kinema-media/releases/download/v1.0.0/kinema-media-android.apk";
         assert!(allowed_download(gh, false));
         assert!(!allowed_download("http://github.com/x", false));
         assert!(!allowed_download("https://github.com.evil.example/x", false));
@@ -532,7 +532,7 @@ mod tests {
     fn needs_both_the_file_and_its_checksum() {
         let asset = |n: &str| Asset {
             name: n.into(),
-            browser_download_url: format!("https://github.com/basswaves/skrin/releases/download/v9.0.0/{n}"),
+            browser_download_url: format!("https://github.com/sawamura76/kinema-media/releases/download/v9.0.0/{n}"),
         };
         let mut r = GithubRelease {
             tag_name: "v9.0.0".into(),

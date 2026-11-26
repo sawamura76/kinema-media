@@ -14,12 +14,12 @@
 //! - **An account is optional.** Without one, 5 downloads a day per network;
 //!   signed in, 20. A sign-in lasts about a day, so the password is kept to
 //!   sign in again: encrypted to the Windows user with DPAPI on Windows, and in
-//!   Skrin's own settings elsewhere, as Kodi and Jellyfin keep theirs.
-//! - **Subtitles are saved in Skrin's app data**, never beside the video:
+//!   Kinema Media's own settings elsewhere, as Kodi and Jellyfin keep theirs.
+//! - **Subtitles are saved in Kinema Media's app data**, never beside the video:
 //!   media folders are read, never written. Each is fetched once per file, so a
 //!   rewatch costs no download.
 //!
-//! The app key (`Api-Key`) is Skrin's own, built into releases from a
+//! The app key (`Api-Key`) is Kinema Media's own, built into releases from a
 //! repository secret like the TMDB key.
 
 use crate::library::Db;
@@ -57,7 +57,7 @@ const TIMEOUT: Duration = Duration::from_secs(20);
 
 fn user_agent() -> String {
     // The form OpenSubtitles asks for: an app name and version.
-    format!("Skrin v{}", env!("CARGO_PKG_VERSION"))
+    format!("Kinema Media v{}", env!("CARGO_PKG_VERSION"))
 }
 
 fn api_key(conn: &Connection) -> Option<String> {
@@ -78,9 +78,9 @@ fn clear(conn: &Connection, key: &str) -> Result<(), String> {
 
 // ---- the password -------------------------------------------------------------
 
-/// Kept so Skrin can sign in again when the day's sign-in runs out. The
+/// Kept so Kinema Media can sign in again when the day's sign-in runs out. The
 /// settings code locks it with the rest of the sign-ins and keys
-/// (`secrets.rs`); the `plain:` marker is how an older Skrin wrote it and
+/// (`secrets.rs`); the `plain:` marker is how an older Kinema Media wrote it and
 /// still reads back.
 fn protect(password: &str) -> String {
     format!("plain:{password}")
@@ -116,7 +116,7 @@ pub fn movie_hash(path: &Path) -> Option<String> {
 
 // ---- asking ---------------------------------------------------------------------
 
-/// A language as OpenSubtitles spells it. Skrin's codes are two letters;
+/// A language as OpenSubtitles spells it. Kinema Media's codes are two letters;
 /// OpenSubtitles splits Portuguese and Chinese, so both halves are asked for.
 fn os_languages(code: &str) -> String {
     match code.trim().to_ascii_lowercase().as_str() {
@@ -356,7 +356,7 @@ async fn session(app: &tauri::AppHandle) -> Result<Session, String> {
     let (key, base, token, token_at, username, password) = {
         let db = app.state::<Db>();
         let conn = db.0.lock().map_err(to_string_err)?;
-        let key = api_key(&conn).ok_or("This copy of Skrin has no OpenSubtitles app key.")?;
+        let key = api_key(&conn).ok_or("This copy of Kinema Media has no OpenSubtitles app key.")?;
         (
             key,
             base(&conn),
@@ -518,7 +518,7 @@ pub async fn opensubtitles_sign_in(
     let key = {
         let db = app.state::<Db>();
         let conn = db.0.lock().map_err(to_string_err)?;
-        api_key(&conn).ok_or("This copy of Skrin has no OpenSubtitles app key.")?
+        api_key(&conn).ok_or("This copy of Kinema Media has no OpenSubtitles app key.")?
     };
     let username = username.trim().to_string();
     log_in(&app, &key, &username, &password).await?;
@@ -590,7 +590,7 @@ async fn search(
     }
 }
 
-/// Download one subtitle into Skrin's own folder, and remember it for this
+/// Download one subtitle into Kinema Media's own folder, and remember it for this
 /// file. Returns where it is.
 async fn download(
     app: &tauri::AppHandle,
@@ -857,7 +857,7 @@ mod tests {
         store(&conn, PASSWORD_KEY, &protect("correct horse")).unwrap();
         let kept = setting(&conn, PASSWORD_KEY).unwrap();
         assert_eq!(unprotect(&kept).as_deref(), Some("correct horse"));
-        // An older Skrin's plain value still reads back.
+        // An older Kinema Media's plain value still reads back.
         conn.execute("UPDATE settings SET value = 'plain:old secret'", []).unwrap();
         let old = setting(&conn, PASSWORD_KEY).unwrap();
         assert_eq!(unprotect(&old).as_deref(), Some("old secret"));

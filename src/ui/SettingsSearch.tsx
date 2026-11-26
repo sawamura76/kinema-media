@@ -6,7 +6,7 @@
  *
  * Mouse, keyboard and remote alike (owner: all three equal): typing into the
  * box shows the matches at once; in the TV layout, OK on the box brings
- * Skrin's own letters up above them, as Search does, and on a system with
+ * Kinema Media's own letters up above them, as Search does, and on a system with
  * its own keyboard (Android) OK opens that instead.
  */
 import { focusTo } from './focus';
@@ -59,7 +59,7 @@ export function SearchResults({
 }: {
   query: string;
   onChange: (query: string) => void;
-  /** The TV layout: Skrin's own letters above the matches. */
+  /** The TV layout: Kinema Media's own letters above the matches. */
   letters: boolean;
   onPick: (entry: SettingEntry) => void;
 }) {

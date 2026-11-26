@@ -1,5 +1,5 @@
-//! The proxy setting (Settings → Privacy, "Send Skrin's lookups through a
-//! proxy"): one place every Rust HTTP client of Skrin starts from.
+//! The proxy setting (Settings → Privacy, "Send Kinema Media's lookups through a
+//! proxy"): one place every Rust HTTP client of Kinema Media starts from.
 //!
 //! Off by default. When on, `builder()` sends the client through the address
 //! the user gave (HTTP(S) or SOCKS5 — a VPN's or Tor's local proxy). It never
@@ -36,7 +36,7 @@ pub const OFFLINE_KEY: &str = "keep_on_device";
 /// In the mode, IMDb's ratings file: "0" = off. On by default.
 pub const IMDB_RATINGS_KEY: &str = "imdb_ratings_allowed";
 
-/// Every service Skrin can talk to, as `whatLeaves.json` names them.
+/// Every service Kinema Media can talk to, as `whatLeaves.json` names them.
 /// Wikidata and OMDb are asked by the page only (`src/net/offline.ts` gates
 /// them there); they are named here so the list is whole.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -63,7 +63,7 @@ pub enum Service {
 
 /// What a refused request says (and what `userError` shows).
 pub const KEPT_HERE: &str =
-    "Keep everything on this computer is on, so Skrin does not ask the internet for this.";
+    "Keep everything on this computer is on, so Kinema Media does not ask the internet for this.";
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 struct Privacy {
@@ -90,7 +90,7 @@ pub fn offline() -> bool {
     privacy().offline
 }
 
-/// The gate: may Skrin talk to `service` now? In the mode, only IMDb's two
+/// The gate: may Kinema Media talk to `service` now? In the mode, only IMDb's two
 /// files (each by its own setting) and the user's own server. Outside it,
 /// everything as before, but IMDb's list of titles, which is only for the
 /// mode.
@@ -339,7 +339,7 @@ pub async fn fetch_remote_image(url: String) -> Result<tauri::ipc::Response, Str
     };
     let client = client(service)?
         .timeout(std::time::Duration::from_secs(30))
-        .user_agent(concat!("Skrin/", env!("CARGO_PKG_VERSION")))
+        .user_agent(concat!("Kinema Media/", env!("CARGO_PKG_VERSION")))
         .build()
         .map_err(|e| e.to_string())?;
     let response = client.get(parsed).send().await.map_err(|e| e.to_string())?;

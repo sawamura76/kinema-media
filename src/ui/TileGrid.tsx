@@ -1,6 +1,6 @@
 /**
  * Tiles that wrap (playlists, Videos folders, a folder's videos) as a grid on
- * Skrin's own engine (focusModel.ts): moved by index, so a window narrower or
+ * Kinema Media's own engine (focusModel.ts): moved by index, so a window narrower or
  * a tile wider changes how many fit across and nothing else. The count across
  * is read from the tiles when the box is resized, never per press.
  */

@@ -211,7 +211,7 @@ function countFlags(s: ScreenResult): string {
 function markdown(primary: string, byEngine: Record<string, SystemResult[]>, differences: Record<string, string[]>): string {
   const systems = byEngine[primary] ?? [];
   const out: string[] = [];
-  out.push('# Skrin navigation map (generated)');
+  out.push('# Kinema Media navigation map (generated)');
   out.push('');
   out.push(
     `Written by \`npm run test:nav\` (e2e/navmap.nav.ts). Engine shown: **${primary === 'edge' ? 'Microsoft Edge (the engine Windows and Android use)' : 'WebKit (the engine Linux uses)'}**. ` +

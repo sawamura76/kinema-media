@@ -2,7 +2,7 @@
  * Subtitle timing, per file (PLAN phase 2, AFTER-0.10.0 "Subtitle timing").
  *
  * A subtitle made for another release of the film — another cut, another
- * intro — comes early or late by the same amount all through. Nothing Skrin
+ * intro — comes early or late by the same amount all through. Nothing Kinema Media
  * reads says by how much, so it is asked: earlier or later in steps of 0.1 s
  * and 0.5 s, from the player (keys, remote, mouse), and kept **per file**:
  * the next film's subtitles are timed differently. Moved by mpv's

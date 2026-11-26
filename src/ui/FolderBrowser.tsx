@@ -1,5 +1,5 @@
 /**
- * Skrin's own folder browser, where the system has no folder picker
+ * Kinema Media's own folder browser, where the system has no folder picker
  * (`library/folders.ts`): on Android, a USB drive or the device's own storage,
  * then the folders inside, chosen with a remote, a mouse or a keyboard.
  *
@@ -8,7 +8,7 @@
  * level, and from the drives closes without choosing, as Cancel does. Each folder says how many videos sit directly in
  * it, which is what tells a library folder from the rest at a glance.
  *
- * Where Skrin opens network shares itself (capability `network_shares`),
+ * Where Kinema Media opens network shares itself (capability `network_shares`),
  * Network drives, after the drives, leads to the servers and their shares
  * (`NetworkPlaces.tsx`); a share then opens folder by folder as a drive does,
  * and Back from its top goes back to the server's shares.
@@ -314,11 +314,11 @@ export default function FolderBrowser({ request }: { request: FolderRequest }) {
           {refused && (
             <div className="folder-note">
               <p>
-                Skrin needs Android’s permission to read the films on your drives. It only reads
+                Kinema Media needs Android’s permission to read the films on your drives. It only reads
                 them: nothing is moved, renamed or written to.
               </p>
               <p className="muted">
-                If Android no longer asks, allow it in Android’s settings: Apps → Skrin →
+                If Android no longer asks, allow it in Android’s settings: Apps → Kinema Media →
                 Permissions.
               </p>
               <FocusButton focusKey={RETRY_KEY} className="btn-primary" onSelect={() => void ask()}>
@@ -387,8 +387,8 @@ export default function FolderBrowser({ request }: { request: FolderRequest }) {
                     need one more permission, All files access. Other films play without it.
                   </p>
                   <p className="muted">
-                    Android opens its own settings, sometimes a list of apps: switch Skrin on
-                    there, then press Back. Android calls it managing all files; Skrin only reads
+                    Android opens its own settings, sometimes a list of apps: switch Kinema Media on
+                    there, then press Back. Android calls it managing all files; Kinema Media only reads
                     them.
                   </p>
                   <FocusButton
@@ -401,7 +401,7 @@ export default function FolderBrowser({ request }: { request: FolderRequest }) {
               )}
               {access?.allFiles === 'unavailable' && (
                 <p className="muted folder-note">
-                  This device cannot let Skrin read the subtitle files beside your films, only
+                  This device cannot let Kinema Media read the subtitle files beside your films, only
                   the films themselves.
                 </p>
               )}

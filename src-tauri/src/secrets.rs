@@ -1,9 +1,9 @@
 //! Sign-ins and keys, sealed at rest (A6-02).
 //!
 //! The settings in `db::SECRET_SETTINGS` are kept locked: by DPAPI to the
-//! Windows user, or by Android's key store. Skrin's settings code
+//! Windows user, or by Android's key store. Kinema Media's settings code
 //! (`settings::store`, `settings::setting`) does it, so every reader and writer
-//! gets the plain value and no caller handles a lock. A value an older Skrin
+//! gets the plain value and no caller handles a lock. A value an older Kinema Media
 //! kept as plain text is locked the first time it is read. Where nothing can
 //! lock it (Linux, or a key store that does not answer) it stays as it is and
 //! one line says so: a sign-in is never lost for the sake of locking it.

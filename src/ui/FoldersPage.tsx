@@ -1,10 +1,10 @@
 /**
- * Library → Folders: browse anything Skrin can read and play any video in
+ * Library → Folders: browse anything Kinema Media can read and play any video in
  * it (LOCAL-MEDIA.md phase 4).
  *
  * It starts with the places: the drives (on a desktop from places.rs, on
  * Android from Android's own list, as its folder browser has them), the
- * library's own folders, and the network — on Android Skrin's own network
+ * library's own folders, and the network — on Android Kinema Media's own network
  * drives (`NetworkPlaces.tsx`); on a desktop a typed address (`\\nas\films`),
  * which the system opens with its own sign-in, plus the shares a desktop has
  * mounted, which are among the drives. OK goes into a folder and plays a
@@ -108,7 +108,7 @@ export default function FoldersPage({
 }) {
   const { ref, focusKey } = useNavGroup({ kind: 'column', remember: true }, { focusKey: PAGE_KEY });
   const caps = useCapabilities();
-  /** Android's way: its own drives and permission, and Skrin's network drives. */
+  /** Android's way: its own drives and permission, and Kinema Media's network drives. */
   const android = caps?.folder_picker === false;
   const networkShares = caps?.network_shares ?? false;
 
@@ -397,7 +397,7 @@ export default function FoldersPage({
         <Landing key={level} focusKey={landing} />
         <h2 className="grid-heading">Folders</h2>
         <p className="folder-where">
-          {where ?? 'Any folder Skrin can read: play a video from it, or add it to the library.'}
+          {where ?? 'Any folder Kinema Media can read: play a video from it, or add it to the library.'}
         </p>
 
         {spot && (
@@ -453,7 +453,7 @@ export default function FoldersPage({
             {refused && (
               <div className="folder-note">
                 <p>
-                  Skrin needs Android’s permission to read the videos on your drives. It only
+                  Kinema Media needs Android’s permission to read the videos on your drives. It only
                   reads them: nothing is moved, renamed or written to.
                 </p>
                 <FocusButton

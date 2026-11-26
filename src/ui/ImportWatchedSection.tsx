@@ -123,7 +123,7 @@ export default function ImportWatchedSection() {
         choices={SERVERS}
         value={server}
         onChange={setServer}
-        note="Your own server, on your network or wherever you run it. Skrin reads your watched films and episodes from it, with the key below, once."
+        note="Your own server, on your network or wherever you run it. Kinema Media reads your watched films and episodes from it, with the key below, once."
         hint={KEY_HINT[server]}
       />
       <label className="settings-field">

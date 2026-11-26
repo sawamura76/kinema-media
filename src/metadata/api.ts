@@ -65,7 +65,7 @@ export const openLogFolder = () => invoke<void>('open_log_folder');
  */
 export async function shareLog(): Promise<void> {
   const { dir } = await logPaths();
-  await invoke<void>('plugin:storage|share', { path: `${dir}/app.log`, title: 'Skrin log' });
+  await invoke<void>('plugin:storage|share', { path: `${dir}/app.log`, title: 'Kinema Media log' });
 }
 
 /** Show the folder of automatic safety copies of the library in Explorer. */
@@ -82,7 +82,7 @@ export interface BackupCopy {
 
 export const listBackups = () => invoke<BackupCopy[]>('list_backups');
 
-/** Close Skrin and put this copy back as it starts again. */
+/** Close Kinema Media and put this copy back as it starts again. */
 export const restoreBackup = (name: string) => invoke<void>('restore_backup', { name });
 
 

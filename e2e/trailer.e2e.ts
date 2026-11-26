@@ -1,5 +1,5 @@
 /**
- * A YouTube trailer in Skrin (TrailerOverlay.tsx, trailer.ts): YouTube's
+ * A YouTube trailer in Kinema Media (TrailerOverlay.tsx, trailer.ts): YouTube's
  * embed in the overlay, driven by keys alone — OK pauses, the arrows seek,
  * Down reaches the buttons, Back closes and the ring goes home — and any error
  * YouTube reports sends the trailer to the browser instead.

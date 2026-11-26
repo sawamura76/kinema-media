@@ -88,7 +88,7 @@ function LevelRows({ onError }: { onError: (message: string) => void }) {
           void setSetting(LEVELLING_KEY, v).catch((e) => onError(userError(e)));
         }}
         note="Brings quiet scenes up and loud ones down, so the whisper and the explosion are closer — for late at night, or speech that gets lost. Each step evens out more."
-        hint="Only on sound Skrin decodes: a track sent to the receiver untouched is never changed. The player's Audio & subtitles panel changes it for one title."
+        hint="Only on sound Kinema Media decodes: a track sent to the receiver untouched is never changed. The player's Audio & subtitles panel changes it for one title."
       />
       <ChoiceRow
         label="Dialogue lift"
@@ -248,7 +248,7 @@ export default function SoundSection({
         hint={`${
           onWindows
             ? "While a video plays straight to the receiver, other sounds from this PC are silent, and Windows' speaker and spatial sound settings make no difference."
-            : `While a video plays straight to the receiver, other sounds from this PC are silent, and ${system}'s own volume makes no difference: use Skrin's.`
+            : `While a video plays straight to the receiver, other sounds from this PC are silent, and ${system}'s own volume makes no difference: use Kinema Media's.`
         } Every device that can means one that takes some of a film's formats untouched; speakers that take none keep working as usual. Only these is for a PC that is not always at the same receiver.`}
       />
 
@@ -282,8 +282,8 @@ export default function SoundSection({
         onChange={(v) => save(AUDIO_DEVICE_KEY, v, { ...settings, deviceId: v || null })}
         note={
           onWindows
-            ? 'Windows default follows whatever Windows is set to. If a device chosen here is unplugged, Skrin uses the Windows default until it is back.'
-            : `${system} default plays wherever ${system} plays; sent straight to the receiver, it is the one device that takes surround formats. If a device chosen here is unplugged, Skrin uses the ${system} default until it is back.`
+            ? 'Windows default follows whatever Windows is set to. If a device chosen here is unplugged, Kinema Media uses the Windows default until it is back.'
+            : `${system} default plays wherever ${system} plays; sent straight to the receiver, it is the one device that takes surround formats. If a device chosen here is unplugged, Kinema Media uses the ${system} default until it is back.`
         }
       />
 

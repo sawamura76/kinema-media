@@ -443,7 +443,7 @@ describe('outputCheck sound: Windows blocks exclusive control', () => {
       ...base,
       audio: { ...base.audio!, direct: true, outFormat: 'floatp', device: blockedReceiver },
     });
-    expect(c).toMatchObject({ verdict: 'limited', value: 'decoded by Skrin' });
+    expect(c).toMatchObject({ verdict: 'limited', value: 'decoded by Kinema Media' });
     expect(c?.why).toMatch(/does not let programs take exclusive control of AV receiver/);
     expect(c?.why).not.toMatch(/does not take/);
     expect(c?.fix).toMatch(/More sound settings → Playback .* Advanced/);

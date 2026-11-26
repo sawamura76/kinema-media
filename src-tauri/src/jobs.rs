@@ -23,7 +23,7 @@ pub async fn off_main<T: Send + 'static>(
         // A panic is already in app.log with its backtrace (applog.rs);
         // "task 113 panicked with message …" means nothing to a person.
         crate::log!("work off the main thread failed: {e}");
-        "Something went wrong inside Skrin. What happened is in its log (Settings → Advanced → Developer tools → Open log folder)."
+        "Something went wrong inside Kinema Media. What happened is in its log (Settings → Advanced → Developer tools → Open log folder)."
             .to_string()
     })?
 }
@@ -75,21 +75,21 @@ pub fn set_playing(on: bool) {
     PLAYING.store(on, Ordering::Relaxed);
 }
 
-/// Skrin is behind another app (Android, where the page hears of it from the
+/// Kinema Media is behind another app (Android, where the page hears of it from the
 /// plugin, Media3Plugin.kt). Never set on a desktop.
 static BEHIND: AtomicBool = AtomicBool::new(false);
 
-/// Whether Skrin is behind another app (see [`set_behind`]).
+/// Whether Kinema Media is behind another app (see [`set_behind`]).
 pub fn behind() -> bool {
     BEHIND.load(Ordering::Relaxed)
 }
 
-/// Tell the background work whether Skrin has left the screen. Also the Tauri
+/// Tell the background work whether Kinema Media has left the screen. Also the Tauri
 /// command `set_behind`, with one argument, `on`.
 ///
 /// Why: measured on a 2-core box, a scan went on behind the home screen with
 /// the processor and the line, and nothing on screen said why the box was slow.
-/// So the library only advances while Skrin is in front. Nothing is lost: the
+/// So the library only advances while Kinema Media is in front. Nothing is lost: the
 /// loops wait between units of work, and each picks up what is not stored yet.
 #[tauri::command]
 pub fn set_behind(on: bool) {
@@ -101,7 +101,7 @@ pub fn set_behind(on: bool) {
     }
 }
 
-/// Block this thread while a film plays or Skrin is behind another app. Call
+/// Block this thread while a film plays or Kinema Media is behind another app. Call
 /// between two units of work, and **never while holding the database lock** —
 /// the page's own commands need it.
 pub fn wait_for_turn() {
@@ -117,7 +117,7 @@ pub async fn wait_for_turn_async() {
     }
 }
 
-/// Block this thread while Skrin is behind another app, and not for a film.
+/// Block this thread while Kinema Media is behind another app, and not for a film.
 pub fn wait_while_behind() {
     while behind() {
         std::thread::sleep(PLAYING_POLL);
@@ -137,7 +137,7 @@ pub fn wait_while_behind() {
 /// not open a connection to a share, and never in the walk of one.
 ///
 /// **Linux and Android: priority can be lowered but, for an ordinary program,
-/// not raised again** (the kernel refuses without a privilege Skrin does not
+/// not raised again** (the kernel refuses without a privilege Kinema Media does not
 /// have), so dropping this cannot undo it there. Use it on a thread that ends
 /// soon after — [`off_main_background`] makes one — never on one of the shared
 /// pool's, which would stay low for whatever runs on it next. Windows gives it
@@ -229,7 +229,7 @@ pub async fn off_main_background<T: Send + 'static>(
     });
     let failed = |what: String| {
         crate::log!("background work failed: {what}");
-        "Something went wrong inside Skrin. What happened is in its log (Settings → Advanced → Developer tools → Open log folder)."
+        "Something went wrong inside Kinema Media. What happened is in its log (Settings → Advanced → Developer tools → Open log folder)."
             .to_string()
     };
     if let Err(e) = started {
@@ -465,7 +465,7 @@ mod tests {
         assert!(!super::playing());
     }
 
-    /// Behind another app: both ways of waiting hold, and let go when Skrin is back.
+    /// Behind another app: both ways of waiting hold, and let go when Kinema Media is back.
     #[test]
     fn work_waits_while_kinema_is_behind_and_goes_on_after() {
         super::set_behind(true);

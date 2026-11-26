@@ -68,7 +68,7 @@ mod linux {
     use zbus::blocking::{Connection, Proxy};
     use zbus::fdo::{RequestNameFlags, RequestNameReply};
 
-    /// What a holder of the name answers, as the protocol asks of it. Skrin
+    /// What a holder of the name answers, as the protocol asks of it. Kinema Media
     /// says no to anyone else while a film plays: the film is what the user
     /// asked the card for.
     struct Reservation {
@@ -86,7 +86,7 @@ mod linux {
         }
         #[zbus(property)]
         fn application_name(&self) -> String {
-            "Skrin".into()
+            "Kinema Media".into()
         }
         #[zbus(property)]
         fn application_device_name(&self) -> String {
@@ -229,7 +229,7 @@ mod tests {
         let (held, said) = linux::reserve_card("alsa/hdmi:CARD=Test,DEV=0", "Test", 7).unwrap();
         println!("reserved: {said}");
         let ours = owner().unwrap();
-        assert_ne!(ours, before, "the name moved to Skrin");
+        assert_ne!(ours, before, "the name moved to Kinema Media");
 
         drop(held);
         // The holder takes it back when it is free again.

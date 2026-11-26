@@ -1,7 +1,7 @@
-//! The page that lets YouTube's trailer play inside Skrin on Linux.
+//! The page that lets YouTube's trailer play inside Kinema Media on Linux.
 //!
 //! YouTube's embedded player plays only for a page with a web address it can
-//! read as a Referer. Skrin's own page on Linux comes from a scheme of its own
+//! read as a Referer. Kinema Media's own page on Linux comes from a scheme of its own
 //! (`tauri://localhost`), so the embed answered "Error 153". This serves one
 //! small page on this computer only — `127.0.0.1`, an address no other machine
 //! can reach — that holds nothing but YouTube's official embed, and the trailer

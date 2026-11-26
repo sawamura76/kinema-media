@@ -1,6 +1,6 @@
 /**
  * The setup page for the two extras nobody would otherwise know to add
- * (SetupPages.tsx): ffmpeg, which Skrin uses but does not include, and an
+ * (SetupPages.tsx): ffmpeg, which Kinema Media uses but does not include, and an
  * OMDb key of one's own, for Rotten Tomatoes scores.
  *
  * What it says about adding ffmpeg later is what the code does: without it,
@@ -12,7 +12,7 @@
  * On Windows (`installs_ffmpeg`) the page offers to install it with one press,
  * through winget (FfmpegInstall.tsx); elsewhere it links to ffmpeg's page.
  *
- * Where Skrin cannot run programs (Android, `runs_programs`), ffmpeg is not
+ * Where Kinema Media cannot run programs (Android, `runs_programs`), ffmpeg is not
  * offered at all: nobody could install it there, and the page is the OMDb
  * key alone.
  *
@@ -112,8 +112,8 @@ export default function ExtrasSetup() {
     <>
       <p className="muted">
         {programs
-          ? 'Two things Skrin can use but cannot bring along itself. Both are free, both can wait, and both are in Settings at any time.'
-          : 'One thing Skrin can use but cannot bring along itself. It is free, it can wait, and it is in Settings at any time.'}
+          ? 'Two things Kinema Media can use but cannot bring along itself. Both are free, both can wait, and both are in Settings at any time.'
+          : 'One thing Kinema Media can use but cannot bring along itself. It is free, it can wait, and it is in Settings at any time.'}
       </p>
       {error && <div className="settings-error">{error}</div>}
 
@@ -121,7 +121,7 @@ export default function ExtrasSetup() {
       <div className="choice-row">
         <div className="choice-label">Intros, credits and picture details (ffmpeg)</div>
         <p className="choice-note">
-          A free program for reading video and audio. Skrin uses it to find intros and end credits
+          A free program for reading video and audio. Kinema Media uses it to find intros and end credits
           by listening to the episodes, and to read each file&rsquo;s picture and sound for a
           title&rsquo;s page. Without it those are skipped, and everything else works.
         </p>
@@ -129,15 +129,15 @@ export default function ExtrasSetup() {
           <p className={ffmpeg.available ? 'settings-ok' : 'settings-warn'}>
             {ffmpeg.available
               ? ffmpegFoundWords(ffmpeg.resolved)
-              : 'ffmpeg is not installed, or not where Skrin looks.'}
+              : 'ffmpeg is not installed, or not where Kinema Media looks.'}
           </p>
         )}
         {ffmpeg && !ffmpeg.available && (
           <>
             <p className="settings-hint">
               {can?.installs_ffmpeg
-                ? `${FFMPEG_INSTALL_WORDS} Or install it yourself, now or later: the next scan, which runs every time Skrin starts, then does everything that was skipped.`
-                : 'Skrin does not include it: install it yourself, now or later. The next scan, which runs every time Skrin starts, then does everything that was skipped.'}
+                ? `${FFMPEG_INSTALL_WORDS} Or install it yourself, now or later: the next scan, which runs every time Kinema Media starts, then does everything that was skipped.`
+                : 'Kinema Media does not include it: install it yourself, now or later. The next scan, which runs every time Kinema Media starts, then does everything that was skipped.'}
             </p>
             <FocusGroup kind="row" className="settings-row">
               <FfmpegInstallButton
@@ -156,7 +156,7 @@ export default function ExtrasSetup() {
           <label className="settings-field">
             <span>
               Where ffmpeg is{' '}
-              <span className="muted">(leave empty unless Skrin cannot find it)</span>
+              <span className="muted">(leave empty unless Kinema Media cannot find it)</span>
             </span>
             <FocusInput
               className="settings-input"
@@ -176,7 +176,7 @@ export default function ExtrasSetup() {
         <div className="choice-label">Rotten Tomatoes scores</div>
         <p className="choice-note">
           A free OMDb key of your own adds Rotten Tomatoes scores to a title&rsquo;s page, and helps
-          identify movies. A free key allows 1,000 lookups a day and Skrin uses at most 500, so a
+          identify movies. A free key allows 1,000 lookups a day and Kinema Media uses at most 500, so a
           large library fills in over a few days.
         </p>
         <FocusGroup kind="row" className="settings-row">

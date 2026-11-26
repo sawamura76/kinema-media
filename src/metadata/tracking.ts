@@ -2,7 +2,7 @@
  * The watch-tracking services — the typed side of `src-tauri/src/simkl.rs`
  * and `src-tauri/src/trakt.rs`.
  *
- * Skrin tells an account what was finished. The one thing read back is
+ * Kinema Media tells an account what was finished. The one thing read back is
  * Trakt's resume points (trakt_resume.rs); SIMKL stays one way. Everything
  * that talks to a service is in Rust; this is the page's half of
  * signing in, and what it shows. Both services answer the same five commands,
@@ -20,10 +20,10 @@ export const TRAKT_CLIENT_SECRET_KEY = 'trakt_client_secret';
 export const TRAKT_RESUME_KEY = 'trakt_resume';
 
 export interface AccountStatus {
-  /** This copy of Skrin has an app for the service, so connecting is possible. */
+  /** This copy of Kinema Media has an app for the service, so connecting is possible. */
   available: boolean;
   connected: boolean;
-  /** The service refused the sign-in Skrin held: connect again. */
+  /** The service refused the sign-in Kinema Media held: connect again. */
   needs_reconnect: boolean;
   /** The account's name, when the service said it. */
   user: string | null;

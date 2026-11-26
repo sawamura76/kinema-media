@@ -1013,7 +1013,7 @@ async function walkSystem(ctx: Ctx): Promise<void> {
       if (android) {
         await quiet(p);
         out.push(
-          await w(p, 'first-run-folders', 'First run: Skrin’s own folder browser', KB)
+          await w(p, 'first-run-folders', 'First run: Kinema Media’s own folder browser', KB)
         );
         await press(p, 'Enter');
         await press(p, 'ArrowUp');

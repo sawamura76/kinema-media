@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Screen } from './displayMode';
 
-// The system's way (Android): Skrin asks the system for a mode and the
+// The system's way (Android): Kinema Media asks the system for a mode and the
 // system answers. Everything outside displaySwitch.ts is stood in for.
 const screen = vi.hoisted(() => ({ now: null as Screen | null }));
 const asked = vi.hoisted(() => [] as number[]);

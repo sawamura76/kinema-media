@@ -127,7 +127,7 @@ pub fn within<T: Send + 'static>(
 
 /// Once the app has begun to quit, end the process after `EXIT_LIMIT` whatever
 /// is still waiting. The library saves on its own as each change is made, so
-/// nothing of Skrin's own is lost by this; only a wait on a drive is cut.
+/// nothing of Kinema Media's own is lost by this; only a wait on a drive is cut.
 pub fn arm_exit_limit<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
     static ARMED: std::sync::Once = std::sync::Once::new();
     ARMED.call_once(|| {
@@ -154,7 +154,7 @@ pub fn arm_exit_limit<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
 
 /// End the process at once, without the exit-time clean-up: `process::exit`
 /// runs that clean-up, and on the Linux test PC it waited on the dead mount
-/// too (the limit fired, the process stayed). Nothing of Skrin's own is
+/// too (the limit fired, the process stayed). Nothing of Kinema Media's own is
 /// pending here: the library writes each change as it is made.
 fn hard_exit() -> ! {
     #[cfg(any(target_os = "linux", target_os = "android"))]

@@ -1,4 +1,4 @@
-//! Films on a network share Skrin opens itself, handed to the player.
+//! Films on a network share Kinema Media opens itself, handed to the player.
 //!
 //! Media3 reads files and web addresses; it cannot speak SMB, and teaching
 //! it would mean a second SMB client in Kotlin beside the one in netshare.rs
