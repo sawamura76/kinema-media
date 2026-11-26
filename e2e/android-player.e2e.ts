@@ -101,12 +101,13 @@ async function openTrackPanel(page: Page) {
   return panel;
 }
 
-/** Open Home as an Android box on the day whose hero is the film, and play it. */
-async function playFilm(page: Page): Promise<void> {
+/** Open Home as an Android box on the day whose hero is the film, and play it (`before`: set the fake up first). */
+async function playFilm(page: Page, before?: () => Promise<void>): Promise<void> {
   await page.clock.setFixedTime(new Date('2026-10-02T12:00:00'));
   await page.addInitScript(() => localStorage.setItem('kinemaMockSystem', 'android'));
   await page.goto('/');
   await expect.poll(() => focused(page)).toContain('Play');
+  await before?.();
   await press(page, 'Enter');
   await expect(page.locator('.player')).toBeAttached();
   await page.clock.setSystemTime(new Date('2026-10-02T12:00:00'));
@@ -141,13 +142,14 @@ test('Android: a film plays through Media3 — the screen matched, seeking, paus
   await expect.poll(async () => (await media3(page)).position).toBeLessThan(before - 5);
   expect(await sent(page)).toContain('seek');
 
-  // Space pauses and puts the ring on Play; OK plays again.
+  // Space pauses and the arrows go on seeking (GitHub #25); OK plays again.
   await press(page, 'Space');
   await expect.poll(async () => (await media3(page)).wantPlaying).toBe(false);
-  await expect.poll(() => focused(page)).toBe('Play');
+  before = (await media3(page)).position;
+  await press(page, 'ArrowRight');
+  await expect.poll(async () => (await media3(page)).position).toBeGreaterThan(before + 9);
   await press(page, 'Enter');
   await expect.poll(async () => (await media3(page)).wantPlaying).toBe(true);
-  await press(page, 'Escape');
 
   // Back leaves the player: Media3 stops and the screen gets its mode back.
   await press(page, 'Escape');
@@ -157,6 +159,22 @@ test('Android: a film plays through Media3 — the screen matched, seeking, paus
 
   // Nothing on the way asked mpv, which Android does not have.
   expect(complaints).toEqual([]);
+});
+
+test('Android: a film whose only sound cannot play here says so, and the screen matching does not take the word away', async ({
+  page,
+}) => {
+  await playFilm(page, () =>
+    page.evaluate(() => {
+      (window as unknown as { __fakeMedia3: { soundCannotPlay: string | null } }).__fakeMedia3.soundCannotPlay =
+        'Dolby TrueHD 7.1';
+    })
+  );
+  // The screen was matched (Android does by default), after the sound's word.
+  await expect.poll(async () => (await media3(page)).commands.some((c) => c.name === 'set_mode')).toBe(true);
+  await expect(page.locator('.player-notice')).toHaveText(
+    "This film's sound (Dolby TrueHD 7.1) cannot be played on this device, so the film is playing without sound."
+  );
 });
 
 test('Android: the volume is Media3’s, remembered, and the receiver’s when the sound goes untouched', async ({
@@ -172,6 +190,10 @@ test('Android: the volume is Media3’s, remembered, and the receiver’s when t
   await expect.poll(async () => (await media3(page)).volume).toBe(95);
   await press(page, '0');
   await expect.poll(async () => (await media3(page)).volume).toBe(100);
+  // No boost on Media3: the top is 100, and nothing above it is sent.
+  await press(page, '0', 2);
+  await expect(page.locator('.volume-control')).toHaveAttribute('aria-label', 'Volume 100%');
+  expect((await media3(page)).volume).toBe(100);
   await press(page, 'm');
   await expect.poll(async () => (await media3(page)).muted).toBe(true);
   await press(page, 'm');

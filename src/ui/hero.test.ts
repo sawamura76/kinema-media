@@ -54,6 +54,25 @@ describe('pickHero', () => {
     expect(pickHero(lib, null, now + 5 * day)?.id).not.toBe(undefined);
   });
 
+  it('shows the film named in home-top.txt, watched or new arrival or not', () => {
+    const lib = [
+      title(1, { title: 'Dune: Part Two', year: 2024, watched: true }),
+      title(2, { title: 'Dune', year: 1984 }),
+      title(3, { title: 'Dune', year: 2021 }),
+      title(9, { added_at: now / 1000 - 3600 }),
+    ];
+    expect(pickHero(lib, null, now, 'dune part two')?.id).toBe(1);
+    expect(pickHero(lib, 1, now, 'Dune: Part Two')?.id).toBe(1);
+    expect(pickHero(lib, null, now, 'Dune (2021)')?.id).toBe(3);
+    expect(pickHero(lib, null, now, '  DUNE (1984) ')?.id).toBe(2);
+  });
+
+  it('ignores a name that matches nothing', () => {
+    const lib = [...library, title(9, { added_at: now / 1000 - 3600 })];
+    expect(pickHero(lib, null, now, 'Not in the library')?.id).toBe(9);
+    expect(pickHero(lib, null, now, '(2024)')?.id).toBe(9);
+  });
+
   it('prefers a picture, but falls back to anything', () => {
     const lib = [title(1, { backdrop_url: null }), title(2)];
     expect(pickHero(lib, null, now)?.id).toBe(2);

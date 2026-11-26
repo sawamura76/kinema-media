@@ -20,12 +20,11 @@
 
   Everything is written to the staging folder: result.txt, the logs,
   screenshot.png. The sandbox window is moved off the primary screen as soon
-  as it appears. A clean sandbox has no WebView2: the script installs
-  Microsoft's runtime inside it (the owner allowed that, 2026-10-17); it is
-  gone when the sandbox closes.
+  as it appears. A clean sandbox has no WebView2: this PC's own is lent to
+  it, read-only (sandbox-common.ps1).
 
   Needs: Windows Sandbox switched on, a release build
-  (src-tauri\target\release\kinema.exe, e.g. `npx tauri build`), and two test
+  (src-tauri\target\release\skrin.exe, e.g. `npx tauri build`), and two test
   clips: -Short (about 12 s) and -Long (over a minute), any video Kinema plays.
 
   This file is deliberately ASCII only; see build-app.ps1 for why.
@@ -44,7 +43,7 @@ $sandbox = Join-Path $env:WINDIR 'System32\WindowsSandbox.exe'
 if (-not (Test-Path $sandbox)) {
     throw 'Windows Sandbox is not switched on (Windows Features -> Windows Sandbox).'
 }
-$exe = Join-Path $root 'src-tauri\target\release\kinema.exe'
+$exe = Join-Path $root 'src-tauri\target\release\skrin.exe'
 if (-not (Test-Path $exe)) { throw 'No release build: run npx tauri build first.' }
 
 $stage = Join-Path $env:TEMP ('kinema-sandbox-player-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
@@ -58,6 +57,8 @@ foreach ($dll in 'libmpv-2.dll', 'libmpv-wrapper.dll') {
 # wrapper from scripts/build-mpv-wrapper.sh has its runtime built in; the
 # plugin's own wrapper does not, and fails to load here (error 126).
 Copy-Item $Short (Join-Path $stage 'short.mkv')
+. (Join-Path $PSScriptRoot 'sandbox-common.ps1')
+$webview = Add-SandboxWebView2 $stage
 Copy-Item $Long (Join-Path $stage 'long.mkv')
 
 $inside = 'C:\Users\WDAGUtilityAccount\Desktop\kinema'
@@ -65,6 +66,7 @@ $inside = 'C:\Users\WDAGUtilityAccount\Desktop\kinema'
 $ErrorActionPreference = 'Continue'
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $out = Join-Path $here 'result.txt'
+. (Join-Path $here 'webview2.ps1')
 function Say($text) { Add-Content -Path $out -Value $text }
 $logs = Join-Path $env:APPDATA 'com.kinema.app\logs'
 function Keep($name) {
@@ -85,7 +87,7 @@ function SelfTest($name, $actions, $seconds) {
     # Kinema's plan reader refuses (the page then opens Home instead).
     [System.IO.File]::WriteAllText((Join-Path $dir 'plan.json'), ($plan | ConvertTo-Json -Depth 5), (New-Object System.Text.UTF8Encoding $false))
     $env:KINEMA_SELFTEST = Join-Path $dir 'plan.json'
-    $p = Start-Process 'C:\Kinema\kinema.exe' -PassThru
+    $p = Start-Process 'C:\Kinema\skrin.exe' -PassThru
     Remove-Item Env:\KINEMA_SELFTEST
     return @{ process = $p; report = (Join-Path $dir 'report.json') }
 }
@@ -100,11 +102,9 @@ function RegLines($file) {
 Say "started $(Get-Date -Format s)"
 try {
     $ProgressPreference = 'SilentlyContinue'
-    # WebView2, which a clean sandbox does not have.
-    $setup = Join-Path $env:TEMP 'webview2.exe'
-    Invoke-WebRequest -Uri 'https://go.microsoft.com/fwlink/p/?LinkId=2124703' -OutFile $setup -UseBasicParsing
-    Start-Process $setup -ArgumentList '/silent', '/install' -Wait
-    Say "WebView2 installed: $(Test-Path 'C:\Program Files (x86)\Microsoft\EdgeWebView\Application')"
+    # WebView2, which a clean sandbox does not have, is lent from this PC
+    # (sandbox-common.ps1, webview2.ps1 above).
+    Say "WebView2 lent: $env:WEBVIEW2_BROWSER_EXECUTABLE_FOLDER"
 
     # Kinema and the clips on the sandbox's own disk (SQLite on a mapped
     # folder fails, and a ZIP's folder is somewhere like this).
@@ -117,7 +117,7 @@ try {
     # A. Started for a video, twice.
     foreach ($round in 1, 2) {
         $t0 = Get-Date
-        $p = Start-Process 'C:\Kinema\kinema.exe' -ArgumentList '"C:\Videos\Short clip.mkv"' -PassThru
+        $p = Start-Process 'C:\Kinema\skrin.exe' -ArgumentList '"C:\Videos\Short clip.mkv"' -PassThru
         $closed = $p.WaitForExit(90000)
         Say "A$round started for a video: closed by itself $closed after $([int]((Get-Date) - $t0).TotalSeconds) s"
         if (-not $closed) { Stop-Process -Id $p.Id -Force }
@@ -125,9 +125,9 @@ try {
     }
 
     # B. A running Kinema is handed a video.
-    $first = Start-Process 'C:\Kinema\kinema.exe' -PassThru
+    $first = Start-Process 'C:\Kinema\skrin.exe' -PassThru
     Start-Sleep -Seconds 10
-    $second = Start-Process 'C:\Kinema\kinema.exe' -ArgumentList '"C:\Videos\Holiday clip.mkv"' -PassThru
+    $second = Start-Process 'C:\Kinema\skrin.exe' -ArgumentList '"C:\Videos\Holiday clip.mkv"' -PassThru
     $secondEnded = $second.WaitForExit(15000)
     Start-Sleep -Seconds 8
     Say "B second Kinema ended at once: $secondEnded; first still running: $(-not $first.HasExited)"
@@ -164,7 +164,7 @@ try {
         $t0 = Get-Date
         $p = Start-Process 'cmd.exe' -ArgumentList '/c', "`"$line`"" -PassThru -WindowStyle Hidden
         Start-Sleep -Seconds 2
-        $k = Get-Process kinema -ErrorAction SilentlyContinue | Select-Object -First 1
+        $k = Get-Process skrin -ErrorAction SilentlyContinue | Select-Object -First 1
         $closed = if ($k) { $k.WaitForExit(90000) } else { $false }
         Say "C started through the registered command: closed by itself $closed after $([int]((Get-Date) - $t0).TotalSeconds) s"
         Keep 'C'; KinemaLines 'C'
@@ -203,6 +203,7 @@ $wsb = Join-Path $stage 'kinema.wsb'
       <SandboxFolder>$inside</SandboxFolder>
       <ReadOnly>false</ReadOnly>
     </MappedFolder>
+    $($webview.Mapping)
   </MappedFolders>
   <LogonCommand>
     <Command>powershell.exe -NoProfile -ExecutionPolicy Bypass -File $inside\inner.ps1</Command>

@@ -34,8 +34,12 @@ const TRAILER_DIR: &str = "trailers";
 fn is_video(path: &Path) -> bool {
     path.extension()
         .and_then(|e| e.to_str())
-        .map(|e| VIDEO_EXTENSIONS.contains(&e.to_lowercase().as_str()))
-        .unwrap_or(false)
+        .is_some_and(is_video_ext)
+}
+
+/// Whether an extension is a container a trailer or an extra can be in.
+pub(crate) fn is_video_ext(ext: &str) -> bool {
+    VIDEO_EXTENSIONS.contains(&ext.to_lowercase().as_str())
 }
 
 /// Whether a filename names a trailer.

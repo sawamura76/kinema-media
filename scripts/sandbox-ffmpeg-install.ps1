@@ -40,6 +40,8 @@ if (-not $test) { throw 'No test binary: run cargo test --no-run first.' }
 # A folder of this run's own: a sandbox still closing keeps the last one open.
 $stage = Join-Path $env:TEMP ('kinema-sandbox-ffmpeg-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
 New-Item -ItemType Directory $stage | Out-Null
+. (Join-Path $PSScriptRoot 'sandbox-common.ps1')
+$webview = Add-SandboxWebView2 $stage
 Copy-Item $test.FullName (Join-Path $stage 'kinema-tests.exe')
 # Rust's MSVC runtime: part of the host's System32 from other programs, not
 # of the sandbox's clean Windows.
@@ -53,6 +55,7 @@ $inside = 'C:\Users\WDAGUtilityAccount\Desktop\kinema'
 $ErrorActionPreference = 'Continue'
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $out = Join-Path $here 'result.txt'
+. (Join-Path $here 'webview2.ps1')
 function Say($text) { Add-Content -Path $out -Value $text }
 Say "started $(Get-Date -Format s)"
 try {
@@ -111,6 +114,7 @@ $wsb = Join-Path $stage 'kinema.wsb'
       <SandboxFolder>$inside</SandboxFolder>
       <ReadOnly>false</ReadOnly>
     </MappedFolder>
+    $($webview.Mapping)
   </MappedFolders>
   <LogonCommand>
     <Command>powershell.exe -NoProfile -ExecutionPolicy Bypass -File $inside\inner.ps1</Command>

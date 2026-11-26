@@ -64,7 +64,7 @@ pub struct Display {
     pub refresh_den: u32,
     pub hdr: HdrState,
     /// The screen itself offers HDR (its EDID), whatever the system lets
-    /// Kinema do with it. Linux only: tells an HDR TV on a desktop with no
+    /// Skrin do with it. Linux only: tells an HDR TV on a desktop with no
     /// HDR (Cinnamon, GNOME on an old driver) from an SDR screen, both
     /// `Unsupported`. Absent from equipment remembered before 0.9.1.
     #[serde(default)]
@@ -354,7 +354,11 @@ pub fn audio_notes(a: &AudioDevice) -> Vec<String> {
     if a.bitstream.iter().any(|b| b.result == Probe::NotAllowed) {
         notes.push(
             "Windows does not let programs take exclusive control of this device, which \
-             passing audio through untouched needs. Sound settings → this device → Advanced."
+             sending sound to it untouched needs, so Skrin decodes it instead. To allow it: \
+             Windows Settings → System → Sound → More sound settings (at the bottom) → \
+             Playback → this device → Properties → Advanced → tick \"Allow applications to \
+             take exclusive control of this device\". (Or press Windows+R and type mmsys.cpl \
+             for the same Sound window.) Then check again here."
                 .into(),
         );
     } else if a.bitstream.iter().any(|b| b.remembered) {
@@ -795,7 +799,7 @@ pub fn window_display(window: tauri::WebviewWindow) -> WindowDisplay {
     #[cfg(not(windows))]
     let _ = window;
     // Linux: the desktop's primary screen, where mpv's full-screen picture
-    // opens unless moved; unknown when the desktop is not one Kinema asks.
+    // opens unless moved; unknown when the desktop is not one Skrin asks.
     #[cfg(target_os = "linux")]
     if let Ok((now, _)) = crate::display::linux::screen_now(None) {
         return WindowDisplay { gdi_name: now.gdi_name, hdr: now.hdr };

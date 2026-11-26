@@ -21,19 +21,19 @@ single most useful file in this repository.
 
 ## Reporting, testing and feedback
 
-Kinema is tested on a small number of setups and built to fall back safely
+Skrin is tested on a small number of setups and built to fall back safely
 where it cannot be tested, so reports from other equipment are as useful as
-patches. Through [Issues](https://github.com/Basswaves/kinema/issues/new/choose):
+patches. Through [Issues](https://github.com/basswaves/skrin/issues/new/choose):
 
-- **A bug** — the [bug report](https://github.com/Basswaves/kinema/issues/new?template=bug_report.yml)
+- **A bug** — the [bug report](https://github.com/basswaves/skrin/issues/new?template=bug_report.yml)
   form asks for the two logs (`app.log`, and `mpv.log` for playback; on Android
   Settings → Advanced → Developer tools → **Share the log**), the system, the
   graphics card or device, and where the media is. Most problems here make no
   visible error, only a log line.
-- **"I tried it on this device"** — the [device report](https://github.com/Basswaves/kinema/issues/new?template=device_report.yml)
+- **"I tried it on this device"** — the [device report](https://github.com/basswaves/skrin/issues/new?template=device_report.yml)
   form, for a box, TV, receiver, desktop or library that has not been
   tried. "It works" is as useful as "it does not".
-- **An idea** — the [feature request](https://github.com/Basswaves/kinema/issues/new?template=feature_request.yml)
+- **An idea** — the [feature request](https://github.com/basswaves/skrin/issues/new?template=feature_request.yml)
   form, after reading [the settled decisions](#settled-decisions--please-do-not-re-open).
 - **Something exploitable** — not an issue: [SECURITY.md](SECURITY.md).
 
@@ -75,11 +75,17 @@ Then:
 npm run tauri dev
 ```
 
+To build the portable app and put a shortcut on the desktop:
+
+```bash
+npm run app:build
+```
+
 `ffmpeg` on `PATH` is optional; without it the app's own intro/credits detection
 and the reading of each file's picture and sound format are skipped, and
 everything else works.
 
-Released builds carry Kinema's own TMDB key, added at build time from a
+Released builds carry Skrin's own TMDB key, added at build time from a
 repository secret and never committed. A build from source has none, and
 behaves as if its user had not entered one: paste your own free
 [TMDB key](https://www.themoviedb.org/settings/api) in Settings, or put
@@ -93,7 +99,7 @@ After changing either, remake every size, Android's included, with:
 npx tauri icon src-tauri/icons/icons.json
 ```
 
-It also writes an `ios/` folder, which Kinema has no use for: delete it. The
+It also writes an `ios/` folder, which Skrin has no use for: delete it. The
 Android TV banner (`res/drawable-xhdpi/banner.png`, 320×180) is not made by
 that command: its drawing is `src-tauri/icons/banner.svg`, exported to that
 PNG by hand. Its lettering is Segoe UI Semibold, named rather than included,
@@ -102,16 +108,18 @@ so export it on Windows.
 ### The Windows installer
 
 Each release carries a ZIP and a per-user installer
-(`kinema-windows-x64-setup.exe`). The installer is Tauri's NSIS
+(`skrin-windows-x64-setup.exe`). The installer is Tauri's NSIS
 bundler, configured by `src-tauri/tauri.installer.conf.json` and the hooks in
 `src-tauri/windows/hooks.nsh`; `scripts\build-app.ps1 -Installer` builds it,
 and `release.yml` does the same, writes its `.sha256` and adds it to the release
-text. It installs to `%LOCALAPPDATA%\Kinema` with no administrator, and
+text. It installs to `%LOCALAPPDATA%\Skrin` with no administrator, and
 fetches WebView2 only when it is missing. An installer is acceptable on one
 condition: uninstalling leaves nothing behind. The uninstaller runs
-`kinema.exe --uninstall-cleanup` (the same removal as Settings → Playback → Opening videos → Remove, only
+`skrin.exe --uninstall-cleanup` (the same removal as Settings → Playback → Opening videos → Remove, only
 if the "video player" offer names this copy) and clears Windows' own leftovers
-for the app; it asks before deleting the library and settings. Test it in
+for the app; it asks before deleting the library and settings. The update
+button (Settings → Advanced) recognises an installed copy by the
+`uninstall.exe` beside the program, downloads this setup and starts it. Test it in
 Windows Sandbox with `scripts\sandbox-installer.ps1` — a clean Windows is the
 point, so do not copy runtime files into the sandbox. The winget manifest is
 written by `scripts/winget-manifest.ps1` and checked with `winget validate` on
@@ -164,7 +172,7 @@ mounting a component. See the two failure modes below.
 
 ### Checking Linux from Windows
 
-Kinema ships for Linux too, and a change that breaks it should be caught
+Skrin ships for Linux too, and a change that breaks it should be caught
 before it is pushed. With Ubuntu 24.04 in WSL, once:
 
 ```bash
@@ -195,7 +203,7 @@ version into `src-tauri/lib/libmpv-wrapper.so`, to be copied to
 `src-tauri/target/release/lib/libmpv-wrapper.so` in the copy. libmpv itself
 is Ubuntu's (`libmpv-dev` above). `scripts/selftest.sh` then runs a plan the
 way `selftest.ps1` does on Windows, on a copy of a library you put in the
-plan's `data/` folder; with `GDK_BACKEND=x11` it photographs Kinema's window,
+plan's `data/` folder; with `GDK_BACKEND=x11` it photographs Skrin's window,
 and only that.
 
 On Linux mpv plays in a window of its own, and the player's controls reach
@@ -271,7 +279,7 @@ review them in the diff before committing:
 npx playwright test e2e/screens.e2e.ts --update-snapshots
 ```
 
-Linux's pictures come from Linux: `scriptswsl.ps1 'npx playwright test
+Linux's pictures come from Linux: `scripts\wsl.ps1 'npx playwright test
 e2e/screens.e2e.ts --update-snapshots'`, or the `playwright-results`
 artifact of a failed CI run (its `-actual.png` files, renamed).
 
@@ -304,7 +312,7 @@ emulator with no window — in WSL too, where `/dev/kvm` is available — and
 drives it from inside Android: the remote's buttons, typing, mouse clicks and
 the wheel, touches, photos of the screen and the system log. Nothing reaches
 the real keyboard or mouse. There are two TVs: `tv` (Android TV 16) and `tv9`
-(Android TV 9, the oldest Kinema aims at). What it needs, and every command,
+(Android TV 9, the oldest Skrin aims at). What it needs, and every command,
 are at the top of the script. Once, after unpacking Android's command-line
 tools:
 
@@ -313,7 +321,7 @@ scripts\wsl.ps1 'bash scripts/android-bench.sh setup'
 ```
 
 `setup` asks you to accept Google's SDK licences before it downloads. Then
-Kinema itself, on the TV:
+Skrin itself, on the TV:
 
 ```bash
 scripts\wsl.ps1 'bash scripts/android-bench.sh start && bash scripts/android-bench.sh build && bash scripts/android-bench.sh launch --fresh'
@@ -329,7 +337,7 @@ emulator with `bash scripts/android-bench.sh adb shell sm set-virtual-disk
 true`, then `sm list-disks` and `sm partition <disk> public`; `adb push`
 puts files on it. Many boxes run a 32-bit Android: `build armv7` for those.
 `share` makes a network share on the computer itself (Samba, with a made-up
-account), for the tests of Kinema's own SMB client and for the emulator, which
+account), for the tests of Skrin's own SMB client and for the emulator, which
 reaches it at `smb://10.0.2.2/kinema-test`; it prints the variables that turn
 those tests on (`KINEMA_TEST_SHARE`), which otherwise pass without a share.
 
@@ -384,7 +392,7 @@ with the release build. Needs sway, grim, dbus, ffmpeg and libmpv.
 `node scripts/codemap.mjs [area]` prints one line per source file (size and
 the first line of its header comment): where things are, without opening them.
 
-### The Kinema MCP (Claude Code)
+### The Skrin MCP (Claude Code)
 
 `scripts/mcp/kinema-mcp.mjs` is a small MCP server with no dependencies,
 registered in `.mcp.json`. In a Claude Code session in this project it gives
@@ -392,7 +400,7 @@ tools to start the release build as an `interactive` self-test (a copy of the
 library, never SIMKL or Trakt, muted, the window on the second screen), then
 read the screen and focus, send keys, typing and clicks, call self-test
 functions, read mpv properties and logs, query the library copy read-only and
-take a picture of Kinema's window. Contributors without Claude Code can ignore it.
+take a picture of Skrin's window. Contributors without Claude Code can ignore it.
 
 `kinema_run` does a whole check in one call: a list of steps (keys, typing,
 clicks, wait until an expression is true, expect a value, read state, SQL,
@@ -465,7 +473,7 @@ never ran, or ran and silently did nothing. Check for both by reflex:
 
 ## More than one platform
 
-Kinema runs on Windows, Linux and Android (an early version since 0.10.0) from
+Skrin runs on Windows, Linux and Android (an early version since 0.10.0) from
 one codebase, one `master` and one version. Three rules keep that from turning into several
 programs:
 
@@ -478,7 +486,7 @@ programs:
 - **Platform code lives in its own file** — `equipment/win.rs`,
   `display/win.rs` — not in `#[cfg]` branches spread through shared code.
 - **mpv is reached only through `src/player/engine.ts`.** The player uses its
-  Kinema-level calls (open, pause, seek, stop, the playback events); what is
+  Skrin-level calls (open, pause, seek, stop, the playback events); what is
   about mpv itself says `mpv` in its name.
 
 CI builds and tests every push on Windows and on Linux for x86 and ARM; see
@@ -531,7 +539,7 @@ reasoning is in [docs/DESIGN.md](docs/DESIGN.md) and [docs/HISTORY.md](docs/HIST
   device that can, only the devices listed, or none, and are off until
   someone chooses. **On Android it is otherwise:** a TV box is always at its
   TV and plays nothing else while a film plays, so the system turns HDR on
-  and passes the sound through by itself, and Kinema's one switch — matching
+  and passes the sound through by itself, and Skrin's one switch — matching
   the screen to the film, by the same rule — is on unless switched off, and
   not asked at the first run.
   **One written exception, chosen on purpose: the Look.** Settings →
@@ -546,27 +554,34 @@ reasoning is in [docs/DESIGN.md](docs/DESIGN.md) and [docs/HISTORY.md](docs/HIST
   because of it.
   **The expert drawer (planned, 2026-10-21) follows the same line:** it lists
   every decision made for a film and a screen with the reason, and lets
-  someone correct a *fact* about their equipment that Kinema read wrongly —
+  someone correct a *fact* about their equipment that Skrin read wrongly —
   never a matter of taste. The defaults must stay right for people who never
   open it.
 - **When a graphics card cannot keep up, the desktop player steps down — and
-  only then.** The picture Kinema aims for is the full one. But a card that
+  only then.** The picture Skrin aims for is the full one. But a card that
   drops frames shows a stuttering film, which is further from the creator's
-  intent than a slightly cheaper way of drawing it. So only once frames are
-  being dropped (judged over short windows early in a film; seeks, pauses and
-  stalls do not count), the player gives up the least visible processing
-  first — HDR peak measuring, then the chroma scaler, then correct
-  downscaling, then perceptual gamut mapping — one step at a time. It is
-  remembered for that graphics card, never goes back up by itself, and the
-  details panel names every step and why. A healthy card never sees it. It
-  is not for Android, where the system's decoder and display do the work.
+  intent than a slightly cheaper way of drawing it. So only once the card
+  itself drops frames (judged over short windows early in a film), the
+  player gives up the least visible processing first — HDR peak measuring,
+  then the chroma scaler, then correct downscaling, then perceptual gamut
+  mapping — one step at a time. Only drops the card caused count: not the
+  frames mpv leaves out on purpose when a film is faster than the screen,
+  not a decoder that cannot keep up (software decoding), and not seeks,
+  pauses, stalls or the player opening and closing — no step can help those.
+  A step after which the drops did not fall is put back at once. The level
+  is remembered for that graphics card; after three films that play clean
+  at it, the next film tries one step back up. Settings → Advanced shows
+  what is given up and has a line that forgets it (a reset, not a quality
+  choice). The details panel names every step and why. A healthy card never
+  sees it. It is not for Android, where the system's decoder and display do
+  the work.
 - **Dolby Vision profile 7 on a device with no profile 7 decoder plays its
   HDR10 base layer, and says so.** Most Dolby Vision Blu-ray remuxes are
   profile 7, and Media3 falls back to the plain picture only for profiles 4
   and 8, so such a film played with sound and no picture at all. Where the
   device lists no decoder for it, the film is handed over as the HEVC it is
   underneath and the details panel reads "HDR10 (PQ) — Dolby Vision layer not
-  applied". Kinema never claims a Dolby Vision picture the device did not show.
+  applied". Skrin never claims a Dolby Vision picture the device did not show.
 - **Optimisations adapt to what each device reports, never to one test
   device.** Buffer sizes come from the app's memory, worker and download
   counts from the number of cores (clamped), the light look from measured
@@ -577,7 +592,7 @@ reasoning is in [docs/DESIGN.md](docs/DESIGN.md) and [docs/HISTORY.md](docs/HIST
   (artwork, reading files, the IMDb import, a share's folder walk) yields to
   a playing film and runs below it.
 - **Vendor-neutral.** Must behave identically on AMD, Intel and NVIDIA.
-- **On Linux, a stable base rather than a matrix.** Kinema is made by one
+- **On Linux, a stable base rather than a matrix.** Skrin is made by one
   person and Linux has more desktops, versions and drivers than one person
   can test. So it uses the shared standards first — Wayland protocols,
   logind, ALSA and the sound-device reservation, mpv's own detection — and a
@@ -588,7 +603,7 @@ reasoning is in [docs/DESIGN.md](docs/DESIGN.md) and [docs/HISTORY.md](docs/HIST
   per version: something that fails safe ships, and a setup that still
   misbehaves is a bug report (with the logs), not a release blocker.
 - **On Android, a stable base too.** There are far more Android devices than
-  anyone can buy and test, so Kinema uses standard Android and Media3 APIs
+  anyone can buy and test, so Skrin uses standard Android and Media3 APIs
   only, and nothing is shaped round one box or brand: a feature gates on
   what the system reports (never on a model name) and fails safe — leave it
   as it is, play the film — saying what the system reported. There are no
@@ -611,11 +626,12 @@ reasoning is in [docs/DESIGN.md](docs/DESIGN.md) and [docs/HISTORY.md](docs/HIST
   resolver and an in-app embed with an ad blocker were all rejected on exactly
   this ground. YouTube's own embedded player, ads and all, is accepted
   (2026-10-18) because it fails safe: when YouTube refuses to play, the
-  trailer opens in the browser, as it always has. Kinema drives it by
-  messages to its frame and never loads YouTube's script into its own page;
-  ads are never blocked. A read-only metadata service behind a stable API, used on its
+  trailer opens in the browser, as it always has. Skrin drives it by
+  messages to its frame and never loads YouTube's script into its own page
+  (on Linux the frame is a page the core serves on `127.0.0.1` only, which holds
+  the embed and passes messages through); ads are never blocked. A read-only metadata service behind a stable API, used on its
   own terms — TMDB, TVmaze, TheIntroDB, IntroDB, Wikidata, IMDb's published
-  ratings file — passes it. Keeping dependencies current when Kinema itself is
+  ratings file — passes it. Keeping dependencies current when Skrin itself is
   updated (Android's player library and build tools, a patched library in
   `src-tauri/vendor/`, a desktop's own interface) is ordinary upkeep, and
   accepted. The two skip-time services are asked about one
@@ -625,19 +641,22 @@ reasoning is in [docs/DESIGN.md](docs/DESIGN.md) and [docs/HISTORY.md](docs/HIST
   measured, never taken from the release name — a name saying "DV" or "Atmos"
   is not believed. Only the source (remux, WEB-DL…), the edition and Auro-3D
   come from the name, because nothing inside a file says them. The badges are
-  in Kinema's own lettering: Dolby, DTS and IMDb logos are trademarks for
+  in Skrin's own lettering: Dolby, DTS and IMDb logos are trademarks for
   licensed products, which this is not. The services a user connects are
   different — Settings → Keep track of what I watch shows SIMKL's and Trakt's own marks because
   both ask apps to, each as its guidelines say (NOTICE.md). A service that
-  publishes no terms for its logo is shown by name.
+  publishes no terms for its logo is shown by name. TMDB's attribution — its
+  sentence and approved logo, smaller than Skrin's own — appears once where
+  Settings names the data sources, as TMDB's terms ask; it is an
+  attribution, not a badge, and never on a title page.
 - **No shared key for scores.** IMDb's rating comes from the file IMDb
   publishes, on its terms: that file only, never imdb.com, and only the
   library's rows kept. Rotten Tomatoes needs OMDb, and only with the user's own
   key — a key built into every copy would exhaust OMDb's daily allowance for
   everyone within hours.
 - **SIMKL is one way, and only adds. Trakt is the same for history, and also
-  gives back resume points.** What is finished in Kinema is added to the user's
-  history there; un-watching in Kinema never removes anything, which the service
+  gives back resume points.** What is finished in Skrin is added to the user's
+  history there; un-watching in Skrin never removes anything, which the service
   may have from elsewhere. No live "Watching now". Both sign in with a device
   flow (a code and a phone). Trakt keeps duplicate plays, so what it already has
   is never sent to it again. Nothing is read back from SIMKL. From Trakt only
@@ -660,26 +679,52 @@ reasoning is in [docs/DESIGN.md](docs/DESIGN.md) and [docs/HISTORY.md](docs/HIST
 - **No third-party binaries in the repo or the bundle, beyond the player
   itself.** The Windows ZIP and installer carry libmpv — an unmodified LGPL
   build, which anyone may replace — and its small wrapper (built unmodified
-  from its pinned source), because Kinema cannot play a
+  from its pinned source), because Skrin cannot play a
   film without them; Linux uses the system's mpv, and Android Google's Media3.
   Nothing else: the app may *invoke* a tool the user installed themselves, at
   a path they chose. It downloads nothing, and depends on nothing else being
-  present. On Windows one button installs ffmpeg: Kinema still downloads
+  present. On Windows one button installs ffmpeg: Skrin still downloads
   nothing itself — on that press, and only then, it asks Windows' own package
   manager (winget) to install Gyan's build, which then belongs to winget, not
-  to Kinema, and stays if Kinema is removed.
+  to Skrin, and stays if Skrin is removed. The winget package for Skrin declares
+  Gyan's ffmpeg as a dependency, so installing Skrin through winget installs
+  it too, without the press; this is deliberate and the README says so.
   One exception, for building only: the Android project's
   `gradle/wrapper/gradle-wrapper.jar` (Gradle's own 59 KB starter, which
   every Android project keeps). It runs on the build machine and is never
   in the app.
+- **No automatic updates; one press to update.** Skrin asks GitHub once per
+  launch whether a newer version is out (switchable off in Settings →
+  Advanced) and says so. Nothing is downloaded or installed until the person
+  presses "Update to Skrin X": then the file of the kind this copy was
+  installed from (the Windows setup, the Linux .deb or .rpm, the Android APK)
+  is downloaded from the GitHub release, checked against the release's
+  `.sha256`, and handed to the system's own installer, which asks before
+  anything changes (`src-tauri/src/updates.rs`). Never silently, never on its
+  own, never in the background. A copy that cannot be updated safely this way
+  (the Windows ZIP, a tar.gz, a system that does not answer as expected) gets
+  the download page instead.
 - **Say what leaves the computer.** Settings → Privacy lists every service
-  Kinema can contact, what it sends, when, and what stops it. Its words are in
+  Skrin can contact, what it sends, when, and what stops it. Its words are in
   `src/trust/whatLeaves.json`, shared with the website. A change that makes
-  Kinema contact a new service, or send something new to one, updates that
+  Skrin contact a new service, or send something new to one, updates that
   file in the same pull request. `src/trust/whatLeaves.test.ts` fails when
   the code (Rust, TypeScript, Kotlin or the Tauri config) names a host the
   file does not list; a host that is only text, never contacted, goes in the
   test's own list with the reason.
+- **A proxy setting covers Skrin's own requests.** Settings → Privacy can send every lookup,
+  picture, the update check and download through an HTTP(S) or SOCKS5 proxy, and
+  never falls back to a direct connection. A new Rust client starts from
+  `net::builder()`, a new `fetch` in the page takes `proxyFetchOptions()`, and a
+  new picture from the internet goes through `useProxiedSrc`.
+- **Keep everything on this computer is one gate.** With it on, Skrin asks
+  nothing online but IMDb's two public files (each with its own switch) and
+  the user's own media server. Every Rust client is made by
+  `net::client(Service::…)`, which asks the gate (`net::builder()` is private);
+  the page's requests go through `fetchPolitely`, which refuses them; a picture
+  from the internet is shown from the cache only. A new service gets a
+  `Service` and a `whatLeaves.json` entry; a button that only reaches a
+  service hides with `useOffline()`.
 - **Sidecars are read, never written** by default. The reader stays so other
   producers of the format keep working.
 - **Android is for TV devices.** Boxes, sticks and TVs running Android TV or
@@ -706,6 +751,6 @@ If you are unsure whether something fits, open an issue first. A question costs
 less than a rewrite.
 
 Translations are not planned by the project itself, but a pull request that
-brings Kinema to your language is welcome. Open an issue first: the interface's
+brings Skrin to your language is welcome. Open an issue first: the interface's
 text has to be gathered in one place before it can be translated, and that is
 best agreed before anyone starts.

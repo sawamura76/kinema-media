@@ -2,13 +2,17 @@
  * The screen and the way out: matching the screen to the film, F for full
  * screen, Back out of full screen, and leaving the player.
  */
-import { useCallback, type RefObject } from 'react';
+import { useCallback, type Dispatch, type RefObject, type SetStateAction } from 'react';
 import { capabilitiesNow } from '../capabilities';
 import { isTvMode } from '../ui/tv';
 import { matchHdrToDisplay } from './displayHdr';
 import { filmNow, mayswitch, restoreScreen, switchForFilm } from './displaySwitch';
 import { isPictureFullscreen, setPaused, setPictureFullscreen } from './engine';
 import type { Session } from './session';
+
+// Said with it: a screen changing mode goes black for a moment, and someone
+// who has not met a player that switches takes that for a fault (GitHub #21).
+const MATCHING = 'Matching the screen to the video. It may go black for a moment.';
 
 export function useScreen({
   onExit,
@@ -19,16 +23,26 @@ export function useScreen({
   onExit: () => void;
   sessionRef: RefObject<Session>;
   /** A word on screen while the screen is being switched. */
-  setNotice: (notice: string | null) => void;
+  setNotice: Dispatch<SetStateAction<string | null>>;
 }) {
   /**
    * Switch the screen for the file that is open, if the settings call for it,
    * with a word on screen while it happens. Never throws: a screen that will not
-   * switch is a film that plays in the mode it is in.
+   * switch is a film that plays in the mode it is in. `beforeSwitch` runs only
+   * once a switch is certain, just before it (F pauses the film there, so a
+   * film whose screen already fits is not paused at all).
    */
-  const matchScreen = useCallback(async () => {
-    const film = await filmNow().catch(() => null);
-    if (!film) {
+  const matchScreen = useCallback(async (beforeSwitch?: () => Promise<void>) => {
+    const film = await filmNow(sessionRef.current.path).catch(() => 'timeout' as const);
+    /** The word the matching one stood in front of, put back after. */
+    let covered: string | null = null;
+    if (film === 'no-picture') {
+      // Nothing to match: no video track, or none this system can decode
+      // (decodeCheck.ts says which, on screen).
+      console.log('display: this file has no picture to match the screen to');
+      return;
+    }
+    if (film === 'timeout') {
       // Said, because the film then plays in whatever mode the screen is in.
       console.warn('display: the first frame did not arrive in time; the screen is left as it is');
       return;
@@ -37,15 +51,21 @@ export function useScreen({
       // Said only once there is something to change: a screen already in
       // the film's mode, or one that offers no other (many TV boxes), is
       // not being matched to anything.
-      const switched = await switchForFilm(film, () =>
-        setNotice('Matching the screen to the video…')
-      );
+      const switched = await switchForFilm(film, async () => {
+        setNotice((n) => {
+          covered = n;
+          return MATCHING;
+        });
+        await beforeSwitch?.();
+      });
       if (switched) await matchHdrToDisplay();
     } catch (e) {
       console.warn('display: switch failed', e);
     }
-    setNotice(null);
-  }, [setNotice]);
+    // Only its own word goes, and what it covered comes back: the film's
+    // sound cannot play, say, known from the same tracks just before.
+    setNotice((n) => (n === MATCHING ? covered : n));
+  }, [setNotice, sessionRef]);
 
   /**
    * The only way out of the player, and the only place that gives the desktop
@@ -76,12 +96,22 @@ export function useScreen({
       return;
     }
     await setPictureFullscreen(true);
-    // Going fullscreen mid-film: pause, switch, and carry on as it was.
+    // Going fullscreen mid-film: switch, and carry on as it was. The film is
+    // paused only when the screen is really about to change mode, not for the
+    // look at a screen that already fits (it was, ~40 ms, with the default
+    // settings: resolution "auto" makes mayswitch true on every screen).
     if (!(await mayswitch().catch(() => false))) return;
     const wasPaused = sessionRef.current.paused;
-    await setPaused(true);
-    await matchScreen();
-    if (!wasPaused) await setPaused(false);
+    let pausedByUs = false;
+    try {
+      await matchScreen(async () => {
+        if (wasPaused) return;
+        await setPaused(true);
+        pausedByUs = true;
+      });
+    } finally {
+      if (pausedByUs) await setPaused(false);
+    }
   }, [matchScreen, sessionRef]);
 
   /**
@@ -108,7 +138,7 @@ export function useScreen({
   return { matchScreen, exit, toggleFullscreen, backOut };
 }
 
-/** Where the picture is mpv's own window (Linux) rather than in Kinema's. */
+/** Where the picture is mpv's own window (Linux) rather than in Skrin's. */
 function pictureHasOwnWindow(): boolean {
   return capabilitiesNow()?.mpv_video.own_window === true;
 }
@@ -124,7 +154,7 @@ function pictureHasOwnWindow(): boolean {
  * it, and shrinking a whole frame to one pixel is a scaling filter thousands
  * of samples wide: its shader took close to a minute to build, and mpv
  * answered nothing else meanwhile — not even the next film (2026-10-03).
- * Kinema's own window (Windows) leaves full screen first, as it always has.
+ * Skrin's own window (Windows) leaves full screen first, as it always has.
  */
 async function leaveFullscreen(): Promise<void> {
   if (pictureHasOwnWindow()) {

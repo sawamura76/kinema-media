@@ -1,6 +1,7 @@
 {
   "title": "What leaves your computer",
-  "intro": "Kinema keeps your library, your settings and what you have watched on this device. It has no account and no server of its own, and it sends no usage statistics. These are every service it can talk to, what it sends, when, and what stops it.",
+  "intro": "Skrin keeps your library, your settings and what you have watched on this device. It has no account and no server of its own, and it sends no usage statistics. These are every service it can talk to, what it sends, when, and what stops it. If you set a proxy (Settings, Privacy), they all go through it instead of straight out, the pictures too, and fail rather than go direct if the proxy cannot be reached; the one thing that does not is YouTube, below.",
+  "keep": "Keep everything on this computer (Settings, Privacy; also offered at the first run) stops every service below but two: IMDb's list of titles and IMDb's ratings, files IMDb publishes for everyone, each with its own switch, and your own media server, whose address is yours. Names are then matched on this computer, against IMDb's list; nothing about your library is sent. With both IMDb files off, nothing is downloaded at all, and names come from the files only. What was fetched before stays until you remove it there.",
   "services": [
     {
       "id": "tmdb",
@@ -10,9 +11,9 @@
         "api.tmdb.org",
         "image.tmdb.org"
       ],
-      "sends": "The title and year read from a file or folder name (or an IMDb number written in one, or in an NFO beside the file), the TMDB number of a close candidate when asking for its other names, then the TMDB number of each match, and of an actor whose page you open or a title whose posters you list, with Kinema's key or yours. Pictures are asked for by their address.",
-      "when": "When a scan finds a film or show that has not been matched yet, when a title's details are over six months old (TMDB's terms) or a running show's next episode has aired, when you open an actor's page (once a month at most) or a title's poster list, and when a poster or backdrop is first shown.",
-      "stop": "No switch: TMDB is how Kinema knows what your films and shows are. A folder you remove is no longer looked up."
+      "sends": "The title and year read from a file or folder name (or an IMDb number written in one, or in an NFO beside the file), the TMDB number of a close candidate when asking for its other names, then the TMDB number of each match, and of an actor whose page you open or a title whose posters you list, with Skrin's key or yours. With film and show details in another language than English, that language's code (such as pl-PL) too. Pictures are asked for by their address.",
+      "when": "When a scan finds a film or show that has not been matched yet, when a title's details are over six months old (TMDB's terms) or a running show's next episode has aired, when you open an actor's page (once a month at most) or a title's poster list, when you change the language of film and show details (every title once more, in the background), and when a poster or backdrop is first shown.",
+      "stop": "Keep everything on this computer, in Settings, Privacy: names are then matched on this computer instead, without pictures or plots. A folder you remove is no longer looked up."
     },
     {
       "id": "tvmaze",
@@ -23,7 +24,7 @@
       ],
       "sends": "A show's name read from its folder, or its IMDb or TheTVDB number, then that show's number to get its episodes and pictures.",
       "when": "When a scan finds a TV show that has not been matched yet, or new episodes of one.",
-      "stop": "No switch: it is used for TV shows only, and a TV folder you remove is no longer looked up."
+      "stop": "Keep everything on this computer, in Settings, Privacy. A TV folder you remove is no longer looked up."
     },
     {
       "id": "wikidata",
@@ -34,7 +35,7 @@
       ],
       "sends": "A film's title and year read from its file name.",
       "when": "Only for films, and only when no TMDB key works, as a fallback. Never pictures.",
-      "stop": "Stops by itself as soon as a TMDB key works."
+      "stop": "Stops by itself as soon as a TMDB key works, and with Keep everything on this computer."
     },
     {
       "id": "omdb",
@@ -50,13 +51,14 @@
     },
     {
       "id": "imdb",
-      "name": "IMDb ratings file",
+      "name": "IMDb ratings file and list of titles",
       "hosts": [
         "datasets.imdbws.com"
       ],
-      "sends": "Nothing about your library: Kinema downloads the ratings file IMDb publishes for everyone and keeps only the rows for your titles.",
-      "when": "The first time, then when the file is over 30 days old, or a week after a new title joined the library.",
-      "stop": "No switch: nothing of yours is sent."
+      "sends": "Nothing about your library: Skrin downloads files IMDb publishes for everyone. From the ratings file (about 9 MB) it keeps only the rows for your titles. The list of titles (about 230 MB to download, 76 MB kept) is downloaded only to match names on this computer, with Keep everything on this computer.",
+      "when": "Ratings: the first time, then when the file is over 30 days old, or a week after a new title joined the library. List of titles: only with Keep everything on this computer on and its own switch on, then at most once a month.",
+      "stop": "Nothing of yours is sent. With Keep everything on this computer on, each file has its own switch there, in Settings, Privacy; the list of titles is not downloaded without it.",
+      "offline": "imdb"
     },
     {
       "id": "theintrodb",
@@ -86,9 +88,10 @@
       "id": "opensubtitles",
       "name": "OpenSubtitles",
       "hosts": [
-        "api.opensubtitles.com"
+        "api.opensubtitles.com",
+        "www.opensubtitles.com"
       ],
-      "sends": "The title's numbers, season and episode, a fingerprint of the video file (not the file itself), the languages you want, and your sign-in if you added one. The subtitle is then downloaded from the address OpenSubtitles gives.",
+      "sends": "The title's numbers, season and episode, a fingerprint of the video file (not the file itself), the languages you want, and your sign-in if you added one. The subtitle is then downloaded from the address OpenSubtitles gives (www.opensubtitles.com, or another host OpenSubtitles names for your account).",
       "when": "Only when you ask for subtitles, and for forced subtitles by themselves if you switched that on.",
       "stop": "Do not ask; forced subtitles are switched off in Settings, Language & subtitles.",
       "section": "subtitles",
@@ -114,7 +117,7 @@
       ],
       "sends": "The films and episodes you finish, at connect what the account lacks, and where you stopped something part-way. Where you stopped elsewhere is read back to resume here.",
       "when": "Only while Trakt is connected; resume points when a title's page or Home's Continue row is shown.",
-      "stop": "Disconnect, in Settings, Keep track of what I watch. The switch “Continue where you stopped on another device” is there too.",
+      "stop": "Disconnect, in Settings, Keep track of what I watch. The switch \u201cContinue where you stopped on another device\u201d is there too.",
       "section": "tracking",
       "state": "trakt"
     },
@@ -124,14 +127,15 @@
       "hosts": [],
       "sends": "The key or token you type, to the address you type, asking for your watched films and episodes and their ids. The server is yours; nothing goes anywhere else, and the key is not kept.",
       "when": "Only when you press Bring it in.",
-      "stop": "Do not press Bring it in, in Settings, Keep track of what I watch.",
-      "section": "tracking"
+      "stop": "Do not press Bring it in, in Settings, Keep track of what I watch. Keep everything on this computer leaves it possible: the server is yours.",
+      "section": "tracking",
+      "offline": "stays"
     },
     {
       "id": "winget",
       "name": "winget (installing ffmpeg)",
       "hosts": [],
-      "sends": "Kinema sends nothing itself: it asks winget, Windows' own installer, to fetch ffmpeg from its usual sources.",
+      "sends": "Skrin sends nothing itself: it asks winget, Windows' own installer, to fetch ffmpeg from its usual sources.",
       "when": "Only when you press Install ffmpeg.",
       "stop": "Do not press it.",
       "only": "installs_ffmpeg"
@@ -142,18 +146,20 @@
       "hosts": [
         "www.youtube-nocookie.com"
       ],
-      "sends": "The trailer's YouTube number, and Kinema's own page address (http://tauri.localhost) as the page it plays for, which YouTube requires. YouTube's player then runs as on any website: once a trailer plays, YouTube stores data on this device and may show an ad. Kinema does not block ads. On Android the YouTube app gets the number instead.",
+      "sends": "The trailer's YouTube number, and the address of the page it plays for, which YouTube requires: Skrin's own (http://tauri.localhost), or on Linux a small page on this computer only (http://127.0.0.1 and a port) that holds the player. YouTube's player then runs as on any website: once a trailer plays, YouTube stores data on this device and may show an ad. Skrin does not block ads. On Android the YouTube app gets the number instead.",
       "when": "Only when you press Trailer on a title with no trailer file beside it. A trailer file always plays first, and nothing goes to YouTube for it.",
-      "stop": "Do not press Trailer, or put the trailer file beside the film. Where YouTube refuses, the trailer opens in your browser instead."
+      "stop": "Do not press Trailer, or put the trailer file beside the film. Where YouTube refuses, the trailer opens in your browser instead. A proxy set in Settings does not cover this: the trailer plays from YouTube itself."
     },
     {
       "id": "github",
       "name": "GitHub (new versions)",
       "hosts": [
-        "api.github.com"
+        "api.github.com",
+        "github.com",
+        "release-assets.githubusercontent.com"
       ],
-      "sends": "An ordinary request for the number of Kinema's latest release. Nothing about you or your library.",
-      "when": "Once each time Kinema starts.",
+      "sends": "An ordinary request for the number of Skrin's latest release. When you press Update to Skrin, a download of that release's installer and its checksum, from GitHub's own file servers. Nothing about you or your library.",
+      "when": "Once each time Skrin starts; the download only when you press Update to Skrin.",
       "stop": "Look for new versions, in Settings, Advanced.",
       "section": "advanced",
       "state": "updates"
@@ -168,12 +174,17 @@
       ],
       "sends": "Album artist names for artist photos and biographies; album artist and album title for missing covers, with the public free API key. Image requests use returned artwork addresses. No audio, file paths or listening history is sent.",
       "when": "When artist artwork is first shown or manually refreshed, and when you choose Find missing album art or Download artist slideshow art in Settings > Library. Cached images work offline.",
-      "stop": "Choose Album background in Visualizer > Art to avoid slideshow artist lookups. Bulk searches run only when requested and can be cancelled in Settings > Library; closing Kinema stops them."
+      "stop": "Keep everything on this computer blocks these requests. Otherwise, do not start the lookup or cancel artwork refresh. Enabled proxy settings apply."
     },
     {
       "id": "music-match",
       "name": "MusicBrainz / Cover Art Archive (music matching)",
-      "hosts": ["musicbrainz.org", "coverartarchive.org", "archive.org", "*.archive.org"],
+      "hosts": [
+        "musicbrainz.org",
+        "coverartarchive.org",
+        "archive.org",
+        "*.archive.org"
+      ],
       "sends": "Album and artist names, the selected album folder name as a search hint, and track count. Release IDs are used to fetch track lists and cover art. Full paths and audio stay local.",
       "when": "When you run Auto Music Match or search or select a release in Manual Match.",
       "stop": "Use Edit Tags for local editing."
@@ -189,7 +200,7 @@
       ],
       "sends": "Album artist and album title when searching for a missing cover. The matched release-group ID and image address are used to download the cover. No audio files, file paths or listening history is uploaded.",
       "when": "Only when you choose Find missing album art, for albums without a usable local cover that TheAudioDB could not fill. Exact matches only; downloaded images are cached locally.",
-      "stop": "Do not start the missing-art search, or cancel it in Settings > Library. Existing artwork is kept and music files are not modified."
+      "stop": "Keep everything on this computer blocks these requests. Otherwise, do not start the lookup or cancel artwork refresh. Enabled proxy settings apply."
     },
     {
       "id": "music-biographies",
@@ -199,11 +210,11 @@
       ],
       "sends": "Artist names for English biographies. No audio files, file paths or listening history.",
       "when": "When artist metadata has no English biography. Summaries are cached offline.",
-      "stop": "Do not open uncached artist pages or start an artist artwork refresh."
+      "stop": "Keep everything on this computer blocks these requests. Otherwise, do not start the lookup or cancel artwork refresh. Enabled proxy settings apply."
     }
   ],
   "links": {
-    "intro": "Some buttons open a web page in your browser. Kinema itself sends nothing to these; your browser does, as with any link.",
+    "intro": "Some buttons open a web page in your browser. Skrin itself sends nothing to these; your browser does, as with any link.",
     "hosts": [
       {
         "host": "www.themoviedb.org",
@@ -231,11 +242,11 @@
       },
       {
         "host": "github.com",
-        "for": "Kinema's release page, Skiptro's page, and reporting a bug"
+        "for": "Skrin's release page, Skiptro's page, and reporting a bug"
       },
       {
-        "host": "basswaves.github.io",
-        "for": "Kinema's website and its guides, such as how file names are read"
+        "host": "skrin.org",
+        "for": "Skrin's website and its guides, such as how file names are read"
       },
       {
         "host": "ffmpeg.org",
@@ -247,5 +258,5 @@
       }
     ]
   },
-  "local": "Folders on your own network are read where they are, and the player streams from Kinema on this device only. Neither leaves your home network."
+  "local": "Folders on your own network are read where they are, and the player streams from Skrin on this device only. Neither leaves your home network."
 }

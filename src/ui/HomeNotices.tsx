@@ -3,21 +3,23 @@
  *
  * Two things Home used to keep quiet about:
  *
- *  - **Videos Kinema could not identify.** They were absent from Home and
+ *  - **Videos Skrin could not identify.** They were absent from Home and
  *    listed only halfway down Settings, so a library with twenty refusals
  *    looked like a library missing twenty films. Refusing to guess is only
  *    fair if the refusals are in plain sight.
  *  - **Equipment that could do better** than the current settings let it —
  *    see `qualityNotice.ts`.
  *
- * And one that should never appear: TMDB refusing the key Kinema came with
+ * And one that should never appear: TMDB refusing the key Skrin came with
  * (builtinKey.ts), which leaves new movies to Wikidata — no posters — until an
  * update or a key of the user's own.
  *
  * Quiet on purpose: one line each, in the flow of the page, reached with one
  * press of Down from the hero — never a dialog in front of what you came for.
  */
+import { useEffect, useState } from 'react';
 import { useCapabilities } from '../capabilities';
+import { listWorthALook } from '../library/worthALook';
 import FocusGroup, { FocusProvider } from './FocusGroup';
 import { useNavGroup } from './focusGroups';
 import FocusButton from './FocusButton';
@@ -50,6 +52,28 @@ interface Props {
   onDismissFfmpeg: () => void;
 }
 
+/**
+ * What the review notice says. Worth a look counts in the number but is not
+ * unidentified: those files are matched and on Home, only a second look is
+ * asked for. Say each for what it is.
+ */
+export function reviewNoticeWords(total: number, worth: number): { head: string; tail: string } {
+  const w = Math.min(Math.max(worth, 0), total);
+  const unidentified = total - w;
+  if (unidentified === 0) {
+    return {
+      head: `${count(w, 'match', 'matches')} worth a second look,`,
+      tail: ' made by Skrin before an update. They are on Home as matched; looking takes a few seconds each.',
+    };
+  }
+  const notOnHome = `so ${unidentified === 1 ? 'it is' : 'they are'} not on Home yet.`;
+  const more = w === 0 ? '' : ` ${count(w, 'other match', 'other matches')} worth a second look.`;
+  return {
+    head: `${count(unidentified, 'video')} could not be identified for certain,`,
+    tail: ` ${notOnHome}${more} Picking the right title takes a few seconds each.`,
+  };
+}
+
 export default function HomeNotices({
   scanTrouble,
   onDismissScanTrouble,
@@ -65,12 +89,25 @@ export default function HomeNotices({
   onFfmpeg,
   onDismissFfmpeg,
 }: Props) {
+  // How many of the count are Worth a look: matched, and on Home.
+  const [worth, setWorth] = useState(0);
+  useEffect(() => {
+    let live = true;
+    if (reviewCount === 0) return;
+    listWorthALook()
+      .then((l) => live && setWorth(l.length))
+      .catch(() => live && setWorth(0));
+    return () => {
+      live = false;
+    };
+  }, [reviewCount]);
+  const words = reviewNoticeWords(reviewCount, reviewCount === 0 ? 0 : worth);
   const empty =
     !scanTrouble && reviewCount === 0 && upgrades.length === 0 && !keyRejected && !ffmpegMissing;
   // Not a place to move to while empty — see ContinueRail.tsx.
   // Windows installs ffmpeg from the notice itself (FfmpegInstall.tsx).
   const installs = Boolean(useCapabilities()?.installs_ffmpeg);
-  // On Kinema's engine a column of rows, one per notice: Left and Right
+  // On Skrin's engine a column of rows, one per notice: Left and Right
   // inside a notice, Up and Down between them (NAV-MAP), Down from the hero
   // the top one and Up from the rails the bottom one, as they stand.
   const { ref, focusKey } = useNavGroup<HTMLElement>(
@@ -122,7 +159,7 @@ export default function HomeNotices({
               !
             </span>
             <div className="home-notice-text">
-              <strong>TMDB no longer accepts the key Kinema came with.</strong>
+              <strong>TMDB no longer accepts the key Skrin came with.</strong>
               <span className="muted">
                 {' '}
                 New movies are identified through Wikidata instead, without posters, until an
@@ -145,14 +182,8 @@ export default function HomeNotices({
               ?
             </span>
             <div className="home-notice-text">
-              <strong>
-                {count(reviewCount, 'video')} could not be identified for certain,
-              </strong>
-              <span className="muted">
-                {' '}
-                so {reviewCount === 1 ? 'it is' : 'they are'} not on Home yet. Picking the right
-                title takes a few seconds each.
-              </span>
+              <strong>{words.head}</strong>
+              <span className="muted">{words.tail}</span>
             </div>
             {/* Stable keys on these, so Back from the review queue lands on
                 Review again — docs/GOTCHAS.md, "Back can only return to a
@@ -175,7 +206,7 @@ export default function HomeNotices({
             <div className="home-notice-text">
               <strong>
                 {onlyAdds
-                  ? 'Something connected can do more than Kinema is set to use'
+                  ? 'Something connected can do more than Skrin is set to use'
                   : 'Your equipment can do better than it is set to'}
               </strong>
               <ul>
@@ -214,14 +245,14 @@ export default function HomeNotices({
               +
             </span>
             <div className="home-notice-text">
-              <strong>Two things need ffmpeg, which Kinema cannot find.</strong>
+              <strong>Two things need ffmpeg, which Skrin cannot find.</strong>
               <span className="muted">
                 {' '}
-                Without it a title&rsquo;s page has no picture and sound details, and Kinema
+                Without it a title&rsquo;s page has no picture and sound details, and Skrin
                 cannot find intros and credits by itself. Everything else works.{' '}
                 {installs
                   ? `ffmpeg is a free program. ${FFMPEG_INSTALL_WORDS}`
-                  : 'ffmpeg is a free program you install yourself; Kinema never installs anything.'}
+                  : 'ffmpeg is a free program you install yourself; Skrin never installs anything.'}
               </span>
               {installs && <FfmpegInstallStatus />}
             </div>

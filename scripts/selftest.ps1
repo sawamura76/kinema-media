@@ -3,7 +3,7 @@
   Run the real app, with the real mpv, through a scripted playback session.
 
 .DESCRIPTION
-  Starts kinema.exe with KINEMA_SELFTEST pointing at a plan file. The app
+  Starts skrin.exe with KINEMA_SELFTEST pointing at a plan file. The app
   works on a snapshot copy of the library in <plan folder>\data - the real
   library is never written - plays the plan's file muted, carries out the
   plan's actions, writes report.json beside the plan and exits.
@@ -59,7 +59,7 @@ $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Windows.Forms, System.Drawing
 
 # $PSScriptRoot is empty in a param() default under Windows PowerShell 5.1.
-if (-not $Exe) { $Exe = Join-Path $PSScriptRoot '..\src-tauri\target\release\kinema.exe' }
+if (-not $Exe) { $Exe = Join-Path $PSScriptRoot '..\src-tauri\target\release\skrin.exe' }
 $Plan = (Resolve-Path $Plan).Path
 $Exe = (Resolve-Path $Exe).Path
 $out = Split-Path $Plan

@@ -43,6 +43,11 @@ export interface Title {
   progress: number | null;
   /** Billed cast, in order — for search. */
   cast: string[];
+  /**
+   * TMDB's English title when `title` is in the details language — for
+   * search. Absent, null or the same as `title` otherwise.
+   */
+  english_title?: string | null;
 }
 
 export interface Episode {
@@ -104,17 +109,23 @@ export interface About {
   next_air_date: string | null;
   next_air_season: number | null;
   next_air_episode: number | null;
+  /** Every country's age rating, tab-separated `DK=15` (ageRating.ts picks one). */
+  certifications: string | null;
+  /** TMDB's recommendations the library holds, in TMDB's order; empty says nothing. */
+  similar: Title[];
+  /** A series' season posters, for the seasons TMDB has one for. */
+  season_posters: Array<{ season: number; poster_url: string; poster_path: string | null }>;
 }
 
 export const listTitles = () => invoke<Title[]>('list_titles');
 
 export type PowerAction = 'close' | 'sleep' | 'shutdown';
-/** Close Kinema, or put the PC to sleep or shut it down (power.rs). */
+/** Close Skrin, or put the PC to sleep or shut it down (power.rs). */
 export const powerAction = (action: PowerAction) => invoke<void>('power_action', { action });
 
-/** Kinema offered to Windows as a video player (default_player.rs). */
+/** Skrin offered to Windows as a video player (default_player.rs). */
 export const playerOffer = () => invoke<{ offered: boolean }>('player_offer');
-/** Offer Kinema to Windows, then open its page in Default apps. */
+/** Offer Skrin to Windows, then open its page in Default apps. */
 export const offerAsPlayer = () => invoke<void>('offer_as_player');
 export const openDefaultApps = () => invoke<void>('open_default_apps');
 /** Take back everything the offer wrote. */
@@ -126,6 +137,17 @@ export const getTitleDetail = (titleId: number) =>
 /** Path of a trailer file sitting next to the video, or null. */
 export const findLocalTrailer = (videoPath: string) =>
   invoke<string | null>('find_local_trailer', { videoPath });
+
+/** An extra kept beside a film or show (extras.rs): a featurette, deleted scenes… */
+export interface Extra {
+  path: string;
+  name: string;
+  /** The group it is shown under. */
+  kind: string;
+}
+
+/** The extras beside a video's files, read from disk, never written. */
+export const listExtras = (videoPath: string) => invoke<Extra[]>('list_extras', { videoPath });
 
 /** Genres arrive as a JSON array string, or null. */
 export function parseGenres(raw: string | null): string[] {

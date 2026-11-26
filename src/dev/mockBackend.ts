@@ -668,12 +668,16 @@ const dismissed = new Map<number, number>();
 // screenshot flows (e2e/screens.e2e.ts), which compare both looks.
 const mockVideoCollections = [{ id: 1, name: 'Movies', kind: 'movies' }, { id: 2, name: 'TV shows', kind: 'tv' }];
 const mockVideoRoots: Record<number, number> = {};
-const settings = new Map<string, string>([['tmdb_api_key', 'fixture']]);
+const settings = new Map<string, string>([['tmdb_api_key', 'fixture'], ...JSON.parse(localStorage.getItem('kinemaMockPersistedLayout') ?? '[]')]);
 if (localStorage.getItem('kinemaMockUiMode')) settings.set('ui_mode', localStorage.getItem('kinemaMockUiMode')!);
 if (localStorage.getItem('kinemaMockSetupDone') === '1') settings.set('setup_pages', 'done');
 {
   const look = typeof localStorage !== 'undefined' ? localStorage.getItem('kinemaMockLook') : null;
   if (look) settings.set('look', look);
+  // `kinemaMockStepDown`: a remembered step-down memory (player/stepDown.ts),
+  // for the Settings reset (e2e/step-down-reset.e2e.ts).
+  const steps = typeof localStorage !== 'undefined' ? localStorage.getItem('kinemaMockStepDown') : null;
+  if (steps) settings.set('player_step_down', steps);
 }
 let clock = 1000;
 
@@ -967,7 +971,7 @@ export function listenerCounts(): Record<string, number> {
  * Android build does (no window, none of the equipment features, and the
  * fake Media3 plays instead of the fake mpv, which is not there to ask),
  * `kinemaMockNoPower=1` is a system
- * that will not sleep or shut down from Kinema, `kinemaMockScreenHdr=on`
+ * that will not sleep or shut down from Skrin, `kinemaMockScreenHdr=on`
  * reports the screen in HDR (for the output check; the picture itself is the
  * fake mpv's `extra`), `kinemaMockSkiptro=1` has Skiptro's database on this PC,
  * and `kinemaMockScanErrors`, a JSON list of strings, is what the scan reports
@@ -989,6 +993,41 @@ let openedTaken = false;
 /** Resume points of videos outside the library, by path. */
 const looseProgress = new Map<string, { position: number; duration: number | null }>();
 let playerOffered = false;
+/** Seek preview pictures "kept" (Settings → Advanced → Storage). */
+let mockPreviewFiles = 1440;
+
+/** The whole-library preview job's switch; it "makes" a file a second while on. */
+let mockPreviewJobOn = false;
+let mockPreviewJobFrom = 0;
+let mockPreviewJobDone = 0;
+function mockPreviewJobStatus() {
+  const total = 12;
+  if (!mockPreviewJobOn) {
+    // Off keeps what was made, as the files on disk do.
+    return { enabled: false, state: 'off', done: mockPreviewJobDone, total, unreachable: 0 };
+  }
+  if (!mockPreviewJobFrom) mockPreviewJobFrom = Date.now();
+  const done = Math.min(total, Math.max(mockPreviewJobDone, 1 + Math.floor((Date.now() - mockPreviewJobFrom) / 1000)));
+  mockPreviewJobDone = done;
+  return { enabled: true, state: done >= total ? 'finished' : 'running', done, total, unreachable: 0 };
+}
+
+/** A seek preview picture: a drawn frame saying its second (seek_preview.rs). */
+async function mockSeekPreview(secs: number): Promise<ArrayBuffer> {
+  const at = Number.isFinite(secs) && secs > 0 ? Math.round(secs / 10) * 10 : 0;
+  const canvas = document.createElement('canvas');
+  canvas.width = 320;
+  canvas.height = 180;
+  const g = canvas.getContext('2d');
+  if (!g) return new ArrayBuffer(0);
+  g.fillStyle = `hsl(${(at / 10) % 360} 40% 30%)`;
+  g.fillRect(0, 0, 320, 180);
+  g.fillStyle = '#fff';
+  g.font = '28px sans-serif';
+  g.fillText(`${at} s`, 20, 100);
+  const blob = await new Promise<Blob | null>((done) => canvas.toBlob(done, 'image/png'));
+  return blob ? blob.arrayBuffer() : new ArrayBuffer(0);
+}
 let defaultAppsOpened = 0;
 
 function flag(name: string): string | null {
@@ -1031,18 +1070,33 @@ const ABOUT_NONE: About = {
   next_air_date: null,
   next_air_season: null,
   next_air_episode: null,
+  certifications: null,
+  similar: [],
+  season_posters: [],
 };
-/** What TMDB's detail request said, per title. */
-const ABOUT: Record<number, Partial<About> & { collection_id?: string }> = PEOPLE
+/** What TMDB's detail request said, per title. `similar_ids`: library titles it recommends. */
+const ABOUT: Record<number, Partial<About> & { collection_id?: string; similar_ids?: number[] }> = PEOPLE
   ? {
-      [SERIES_ID]: { directors: ['Ida Creator'], show_status: 'Ended' },
+      [SERIES_ID]: {
+        directors: ['Ida Creator'],
+        show_status: 'Ended',
+        certifications: 'GB=15	US=TV-MA',
+        season_posters: [{ season: 1, poster_url: 'https://image.example.test/s1.jpg', poster_path: null }],
+      },
       [PART_ONE_ID]: {
         directors: ['Dee Rector'],
         writers: ['Wren Writer', 'Ira Author'],
         collection_id: '900',
         collection_name: 'Example Collection',
+        certifications: 'US=PG-13	DK=15',
       },
-      [PART_TWO_ID]: { directors: ['Dee Rector'], collection_id: '900', collection_name: 'Example Collection' },
+      [PART_TWO_ID]: {
+        directors: ['Dee Rector'],
+        collection_id: '900',
+        collection_name: 'Example Collection',
+        certifications: 'DK=15',
+        similar_ids: [SERIES_ID, PART_ONE_ID],
+      },
     }
   : {};
 if (PEOPLE) {
@@ -1115,6 +1169,8 @@ let mockHttpUrl = '';
 function mockTmdb(url: string): unknown {
   const show = { id: 3, name: 'Example Saga', first_air_date: '2019-03-01', overview: 'A fixture series.' };
   if (url.includes('/search/tv')) return { results: [show] };
+  const own = /\/3\/(?:tv|movie)\/(\d+)\?/.exec(url);
+  if (own && Number(own[1]) !== SAGA_ID) return mockTmdbDetail(Number(own[1]));
   const season = (n: number, names: string[]) => ({
     episodes: names.map((name, i) => ({ season_number: n, episode_number: i + 1, name })),
   });
@@ -1126,6 +1182,43 @@ function mockTmdb(url: string): unknown {
     'season/2': season(2, ['Saga Three', 'Saga Four', 'Saga Five', 'Saga Six']),
   };
 }
+/**
+ * The details language (detailsLanguage.ts): a fixture title's TMDB detail,
+ * in English with TMDB's translations alongside. Example Show has a Polish
+ * title and description; the others have none, so they keep their English.
+ * The English is what the fixture started with, kept apart from what a save
+ * writes over it.
+ */
+const mockEnglish = new Map<number, { title: string; overview: string | null }>();
+const MOCK_TRANSLATIONS: Record<number, { title: string; overview: string }> = {
+  1: { title: 'Przykładowy serial', overview: 'Serial testowy: pięć odcinków.' },
+};
+function mockTmdbDetail(id: number): unknown {
+  const t = [...titles, ...extraTitles].find((x) => x.id === id);
+  if (!t) return { id };
+  if (!mockEnglish.has(id)) mockEnglish.set(id, { title: t.title, overview: t.overview });
+  const english = mockEnglish.get(id) as { title: string; overview: string | null };
+  const pl = MOCK_TRANSLATIONS[id];
+  const field = t.kind === 'series' ? 'name' : 'title';
+  return {
+    id,
+    [field]: english.title,
+    overview: english.overview ?? '',
+    genres: [],
+    vote_average: t.rating ?? 0,
+    poster_path: null,
+    backdrop_path: null,
+    seasons: [],
+    translations: {
+      translations: pl
+        ? [{ iso_639_1: 'pl', iso_3166_1: 'PL', data: { [field]: pl.title, overview: pl.overview } }]
+        : [],
+    },
+  };
+}
+/** The language each fixture title was last saved in; none is English. */
+const mockDetailsLanguage = new Map<number, string>();
+
 const FETCHED_POSTER = 'https://image.tmdb.org/t/p/original/first.jpg';
 const LOCAL_POSTER = 'C:\\fixture\\Example Part Two (2014)\\poster.jpg';
 const posterChoice = new Map<number, string>();
@@ -1149,14 +1242,18 @@ function posterOf(titleId: number): string | null {
 function aboutOf(titleId: number): About {
   const about = ABOUT[titleId];
   if (!about) return ABOUT_NONE;
-  const { collection_id: collectionId, ...rest } = about;
+  const { collection_id: collectionId, similar_ids: similarIds, ...rest } = about;
+  const similar = (similarIds ?? [])
+    .map((id) => titles.find((t) => t.id === id))
+    .filter((t): t is Title => Boolean(t))
+    .map(withWatchState);
   const collection = collectionId
     ? titles
         .filter((t) => ABOUT[t.id]?.collection_id === collectionId)
         .sort((a, b) => (a.year ?? 0) - (b.year ?? 0))
         .map(withWatchState)
     : [];
-  return { ...ABOUT_NONE, ...rest, collection };
+  return { ...ABOUT_NONE, ...rest, collection, similar };
 }
 
 const SLOW_DETECT = flag('kinemaMockSlowDetect') === '1';
@@ -1199,11 +1296,13 @@ const WINGET = flag('kinemaMockWinget');
 let ffmpegInstalled = flag('kinemaMockFfmpegFound') === '1';
 const MOCK_FFMPEG_PATH = 'C:\\Users\\you\\AppData\\Local\\Microsoft\\WinGet\\Links\\ffmpeg.exe';
 /** Under `kinemaMockEmpty`: whether a folder has been added, then scanned,
- * and which (the picker's, or the one chosen in Kinema's own browser). */
+ * and which (the picker's, or the one chosen in Skrin's own browser). */
 const emptyLibrary = { hasRoot: !EMPTY, scanned: false, path: 'C:\\fixture' };
+/** The mock's own library folder's kind, which Settings can change (GitHub #26). */
+const mockRootKind: { kind: 'movies' | 'tv' } = { kind: 'tv' };
 
 /**
- * Android's drives for Kinema's own folder browser (`kinemaMockSystem=android`):
+ * Android's drives for Skrin's own folder browser (`kinemaMockSystem=android`):
  * a USB drive with films and a show, and the device's own storage. Android's
  * permission is not yet given, and is given when asked for, unless
  * `kinemaMockStorageRefused=1`; All files access is off until allowed.
@@ -1250,7 +1349,7 @@ const mockDrives: Record<string, { folders: string[]; videos: number; files?: st
   'smb://nas/tv/Example Show/Season 1': { folders: [], videos: 3 },
 };
 /**
- * Network sign-ins kept for shares Kinema opens itself (share_logins.rs).
+ * Network sign-ins kept for shares Skrin opens itself (share_logins.rs).
  * `kinemaMockShareLogin=1` starts with one; the server `nas` accepts the
  * password `secret`, any other server is not there.
  */
@@ -1472,6 +1571,12 @@ const SCAN_ERRORS: string[] = (() => {
 })();
 /** `kinemaMockUpdate` pretends that version is out on GitHub. */
 const UPDATE = flag('kinemaMockUpdate');
+/**
+ * `kinemaMockUpdateInstall` (setup, deb, rpm, apk) makes that copy able to
+ * update itself; `kinemaMockUpdateFails` makes the press fail with that text.
+ */
+const UPDATE_INSTALL = flag('kinemaMockUpdateInstall');
+const UPDATE_FAILS = flag('kinemaMockUpdateFails');
 /**
  * `kinemaMockDetectSteps`, a JSON list of report steps, stands in for what the
  * scan's detection pass said — three TV folders with nothing new, say.
@@ -1713,6 +1818,7 @@ const handlers: Record<string, Handler> = {
   },
   video_assign_root: ({ rootId, collectionId }) => { mockVideoRoots[Number(rootId)] = Number(collectionId); return null; },
   game_shortcuts: () => mockGames,
+  game_crop_artwork: ({crop}) => { localStorage.setItem('kinemaMockBoxArtCrop',JSON.stringify(crop)); return 'C:/mock/cropped-game-cover.jpg'; },
   game_save: ({ shortcut }) => {
     const value = shortcut as MockGame;
     const id = value.id ?? Math.max(0, ...mockGames.map((item) => item.id)) + 1;
@@ -1759,7 +1865,7 @@ const handlers: Record<string, Handler> = {
   list_library_roots: () =>
     emptyLibrary.hasRoot
       ? [
-          { id: 1, path: emptyLibrary.path, kind: 'tv', file_count: files.length },
+          { id: 1, path: emptyLibrary.path, kind: mockRootKind.kind, file_count: files.length },
           // `kinemaMockNoVideos=1`: no Videos folder, for the Library page's
           // empty state.
           // Not in an empty library's first run either: one folder added
@@ -1880,6 +1986,29 @@ const handlers: Record<string, Handler> = {
   list_videos: () => shownVideos().map(videoItem),
   list_all_videos: () => shownVideos().map(videoItem),
   video_frame: () => null,
+  // Seek previews: a drawn picture saying its second, so a test can read it.
+  seek_preview: (a) => mockSeekPreview(num(a, 'secs')),
+  seek_preview_fill: () => null,
+  seek_preview_close: () => null,
+  // Android keeps them within a cap (seek_preview.rs `cap`); a computer has none.
+  seek_preview_usage: () => ({
+    files: mockPreviewFiles,
+    bytes: mockPreviewFiles * 9800,
+    limit: ON_ANDROID ? 64 * 1024 * 1024 : null,
+  }),
+  preview_job_status: () => mockPreviewJobStatus(),
+  preview_job_set: (a) => {
+    mockPreviewJobOn = !!a.enabled;
+    mockPreviewJobFrom = 0;
+    return mockPreviewJobStatus();
+  },
+  delete_seek_previews: () => {
+    const removed = mockPreviewFiles;
+    mockPreviewFiles = 0;
+    mockPreviewJobOn = false;
+    mockPreviewJobDone = 0;
+    return removed;
+  },
   get_video_prefs: (a) =>
     videoPrefs.get(String(mockVideos.find((v) => v.id === num(a, 'fileId'))?.dir)) ?? {
       audio_lang: null,
@@ -1900,6 +2029,7 @@ const handlers: Record<string, Handler> = {
       files_unchanged: files.length, files_missing: 0, errors: SCAN_ERRORS, duration_ms: 5,
     };
   },
+  refresh_query_statistics: () => false,
   list_unparsed: () => [],
   save_parse_results: () => 0,
   library_stats: () => ({
@@ -1941,6 +2071,12 @@ const handlers: Record<string, Handler> = {
       SCAN_ERRORS.splice(0, SCAN_ERRORS.length, ...SCAN_ERRORS.filter((e) => !e.startsWith('root unavailable')));
     }
     return { files: 60, replaced: 0 };
+  },
+  // Movies ↔ TV (GitHub #26): the mock's own folder changes kind; every file
+  // is "read again".
+  set_library_root_kind: (a) => {
+    if (Number(a.id) === 1) mockRootKind.kind = String(a.kind) as 'movies' | 'tv';
+    return files.length;
   },
   // In an empty library's first run, removing its one folder empties it again
   // (the Welcome page's Remove); elsewhere an added folder goes.
@@ -2005,7 +2141,26 @@ const handlers: Record<string, Handler> = {
     return (a.fileIds as number[]).length;
   },
   // A link from Needs attention (match.ts), against the mock TMDB above.
-  save_title: (a) => ((a.title as { provider_id?: string }).provider_id === '3' ? SAGA_ID : 4242),
+  // A fixture title fetched again in the details language is stored over itself.
+  save_title: (a) => {
+    const input = a.title as {
+      provider_id?: string;
+      title: string;
+      overview: string | null;
+      english_title?: string | null;
+      details_language?: string;
+    };
+    if (input.provider_id === '3') return SAGA_ID;
+    const own = [...titles, ...extraTitles].find((t) => String(t.id) === input.provider_id);
+    if (own && input.details_language) {
+      own.title = input.title;
+      own.overview = input.overview;
+      (own as { english_title?: string | null }).english_title = input.english_title ?? null;
+      mockDetailsLanguage.set(own.id, input.details_language);
+      return own.id;
+    }
+    return 4242;
+  },
   save_episodes: (a) => (a.episodes as unknown[]).length,
   record_match: (a) => {
     mockLastMatch = a;
@@ -2054,9 +2209,39 @@ const handlers: Record<string, Handler> = {
     return slow ? new Promise((resolve) => window.setTimeout(() => resolve(n), slow)) : n;
   },
   latest_release: () =>
-    UPDATE ? { version: UPDATE, url: 'https://github.com/Basswaves/kinema/releases' } : null,
+    UPDATE
+      ? {
+          version: UPDATE,
+          url: 'https://github.com/basswaves/skrin/releases',
+          install: UPDATE_INSTALL || null,
+        }
+      : null,
+  // A 40 MB download in five steps, then what that kind of copy answers.
+  install_update: async () => {
+    const total = 40_000_000;
+    for (let i = 1; i <= 5; i++) {
+      await new Promise((r) => window.setTimeout(r, 60));
+      emitEvent('update-progress', { done: (total / 5) * i, total });
+    }
+    if (UPDATE_FAILS) throw UPDATE_FAILS;
+    const state = { setup: 'closing', deb: 'installed', rpm: 'installed', apk: 'opened' }[
+      UPDATE_INSTALL ?? ''
+    ];
+    return { state: state ?? 'opened' };
+  },
+  restart_after_update: () => null,
   list_titles_needing_detail: () => [],
   list_stale_titles: () => [],
+  // Only with `kinemaMockTmdb=1`, the one way the mock answers TMDB.
+  list_titles_in_other_language: (a) =>
+    flag('kinemaMockTmdb') !== '1'
+      ? []
+      : [...titles, ...extraTitles]
+          .filter((t) => t.provider === 'tmdb' && t.id > num(a, 'after'))
+          .filter((t) => (mockDetailsLanguage.get(t.id) ?? 'en') !== String(a.language))
+          .sort((x, y) => x.id - y.id)
+          .slice(0, num(a, 'limit'))
+          .map((t) => ({ id: t.id, tmdb_id: String(t.id), kind: t.kind })),
   list_fallback_titles: () => [],
   mark_upgrade_checked: () => null,
   adopt_provider: () => false,
@@ -2064,9 +2249,21 @@ const handlers: Record<string, Handler> = {
   find_local_pictures: () => ({ found: 0, frames: 0 }),
   artwork_stats: () => ({ files: 0, bytes: 0, failed: 0 }),
   find_local_trailer: () => null,
+  // The system's country (region.rs): none unless `kinemaMockRegion` says one, so
+  // the page falls back to the browser's language, as it does on Android.
+  system_region: () => flag('kinemaMockRegion'),
+  // Extras beside a film (extras.rs): Part Two has some under `kinemaMockPeople`.
+  list_extras: (a) =>
+    PEOPLE && String(a.videoPath).includes('Example.Part.Two')
+      ? [
+          { path: 'C:/fixture/Extras/Bloopers.mkv', name: 'Bloopers', kind: 'Extras' },
+          { path: 'C:/fixture/Featurettes/The Look.mkv', name: 'The Look', kind: 'Featurettes' },
+        ]
+      : [],
+  read_theme: () => new ArrayBuffer(0),
 
   // A video opened from outside (opened.rs). `kinemaMockOpen` is the path
-  // Kinema was "started for", answered once per page load as the real one is.
+  // Skrin was "started for", answered once per page load as the real one is.
   opened_at_launch: () => {
     const path = flag('kinemaMockOpen');
     if (!path || openedTaken) return null;
@@ -2108,7 +2305,7 @@ const handlers: Record<string, Handler> = {
     });
     return null;
   },
-  // Offering Kinema to Windows (default_player.rs): a flag, and the presses.
+  // Offering Skrin to Windows (default_player.rs): a flag, and the presses.
   player_offer: () => ({ offered: playerOffered }),
   offer_as_player: () => {
     playerOffered = true;
@@ -2137,13 +2334,17 @@ const handlers: Record<string, Handler> = {
       : null;
   },
   trakt_resume_sync: () => traktResumeSync(),
-  save_progress: (a) =>
-    saveProgress(
+  save_progress: (a) => {
+    // A test can make saving fail, as a full disk does (e2e/save-fails).
+    const failure = (window as unknown as { __mockSaveError?: string }).__mockSaveError;
+    if (failure) throw failure;
+    return saveProgress(
       num(a, 'fileId'),
       num(a, 'positionSecs'),
       (a.durationSecs as number | null) ?? null,
       (a.creditsStart as number | null) ?? null
-    ),
+    );
+  },
   set_watched: (a) => {
     const id = num(a, 'fileId');
     if (a.watched) playback.set(id, { position: 0, duration: null, completed: true, updated: ++clock });
@@ -2192,7 +2393,7 @@ const handlers: Record<string, Handler> = {
   // Windows' answers unless `kinemaMockSystem` is `linux`, which answers as
   // the Linux build does on a typical desktop: the equipment check, direct
   // sound, sleep and shut down (logind), and no screen switching — the mock
-  // stands for a desktop Kinema cannot ask. `kinemaMockNoPower` is a system
+  // stands for a desktop Skrin cannot ask. `kinemaMockNoPower` is a system
   // whose logind will not, or is missing (capabilities.rs, power.rs).
   capabilities: () => {
     if (ON_ANDROID) {
@@ -2215,6 +2416,7 @@ const handlers: Record<string, Handler> = {
         network_shares: true,
         back_button: true,
         video_apps: true,
+        seek_previews: true,
         memory_bytes: 4 * 1024 ** 3,
         sleep: false,
         shut_down: false,
@@ -2243,6 +2445,7 @@ const handlers: Record<string, Handler> = {
       network_shares: false,
       back_button: false,
       video_apps: false,
+      seek_previews: true,
       memory_bytes: 16 * 1024 ** 3,
       sleep: !NO_POWER,
       shut_down: !NO_POWER,
@@ -2306,6 +2509,30 @@ const handlers: Record<string, Handler> = {
   probe_library: () => ({ read: 0, failed: 0, unavailable: true }),
   measure_pictures: () => ({ measured: 0, unavailable: true }),
   refresh_imdb_ratings: () => ({ fetched: false, rated: 0 }),
+  // IMDb's list of titles (imdb_titles.rs): "built" at once when allowed, in the mode.
+  refresh_imdb_titles: () => {
+    if (settings.get('keep_on_device') !== '1' || settings.get('imdb_titles_allowed') !== '1')
+      return { built: false, rows: 0, skipped: 'not allowed' };
+    settings.set('mock_imdb_titles_built', String(Math.floor(Date.now() / 1000)));
+    return { built: true, rows: 504143, skipped: null };
+  },
+  imdb_titles_status: () => {
+    const built = Number(settings.get('mock_imdb_titles_built') ?? 0) || null;
+    return {
+      allowed: settings.get('imdb_titles_allowed') === '1',
+      present: built !== null,
+      rows: built ? 504143 : 0,
+      builtAt: built,
+      bytes: built ? 76 * 1024 * 1024 : 0,
+      progress: null,
+    };
+  },
+  imdb_titles_remove: () => {
+    const had = settings.get('mock_imdb_titles_built');
+    settings.delete('mock_imdb_titles_built');
+    return had ? 76 * 1024 * 1024 : 0;
+  },
+  remove_fetched_online: () => ({ titles: 12, pictures: 30, bytes: 4_200_000 }),
   list_titles_needing_scores: () => [],
   save_omdb_scores: () => null,
   // Asking the sound server to let go of a card (Linux, audio_reserve.rs):
@@ -2348,8 +2575,33 @@ const handlers: Record<string, Handler> = {
   get_setting: (a) => settings.get(String(a.key)) ?? null,
   set_setting: (a) => {
     settings.set(String(a.key), String(a.value));
+    if (['ui_mode','tv_mode','handheld_scale'].includes(String(a.key))) localStorage.setItem('kinemaMockPersistedLayout',JSON.stringify([...settings].filter(([key])=>['ui_mode','tv_mode','handheld_scale'].includes(key))));
     return null;
   },
+  // Keep everything on this computer (net.rs): the gate's state, from the settings.
+  offline_current: () => ({
+    offline: settings.get('keep_on_device') === '1',
+    imdbRatings: settings.get('imdb_ratings_allowed') !== '0',
+    imdbTitles: settings.get('imdb_titles_allowed') === '1',
+  }),
+  // The proxy setting (net.rs): the same words, a fixed answer for "Check".
+  proxy_current: () => ({
+    enabled: settings.get('proxy_enabled') === 'on',
+    address: settings.get('proxy_address') ?? '',
+    noProxy: 'localhost',
+  }),
+  proxy_normalise: (a) => {
+    const text = String(a.address).trim();
+    if (!text) throw new Error("Type the proxy's address first, such as 127.0.0.1:9050 or socks5://127.0.0.1:9050.");
+    if (!/:\d+$/.test(text)) throw new Error("The proxy's address needs a host and a port, such as 127.0.0.1:8080.");
+    return /^[a-z0-9]+:\/\//i.test(text) ? text : `http://${text}`;
+  },
+  check_proxy: (a) => {
+    if (!/:\d+$/.test(String(a.address).trim())) throw new Error("The proxy's address needs a host and a port, such as 127.0.0.1:8080.");
+    if (String(a.address).includes('dead')) throw new Error('The proxy did not accept the connection. Is it running, at that address and port?');
+    return 'The proxy works: TMDB answered through it.';
+  },
+  fetch_remote_image: () => new Uint8Array([137, 80, 78, 71]).buffer,
   provider_status: () => [['tvmaze', true], ['omdb', false], ['tmdb', true]],
   // Deliberately silent: devlog forwards console.* here, so logging from this
   // handler would recurse.
@@ -2362,7 +2614,7 @@ const handlers: Record<string, Handler> = {
   open_log_folder: () => null,
   show_report: () => null,
   make_report: () => ({
-    path: 'C:\\Users\\you\\Downloads\\kinema-report-2026-10-23-1405.zip',
+    path: 'C:\\Users\\you\\Downloads\\skrin-report-2026-10-23-1405.zip',
     files: ['app.log', 'app.previous.log', 'mpv.log', 'equipment.txt'],
   }),
   open_backup_folder: () => null,
@@ -2422,6 +2674,23 @@ const handlers: Record<string, Handler> = {
     return `C:\\fixture\\subs\\${String(a.offerFileId)}.srt`;
   },
   forced_subtitle: () => null,
+  // Automatic subtitle timing (sub_timing.rs): `kinemaMockSubTiming` picks
+  // the answer — 'unsure', 'drift' (25 fps on 23.976) or 'in_time'; by
+  // default 2.34 s late. Each check is kept in `__subTimingChecks`.
+  sub_timing_check: async (a) => {
+    const w = window as unknown as { __subTimingChecks?: unknown[] };
+    (w.__subTimingChecks ??= []).push(a);
+    await new Promise((done) => setTimeout(done, 300));
+    const kind = flag('kinemaMockSubTiming');
+    const base = { agree: 7, usable: 7, checks: 8, reference: 'speech', millis: 300 };
+    if (kind === 'unsure')
+      return { ...base, outcome: 'unsure', delay_secs: 0, speed: 1, from_fps: 1, to_fps: 1, agree: 2 };
+    if (kind === 'in_time')
+      return { ...base, outcome: 'in_time', delay_secs: 0, speed: 1, from_fps: 1, to_fps: 1 };
+    if (kind === 'drift')
+      return { ...base, outcome: 'fixed', delay_secs: 1.2, speed: 25 / 23.976, from_fps: 25, to_fps: 23.976 };
+    return { ...base, outcome: 'fixed', delay_secs: -2.34, speed: 1, from_fps: 1, to_fps: 1 };
+  },
   // What a fetched subtitle covers (subtitle_files.rs): the second of the
   // fixture's offers stops at a quarter of an hour, made for another cut.
   subtitle_span: (a) =>
@@ -2495,9 +2764,11 @@ const handlers: Record<string, Handler> = {
   // TMDB's poster list for the Poster dialog (e2e/posters.e2e.ts), when
   // kinemaMockPosters is set: eleven posters through the http plugin's calls.
   // Without it TMDB is unreachable, as before.
-  'plugin:http|fetch': (a) => {
+  'plugin:http|fetch': async (a) => {
+    // `kinemaMockSlowSearch=1`: a search that takes a while, to press OK again in.
+    if (flag('kinemaMockSlowSearch') === '1') await new Promise((r) => setTimeout(r, 600));
     mockHttpUrl = String((a.clientConfig as { url?: string } | undefined)?.url ?? '');
-    if (flag('kinemaMockTmdb') === '1' && /api\.themoviedb\.org\/3\/(search\/tv|tv\/)/.test(mockHttpUrl)) return 1;
+    if (flag('kinemaMockTmdb') === '1' && /api\.themoviedb\.org\/3\/(search\/tv|tv\/|movie\/)/.test(mockHttpUrl)) return 1;
     if (flag('kinemaMockPosters') !== '1') throw new Error('mock: no network');
     return 1;
   },
@@ -2578,8 +2849,10 @@ const handlers: Record<string, Handler> = {
   'plugin:media3|screen': () => fakeMedia3.screen(),
   'plugin:media3|set_mode': (a) => fakeMedia3.setMode(a),
   'plugin:media3|restore_mode': () => fakeMedia3.restoreMode(),
-  // A film on a share Kinema opens itself, read through the core (stream.rs).
+  // A film on a share Skrin opens itself, read through the core (stream.rs).
   stream_address: () => 'http://127.0.0.1:47123/stream/1',
+  // The page that lets YouTube's trailer play on Linux (trailer_relay.rs).
+  trailer_page_address: () => 'http://127.0.0.1:47124/',
   // Remembered, so a check can ask whether TV mode really filled the screen.
   'plugin:window|is_fullscreen': () => mockFullscreen,
   'plugin:window|set_fullscreen': (a) => {
@@ -2611,7 +2884,7 @@ const handlers: Record<string, Handler> = {
     modes: 4,
     lastSound: { format: 'DTS-HD 5.1', way: 'decoded' },
   }),
-  // Kinema's own folder browser, on Android (places.rs, StoragePlugin.kt).
+  // Skrin's own folder browser, on Android (places.rs, StoragePlugin.kt).
   'plugin:storage|places': () => ({
     places: [
       { path: '/storage/1A2B-3C4D', name: 'USB drive', removable: true },
@@ -2650,7 +2923,7 @@ const handlers: Record<string, Handler> = {
   save_share_login: (a) => {
     const server = String(a.server);
     if (server !== 'nas' && server !== 'laptop') throw new Error(`Could not reach ${server}: no answer`);
-    if (!a.user) throw new Error('Kinema cannot connect as a guest yet. Enter a user name and password.');
+    if (!a.user) throw new Error('Skrin cannot connect as a guest yet. Enter a user name and password.');
     if (a.password !== 'secret') throw new Error(`${server} did not accept that user name and password.`);
     const i = shareLogins.findIndex((l) => l.server === server);
     if (i >= 0) shareLogins.splice(i, 1);
@@ -2662,6 +2935,8 @@ const handlers: Record<string, Handler> = {
   set_behind: () => null,
   mpv_started: () => false,
   mpv_give_back: () => fakeMpv.destroy(),
+  // A test sets `kinemaMockHomeTop` to stand in for home-top.txt (hero.ts).
+  home_top: () => localStorage.getItem('kinemaMockHomeTop'),
   // A test sets `kinemaMockPageEnded` to play a page whose process ended.
   page_recovery: () => {
     const why = localStorage.getItem('kinemaMockPageEnded');
@@ -2675,7 +2950,7 @@ const handlers: Record<string, Handler> = {
   },
   list_folders: (a) => {
     const path = String(a.path);
-    // A share on the mock NAS reads only once Kinema is signed in to it.
+    // A share on the mock NAS reads only once Skrin is signed in to it.
     if (path.startsWith('smb://') && !shareLogins.some((l) => path.startsWith(`smb://${l.server}/`))) {
       throw new Error(`not allowed to read ${path}`);
     }
@@ -2730,7 +3005,7 @@ export function installMockBackend(): void {
     minimizePlayer: () => { if (floatingKind && !floatingPlayer) { floatingPlayer = true; emitEvent('floating-player', true); } },
     storage,
     looseProgress,
-    /** A second Kinema passing a video on (opened.rs `EVENT`). */
+    /** A second Skrin passing a video on (opened.rs `EVENT`). */
     openVideo: (path: string) => emitEvent('open-video', { path, launched: false }),
     /** Files dropped on the window, as Tauri reports them. */
     dropFiles: (paths: string[]) =>
@@ -2738,7 +3013,7 @@ export function installMockBackend(): void {
     playerOffer: () => ({ offered: playerOffered, defaultAppsOpened }),
     posterOf,
   };
-  document.title = 'Kinema (mock backend)';
+  document.title = 'Skrin (mock backend)';
 }
 
 

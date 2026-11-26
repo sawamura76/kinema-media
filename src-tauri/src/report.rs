@@ -1,8 +1,8 @@
 //! Send a report: the logs and the equipment check, packed into one zip for
 //! a bug report (Settings → Developer tools, and the crash screen).
 //!
-//! Kinema sends nothing itself. The zip goes to the Downloads folder and
-//! Kinema says where; the file manager and the bug-report form open only when
+//! Skrin sends nothing itself. The zip goes to the Downloads folder and
+//! Skrin says where; the file manager and the bug-report form open only when
 //! the user presses for them, so neither covers the note saying which file to
 //! attach (owner, 2026-10-24: the form opening at once hid it). Before anything is packed, the home folder's path is
 //! replaced by `~` everywhere, so the user name in it stays out of a public
@@ -56,7 +56,7 @@ pub async fn make_report(app: tauri::AppHandle) -> Result<Report, String> {
             .ok()
             .filter(|d| d.is_dir())
             .map_or_else(|| crate::data_dir(&app), Ok)?;
-        let path = folder.join(format!("kinema-report-{}.zip", stamp(now_secs())));
+        let path = folder.join(format!("skrin-report-{}.zip", stamp(now_secs())));
         let zip = write_zip(&entries, now_secs()).map_err(to_string_err)?;
         // Beside it first: a full disk or a pulled drive leaves no half zip
         // under the name the screen gives.
@@ -83,7 +83,7 @@ pub fn show_report(app: tauri::AppHandle, path: String) -> Result<(), String> {
     let named = path
         .file_name()
         .and_then(|n| n.to_str())
-        .is_some_and(|n| n.starts_with("kinema-report-") && n.ends_with(".zip"));
+        .is_some_and(|n| n.starts_with("skrin-report-") && n.ends_with(".zip"));
     if !named || !path.is_file() {
         return Err(format!("not a saved report: {}", path.display()));
     }
@@ -110,7 +110,7 @@ fn show(app: &tauri::AppHandle, path: &Path) {
 
 fn equipment_text(app: &tauri::AppHandle, view: &crate::equipment::EquipmentView) -> String {
     let mut text = format!(
-        "Kinema {} on {} {}\n\n",
+        "Skrin {} on {} {}\n\n",
         app.package_info().version,
         std::env::consts::OS,
         std::env::consts::ARCH

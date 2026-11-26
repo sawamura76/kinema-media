@@ -21,7 +21,7 @@ test('Windows: Home installs ffmpeg with one press, and the notice goes', async 
   const notice = page.locator('.home-notice').last();
   await expect(notice).toContainText('winget');
   await expect(notice).toContainText('about 110 MB');
-  await expect(notice).toContainText('stays installed if Kinema is ever removed');
+  await expect(notice).toContainText('stays installed if Skrin is ever removed');
 
   // Each step of the mock's install shows for 400 ms: watched every frame
   // from before the press, so a step is never missed between two looks.
@@ -184,7 +184,7 @@ test('Android: nothing offers ffmpeg or Skiptro, which an Android app cannot run
   }
   await press(page, 'Enter');
   const section = page.locator('.settings-content');
-  await expect(section.locator('h2')).toHaveText(['Skipping intros', 'How Kinema finds them']);
+  await expect(section.locator('h2')).toHaveText(['Skipping intros', 'How Skrin finds them']);
   await expect(section).toContainText('cannot listen to the episodes itself');
   await expect(section.locator('h3')).toHaveText(['Times shared by other viewers']);
   await expect(section.locator('.choice-label')).toContainText(['Look up TheIntroDB', 'Look up IntroDB']);

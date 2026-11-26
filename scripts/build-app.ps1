@@ -79,7 +79,7 @@ $dlls   = @('libmpv-2.dll', 'libmpv-wrapper.dll')
 # cannot be read counts as in the way.
 $writes = @($relDir)
 if (-not $Test) { $writes += $outDir }
-$running = Get-Process kinema -ErrorAction SilentlyContinue | Where-Object {
+$running = Get-Process kinema-media -ErrorAction SilentlyContinue | Where-Object {
     $exePath = $_.Path
     -not $exePath -or ($writes | Where-Object { $exePath.StartsWith($_ + '\', 'OrdinalIgnoreCase') })
 }
@@ -137,7 +137,7 @@ finally {
     Pop-Location
 }
 
-$exe = Join-Path $relDir 'kinema.exe'
+$exe = Join-Path $relDir 'kinema-media.exe'
 if (-not (Test-Path $exe)) { throw "Build reported success but $exe is not there." }
 
 if ($Test) {
@@ -150,8 +150,10 @@ if ($Test) {
 New-Item -ItemType Directory -Force -Path $outDir | Out-Null
 Copy-Item $exe $outDir -Force
 foreach ($dll in $dlls) { Copy-Item (Join-Path $libDir $dll) $outDir -Force }
+# The licence text and notice go with the libraries (NOTICE.md).
+foreach ($doc in @("LICENSE", "NOTICE.md")) { Copy-Item (Join-Path $root $doc) $outDir -Force }
 
-$target = Join-Path $outDir 'kinema.exe'
+$target = Join-Path $outDir 'kinema-media.exe'
 
 # The app was called Personal Netflix until the rename. A stale exe beside the
 # new one is confusing at best; a stale shortcut is worse, because it still
@@ -166,7 +168,7 @@ if ($NoShortcut -or $onCI) {
 }
 else {
     $desktop  = [Environment]::GetFolderPath('Desktop')
-    $linkPath = Join-Path $desktop 'Kinema.lnk'
+    $linkPath = Join-Path $desktop 'Kinema Media.lnk'
 
     $oldLink = Join-Path $desktop 'Personal Netflix.lnk'
     if (Test-Path $oldLink) { Remove-Item $oldLink -Force }

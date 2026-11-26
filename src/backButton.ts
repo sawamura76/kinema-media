@@ -2,7 +2,7 @@
  * The system's own Back button — the one on an Android remote, or a phone's
  * Back gesture — made into the Back every screen already listens for.
  *
- * Kinema's screens each handle Back as a key press: Escape, Backspace, or the
+ * Skrin's screens each handle Back as a key press: Escape, Backspace, or the
  * `BrowserBack` many remotes send. Android's Back is not a key the page ever
  * sees. Left alone it closes the app from any screen, so a remote's Back in
  * the middle of Settings landed on the TV's home screen. Listening for it
@@ -27,7 +27,7 @@ export async function installBackButton(): Promise<void> {
       new KeyboardEvent('keydown', { key: 'BrowserBack', code: 'BrowserBack', bubbles: true, cancelable: true })
     );
   }).catch((e: unknown) => {
-    // Without it the system's Back closes Kinema, as before; every other way
+    // Without it the system's Back closes Skrin, as before; every other way
     // back still works.
     console.warn('back button: could not listen', e);
   });

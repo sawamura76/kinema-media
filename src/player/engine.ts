@@ -1,9 +1,9 @@
 /**
  * The player engine: the one file that talks to mpv.
  *
- * Everything else in Kinema reaches the player through here, in two layers.
+ * Everything else in Skrin reaches the player through here, in two layers.
  *
- * **Kinema's own terms** — open a file, pause, seek, stop, and the events that
+ * **Skrin's own terms** — open a file, pause, seek, stop, and the events that
  * say what happened. This is what any engine has to provide; the player's own
  * files (Player.tsx and its `use…` hooks) use nothing else, but for frame
  * timing, which is mpv's own setting and says so where it is set. On Android
@@ -21,7 +21,7 @@
  * replacing it would touch one file.
  *
  * **On Android the engine is Media3** (`media3.ts`, capabilities `engine`).
- * Kinema's terms go to it instead; mpv's terms are not there to call.
+ * Skrin's terms go to it instead; mpv's terms are not there to call.
  */
 import {
   command,
@@ -44,9 +44,12 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { logPaths } from '../metadata/api';
 import { capabilitiesNow, loadCapabilities } from '../capabilities';
 import { keyCommand, keyFromValue, KEY_PROPERTY, MPV_KEYS } from './mpvKeys';
+import { loadfile } from './loadfile';
 import { MOUSE_PROPERTY, parseMouse, type MouseEvent } from './mpvMouse';
 import * as media3 from './media3';
+import { VOLUME_MAX, VOLUME_NORMAL } from './volume';
 import type { Film } from './displayMode';
+import type { FileState } from './session';
 
 /** Whether this system plays through Media3 rather than mpv. */
 const isMedia3 = () => capabilitiesNow()?.engine === 'media3';
@@ -126,7 +129,7 @@ const OBSERVED = [
   // A key pressed on mpv's own window (mpvKeys.ts). Never changes where mpv
   // has no window of its own.
   [KEY_PROPERTY, 'string', 'none'],
-  // The mouse on mpv's own window (mpvMouse.ts), written by Kinema's script
+  // The mouse on mpv's own window (mpvMouse.ts), written by Skrin's script
   // there. Never changes where mpv has no window of its own.
   [MOUSE_PROPERTY, 'string', 'none'],
 ] as const;
@@ -154,7 +157,7 @@ export function startEngine(): Promise<string> {
         // A build with no engine at all says so instead of failing inside
         // the plugin.
         if (capabilitiesNow()?.engine === 'none') {
-          throw new Error('This version of Kinema cannot play films on this device yet.');
+          throw new Error('This version of Skrin cannot play films on this device yet.');
         }
         return initialOptions();
       })
@@ -170,7 +173,7 @@ export function startEngine(): Promise<string> {
 async function startMpv(options: MpvConfig['initialOptions']): Promise<string> {
   // Already there means this page replaced one whose process ended, and mpv
   // has gone on (pageRecovery.ts). It is set up already: `init` changes nothing
-  // and Kinema's mouse script must not be loaded into it twice.
+  // and Skrin's mouse script must not be loaded into it twice.
   const already = await invoke<boolean>('mpv_started').catch(() => false);
   const label = await init({ initialOptions: options, observedProperties: OBSERVED });
   if (already) return label;
@@ -195,7 +198,7 @@ async function startMpv(options: MpvConfig['initialOptions']): Promise<string> {
 }
 
 /**
- * Bind every key Kinema uses to a message back to Kinema (mpvKeys.ts). One
+ * Bind every key Skrin uses to a message back to Skrin (mpvKeys.ts). One
  * refused key — a name this mpv does not know — costs that key only.
  */
 async function bindKeys(): Promise<void> {
@@ -211,7 +214,7 @@ async function bindKeys(): Promise<void> {
 }
 
 /**
- * Load Kinema's mouse script into mpv (mpvMouse.ts), and keep mpv from
+ * Load Skrin's mouse script into mpv (mpvMouse.ts), and keep mpv from
  * moving its window when the film is dragged on: a drag there is the seek
  * bar's. Either failing costs that part only, and says so in app.log.
  */
@@ -228,7 +231,7 @@ async function watchMouse(): Promise<void> {
 }
 
 
-// ---- Kinema's terms ----------------------------------------------------------
+// ---- Skrin's terms ----------------------------------------------------------
 
 /** What the engine says happened. */
 export type PlaybackEvent =
@@ -385,8 +388,11 @@ export async function openFile(
   share: number | null = null
 ): Promise<void> {
   if (isMedia3()) return media3.open(path, start, share);
+  // The one error Skrin answers with is a drive that does not answer
+  // (disc.rs): said as it is, rather than opening a file mpv cannot read.
   const source = await invoke<DiscSource>('disc_source', { path }).catch(
     (e): DiscSource => {
+      if (String(e).includes('not answering')) throw e;
       console.warn('player: could not ask whether this is a disc', e);
       return { disc: false, languages: {}, log_mark: null };
     }
@@ -394,23 +400,23 @@ export async function openFile(
   openDisc = source.disc ? path : null;
   discLogMark = source.log_mark ?? 0;
   clipLanguages = source.languages;
-  // `loadfile <url> <flags> <index> <options>`: the per-file `start` option
-  // opens the file at the resume point. The index argument (-1, "no playlist
-  // position") is required before options since mpv 0.38.
+  // The per-file `start` option opens the file at the resume point; the form
+  // of `loadfile` that carries it depends on the mpv (loadfile.ts).
   // mpv takes a share as a percentage of the file's own length.
   const at =
     start !== null
-      ? ['replace', '-1', `start=${start}`]
+      ? `start=${start}`
       : share !== null
-        ? ['replace', '-1', `start=${(share * 100).toFixed(3)}%`]
-        : [];
+        ? `start=${(share * 100).toFixed(3)}%`
+        : null;
+  const run = (name: string, args: string[]) => command(name, args);
   if (source.disc) {
     // Through `set`, a plain string: a path in the per-file options would
     // need quoting for every comma a folder name can hold.
     await command('set', ['bluray-device', path]);
-    await command('loadfile', ['bd://', ...at]);
+    await loadfile(run, 'bd://', at);
   } else {
-    await command('loadfile', [path, ...at]);
+    await loadfile(run, path, at);
   }
 }
 
@@ -421,6 +427,14 @@ export async function openFile(
 export async function discFailure(): Promise<DiscFailure | null> {
   if (isMedia3() || openDisc === null) return null;
   return invoke<DiscFailure | null>('disc_failure', { from: discLogMark }).catch(() => null);
+}
+
+/**
+ * What a file that failed to open turned out to be (there, empty, not allowed),
+ * so the screen says the truth. `unknown` when the backend cannot say.
+ */
+export async function fileState(path: string): Promise<FileState> {
+  return invoke<FileState>('file_state', { path }).catch(() => 'unknown' as const);
 }
 
 /**
@@ -495,6 +509,20 @@ export async function seekBy(seconds: number): Promise<void> {
   await command('seek', [seconds, 'relative']);
 }
 
+/**
+ * How many seconds of the film are loaded ahead of the play head, as the
+ * player reports it: mpv's demuxer cache (`demuxer-cache-duration`, a scalar
+ * read), Media3's buffered position. Null when the player says nothing.
+ */
+export async function bufferedAhead(): Promise<number | null> {
+  if (isMedia3()) {
+    const { position, buffered } = await media3.state();
+    return position !== null && buffered != null ? Math.max(0, buffered - position) : null;
+  }
+  const ahead = await readProperty<number>('demuxer-cache-duration', 'double');
+  return typeof ahead === 'number' && Number.isFinite(ahead) ? Math.max(0, ahead) : null;
+}
+
 /** The file that is open, or null. */
 export async function openPath(): Promise<string | null> {
   if (isMedia3()) return (await media3.state()).path;
@@ -549,9 +577,9 @@ export async function filmPlayingNow(): Promise<{
 
 /**
  * Whether the picture fills the screen. Where the engine has a window of its
- * own (Linux), that window is the picture and Kinema's is hidden behind it —
+ * own (Linux), that window is the picture and Skrin's is hidden behind it —
  * and may be full screen for reasons of its own (overlay.ts) — so the
- * engine's window is the one asked. Elsewhere the picture is in Kinema's.
+ * engine's window is the one asked. Elsewhere the picture is in Skrin's.
  */
 export async function isPictureFullscreen(): Promise<boolean> {
   // Android has no windows: the picture always fills the screen, and there is
@@ -568,7 +596,7 @@ export async function isPictureFullscreen(): Promise<boolean> {
 export async function setPictureFullscreen(on: boolean): Promise<void> {
   if (isMedia3()) return;
   if (capabilitiesNow()?.mpv_video.own_window) {
-    // Kinema's window floats only while the picture is full screen: over a
+    // Skrin's window floats only while the picture is full screen: over a
     // windowed film it would sit on top of it (seen in a nested Sway).
     if (!on) await fitWindowForPlayer('tile');
     await setProperty('fullscreen', on);
@@ -579,7 +607,7 @@ export async function setPictureFullscreen(on: boolean): Promise<void> {
 }
 
 /**
- * Where mpv has a window of its own, keep Kinema's window the screen's size
+ * Where mpv has a window of its own, keep Skrin's window the screen's size
  * while the picture is full screen — its photo is the player's controls — by
  * floating it on a tiling desktop (Sway, Hyprland), where it would otherwise
  * be squeezed beside the film's window (`display.rs` → `player_window`).
@@ -588,7 +616,7 @@ export async function setPictureFullscreen(on: boolean): Promise<void> {
 export async function fitWindowForPlayer(how: 'float' | 'tile' | 'close'): Promise<void> {
   if (!capabilitiesNow()?.mpv_video.own_window) return;
   await invoke('player_window', { how }).catch((e) =>
-    console.warn('display: Kinema’s window not fitted for the player', e)
+    console.warn('display: Skrin’s window not fitted for the player', e)
   );
 }
 
@@ -635,10 +663,10 @@ export async function hasReachedEnd(): Promise<boolean> {
 
 // ---- tracks, subtitles, volume, chapters --------------------------------------
 //
-// Still Kinema's terms: what the track panel, the volume control and the
+// Still Skrin's terms: what the track panel, the volume control and the
 // credits ladder need, said the same way whichever engine plays. Formats are
 // named as FFmpeg names them — `truehd`, `eac3`, "DTS-HD MA" — which is
-// Kinema's own vocabulary for them already (ffprobe's badges speak it too),
+// Skrin's own vocabulary for them already (ffprobe's badges speak it too),
 // so an engine that says them otherwise translates into it.
 
 /** One audio, subtitle or video track of the open file. */
@@ -821,14 +849,25 @@ export async function addSubtitle(path: string, language: string, title: string)
 }
 
 /**
- * The volume, 0–100. Through `set` rather than `setProperty`: the command
- * takes a string and lets mpv parse it, which sidesteps the typed-number
- * trouble some properties have with the plugin (docs/GOTCHAS.md, `sid` /
- * `aid`).
+ * The top of the volume control here: VOLUME_MAX on mpv, where the part
+ * above 100 is a gain and a limiter (soundLevel.ts `setBoost`); Media3's gain
+ * stops at the film's own level, so on Android there is no boost (docs/DESIGN.md, "The volume goes to 200%").
+ */
+export function volumeMax(): number {
+  return isMedia3() ? VOLUME_NORMAL : VOLUME_MAX;
+}
+
+/**
+ * mpv's own volume, 0–100: the boost above it is a filter (soundLevel.ts
+ * `setBoost`), so that a limiter can come after it. Through `set` rather than
+ * `setProperty`: the command takes a string and lets mpv parse it, which
+ * sidesteps the typed-number trouble some properties have with the plugin
+ * (docs/GOTCHAS.md, `sid` / `aid`).
  */
 export async function setVolume(level: number): Promise<void> {
-  if (isMedia3()) return media3.setVolume(level);
-  await command('set', ['volume', String(level)]);
+  // Neither engine is handed more than 100.
+  if (isMedia3()) return media3.setVolume(Math.min(level, VOLUME_NORMAL));
+  await command('set', ['volume', String(Math.min(level, VOLUME_NORMAL))]);
 }
 
 export async function setMuted(muted: boolean): Promise<void> {
@@ -838,7 +877,7 @@ export async function setMuted(muted: boolean): Promise<void> {
 
 /**
  * Whether the sound is going to the receiver as an untouched bitstream, where
- * Kinema's volume does nothing — the receiver's own control is the one.
+ * Skrin's volume does nothing — the receiver's own control is the one.
  */
 export async function soundGoesUntouched(): Promise<boolean> {
   if (isMedia3()) return (await media3.state()).untouched;

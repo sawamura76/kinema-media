@@ -6,8 +6,9 @@
   Installs, plays, offers as a video player and uninstalls Kinema in a
   throwaway Windows, and says what was left behind:
 
-    1. Silent install (/S, as winget runs it) on a sandbox with no WebView2:
-       the installer has to fetch Microsoft's runtime itself. Then what is in
+    1. Silent install (/S, as winget runs it), with this PC's WebView2 lent to
+       the sandbox (sandbox-common.ps1: without it the app only shows "Could
+       not find the WebView2 Runtime"). Then what is in
        the install folder, the Start menu and Apps (the Uninstall key).
     2. Play: the installed Kinema started for a 12-second clip must reach the
        player and close by itself - which it cannot do unless both DLLs are
@@ -53,6 +54,8 @@ if ($setup.Count -ne 1) { throw 'Expected one installer in src-tauri\target\rele
 
 $stage = Join-Path $env:TEMP ('kinema-sandbox-installer-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
 New-Item -ItemType Directory $stage | Out-Null
+. (Join-Path $PSScriptRoot 'sandbox-common.ps1')
+$webview = Add-SandboxWebView2 $stage
 Copy-Item $setup[0].FullName (Join-Path $stage 'setup.exe')
 Copy-Item $Short (Join-Path $stage 'short.mkv')
 
@@ -61,8 +64,9 @@ $inside = 'C:\Users\WDAGUtilityAccount\Desktop\kinema'
 $ErrorActionPreference = 'Continue'
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $out = Join-Path $here 'result.txt'
+. (Join-Path $here 'webview2.ps1')
 function Say($text) { Add-Content -Path $out -Value $text }
-$installDir = Join-Path $env:LOCALAPPDATA 'Kinema'
+$installDir = Join-Path $env:LOCALAPPDATA 'Skrin'
 $data = Join-Path $env:APPDATA 'com.kinema.app'
 $webData = Join-Path $env:LOCALAPPDATA 'com.kinema.app'
 $startMenu = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs'
@@ -270,6 +274,7 @@ $wsb = Join-Path $stage 'kinema.wsb'
       <SandboxFolder>$inside</SandboxFolder>
       <ReadOnly>false</ReadOnly>
     </MappedFolder>
+    $($webview.Mapping)
   </MappedFolders>
   <LogonCommand>
     <Command>powershell.exe -NoProfile -ExecutionPolicy Bypass -File $inside\inner.ps1</Command>

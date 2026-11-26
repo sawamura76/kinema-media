@@ -4,7 +4,7 @@
 //! The SMB library has this call, but only in the 64-bit encoding (NDR64),
 //! which Samba — the server inside nearly every home NAS — refuses
 //! ("ProposedTransferSyntaxesNotSupported"). Every server takes NDR, so
-//! Kinema sends that itself: a bind, then the call, written and read here as
+//! Skrin sends that itself: a bind, then the call, written and read here as
 //! bytes ([MS-RPCE], [MS-SRVS] 3.1.4.8). Only the disk shares a person would
 //! pick come back: not printers, and not the hidden ones (`IPC$`, `C$`).
 
@@ -152,7 +152,7 @@ pub fn parse_share_enum(reply: &[u8]) -> io::Result<Vec<String>> {
         return Err(bad("not an answer"));
     }
     if reply[3] & 0x03 != 0x03 {
-        return Err(bad("in several parts, which Kinema does not read"));
+        return Err(bad("in several parts, which Skrin does not read"));
     }
     let mut r = Reader { data: &reply[24..], at: 0 };
     let _level = r.u32()?;

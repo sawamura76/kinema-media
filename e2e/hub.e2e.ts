@@ -73,6 +73,7 @@ test('game shortcuts can be added, launched, edited and removed', async ({ page 
   await editor.getByLabel('Platform or launcher', { exact: true }).fill('Steam');
   await page.evaluate(() => localStorage.setItem('kinemaMockPick', 'C:/Games/cover.jpg'));
   await editor.getByRole('button', { name: 'Choose cover art', exact: true }).click();
+  await page.getByRole('dialog',{name:'Preview and crop box art'}).getByRole('button',{name:'Use image',exact:true}).click();
   await expect(editor.getByRole('img', { name: 'Cover preview' })).toBeVisible();
   await editor.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(editor).toHaveCount(0);

@@ -153,7 +153,8 @@ fn interpret(response: &Response, is_film: bool) -> Lookup {
 /// segment null, or as a 404 — and `None` is a question that could not be
 /// asked, which the caller must not remember as an answer.
 pub async fn lookup(query: &Query) -> Option<Lookup> {
-    let client = tauri_plugin_http::reqwest::Client::builder()
+    let client = crate::net::client(crate::net::Service::IntroDbApp)
+        .ok()?
         .timeout(TIMEOUT)
         .build()
         .ok()?;

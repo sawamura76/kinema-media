@@ -7,7 +7,7 @@
 # everything and publishes nothing — the files are left as the run's
 # artifacts, to check a change to this workflow without a release.
 #
-# File names carry no version (kinema-windows-x64-setup.exe, not
+# File names carry no version (skrin-windows-x64-setup.exe, not
 # kinema-0.13.0-windows-x64-setup.exe), so the website can link straight to
 # releases/latest/download/<name>; the version is in the release's tag.
 #
@@ -31,11 +31,32 @@ on:
     tags: ['v*']
   workflow_dispatch:
 
+# Read only for every job; `publish` alone asks for write (below). The build
+# jobs hold the signing and service keys and need no write access.
 permissions:
-  contents: write
+  contents: read
 
 jobs:
+  check:
+    # The tag, the version the program reports and the version the files carry
+    # must be the same, or the release would say one thing and ship another
+    # (and Skrin's update check would never settle). Stops the build jobs.
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Check the tag matches the version in the files
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          conf=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          pkg=$(node -p "require('./package.json').version")
+          cargo=$(sed -n 's/^version = "\(.*\)"/\1/p' src-tauri/Cargo.toml | head -n 1)
+          echo "tag $tag, tauri.conf.json $conf, package.json $pkg, Cargo.toml $cargo"
+          [ "$tag" = "$conf" ] && [ "$tag" = "$pkg" ] && [ "$tag" = "$cargo" ] || { echo "The tag and the versions in the files differ."; exit 1; }
+
   windows:
+    needs: check
+    if: ${{ !cancelled() && (needs.check.result == 'success' || needs.check.result == 'skipped') }}
     runs-on: windows-latest
 
     steps:
@@ -46,18 +67,45 @@ jobs:
           node-version: 20
           cache: npm
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: src-tauri
 
       - name: Install dependencies
         run: npm ci
 
-      # ~95 MB of LGPL native libraries, never committed. See NOTICE.md.
-      - name: Fetch the native playback libraries
-        run: npx tauri-plugin-libmpv-api setup-lib
+      # libmpv-2.dll (LGPL), never committed. See NOTICE.md. Not the plugin's
+      # `setup-lib`: that takes whatever is "latest" with no check. Pinned by
+      # exact asset URL and SHA-256; a mismatch stops the job. The plugin's
+      # wrapper DLL is not fetched: the next step builds it from source.
+      # To bump: pick a release of github.com/zhongfly/mpv-winbuild, then
+      #   gh api repos/zhongfly/mpv-winbuild/releases/tags/<tag> --jq '.assets[] | select(.name | startswith("mpv-dev-lgpl-x86_64-2")) | [.name, .digest]'
+      # and set MPV_TAG, MPV_ASSET and MPV_SHA256 (the digest without "sha256:").
+      # That repository keeps only about a month of builds: when the pinned tag
+      # is gone the download fails here, and the pin must be bumped (and tested).
+      - name: Fetch libmpv (pinned)
+        shell: pwsh
+        env:
+          MPV_TAG: 2026-11-07-55d3feb45c
+          MPV_ASSET: mpv-dev-lgpl-x86_64-20261107-git-55d3feb45c.7z
+          MPV_SHA256: 17bff1d2e90ad06a9d98ce0fae738feb64feaf10ddd804870e0144111a9715df
+        run: |
+          $tmp = Join-Path $env:RUNNER_TEMP 'mpv-dl'
+          New-Item -ItemType Directory -Force $tmp | Out-Null
+          $archive = Join-Path $tmp $env:MPV_ASSET
+          Invoke-WebRequest "https://github.com/zhongfly/mpv-winbuild/releases/download/$env:MPV_TAG/$env:MPV_ASSET" -OutFile $archive
+          $got = (Get-FileHash $archive -Algorithm SHA256).Hash.ToLower()
+          if ($got -ne $env:MPV_SHA256) { throw "libmpv archive SHA-256 mismatch: expected $env:MPV_SHA256, got $got." }
+          $out = Join-Path $tmp 'x'
+          & 7z x $archive "-o$out" -y | Out-Null
+          if ($LASTEXITCODE -ne 0) { throw "7z extraction failed ($LASTEXITCODE)." }
+          $dll = Get-ChildItem $out -Recurse -Filter libmpv-2.dll | Select-Object -First 1
+          if (-not $dll) { throw 'libmpv-2.dll not found in the archive.' }
+          New-Item -ItemType Directory -Force src-tauri/lib | Out-Null
+          Move-Item $dll.FullName src-tauri/lib/libmpv-2.dll -Force
+          Remove-Item $tmp -Recurse -Force
 
       # The plugin's wrapper DLL needs VCRUNTIME140.dll, which a fresh Windows
       # may lack; this one, from the same pinned source as Linux's, has the
@@ -66,7 +114,7 @@ jobs:
         shell: bash
         run: bash scripts/build-mpv-wrapper.sh
 
-      # Kinema's own TMDB key (src/metadata/builtinKey.ts), from a repository
+      # Skrin's own TMDB key (src/metadata/builtinKey.ts), from a repository
       # secret so it is never in the source. A release without it would still
       # run, as a build from source does, but would leave movies unidentified
       # for everyone who has no key of their own — so a missing secret stops
@@ -83,17 +131,17 @@ jobs:
       - name: Build the portable app and the installer
         env:
           VITE_TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
-          # Kinema's SIMKL app ID (src-tauri/src/simkl.rs), compiled in. Not a
+          # Skrin's SIMKL app ID (src-tauri/src/simkl.rs), compiled in. Not a
           # secret to SIMKL, but kept out of the source so the repository does
           # not say whose account registered it. Optional: a release without
           # it simply has no SIMKL, as a build from source does.
           KINEMA_SIMKL_CLIENT_ID: ${{ secrets.SIMKL_CLIENT_ID }}
-          # Kinema's Trakt app (trakt.rs). Trakt's device sign-in needs the
+          # Skrin's Trakt app (trakt.rs). Trakt's device sign-in needs the
           # secret as well as the ID; like the TMDB key, it is readable by
           # anyone holding the app. Optional, as SIMKL's is.
           KINEMA_TRAKT_CLIENT_ID: ${{ secrets.TRAKT_CLIENT_ID }}
           KINEMA_TRAKT_CLIENT_SECRET: ${{ secrets.TRAKT_CLIENT_SECRET }}
-          # Kinema's OpenSubtitles app key (opensubtitles.rs). Optional too.
+          # Skrin's OpenSubtitles app key (opensubtitles.rs). Optional too.
           KINEMA_OPENSUBTITLES_API_KEY: ${{ secrets.OPENSUBTITLES_API_KEY }}
         run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-app.ps1 -NoShortcut -Installer
 
@@ -101,14 +149,14 @@ jobs:
         shell: pwsh
         run: |
           $version = (Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
-          $zip = "kinema-windows-x64.zip"
+          $zip = "skrin-windows-x64.zip"
           New-Item -ItemType Directory -Force out | Out-Null
           Compress-Archive -Path dist-app\* -DestinationPath "out\$zip"
           $hash = (Get-FileHash "out\$zip" -Algorithm SHA256).Hash.ToLower()
           # LF, as sha256sum writes it: a CRLF line makes `sha256sum -c` on
           # Linux look for a file whose name ends in a carriage return.
           [IO.File]::WriteAllText("$PWD\out\$zip.sha256", "$hash  $zip`n")
-          $setup = "kinema-windows-x64-setup.exe"
+          $setup = "skrin-windows-x64-setup.exe"
           $built = @(Get-ChildItem src-tauri\target\release\bundle\nsis\*-setup.exe)
           if ($built.Count -ne 1) { throw "Expected one installer, found: $($built.Name -join ', ')" }
           Copy-Item $built[0].FullName "out\$setup"
@@ -141,6 +189,8 @@ jobs:
   linux:
     # On the oldest Ubuntu the .deb should install on: a program built
     # against a newer C library refuses to start on an older one.
+    needs: check
+    if: ${{ !cancelled() && (needs.check.result == 'success' || needs.check.result == 'skipped') }}
     strategy:
       matrix:
         os: [ubuntu-24.04, ubuntu-24.04-arm]
@@ -154,9 +204,9 @@ jobs:
           node-version: 20
           cache: npm
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: src-tauri
 
@@ -203,9 +253,9 @@ jobs:
     # The .rpm on a stock Fedora, as a user installs it: dnf has to find mpv
     # and, through the weak dependency "(ffmpeg or ffmpeg-free)", Fedora's own
     # ffmpeg-free, so the detail page's badges work without a second step.
-    # Not a step of `publish`: it says whether the release text's promise
-    # holds, and a Fedora mirror having a bad minute should not hold a
-    # release back.
+    # A step of `publish` since A11-03: an rpm that does not install on a
+    # stock Fedora should not become a release. A bad mirror minute means
+    # re-running the job.
     needs: linux
     runs-on: ubuntu-24.04
     container: fedora:43
@@ -218,11 +268,11 @@ jobs:
       # Fedora's container image turns weak dependencies off to stay small;
       # an installed Fedora has them on, which is what this is checking.
       - name: Install the .rpm with dnf
-        run: dnf install -y --setopt=install_weak_deps=True ./kinema-linux-x86_64.rpm
+        run: dnf install -y --setopt=install_weak_deps=True ./skrin-linux-x86_64.rpm
 
       - name: Check mpv and ffmpeg came with it
         run: |
-          rpm -q "$(rpm -qp --qf '%{NAME}' ./kinema-linux-x86_64.rpm)"
+          rpm -q "$(rpm -qp --qf '%{NAME}' ./skrin-linux-x86_64.rpm)"
           rpm -q mpv-libs
           rpm -q ffmpeg-free || rpm -q ffmpeg
           ffprobe -version | head -n 1
@@ -232,9 +282,11 @@ jobs:
     # The signed release APK, for sideloading on a TV box or a phone. Built
     # for 64-bit and 32-bit ARM (the boxes and phones; many TV boxes run a
     # 32-bit Android even on a 64-bit chip). The x86-64 build in ci.yml is for
-    # the emulator and is not shipped. Signed with Kinema's own key, kept as
+    # the emulator and is not shipped. Signed with Skrin's own key, kept as
     # repository secrets (ANDROID_KEYSTORE_BASE64 is the .p12 file in base64);
     # the same key must sign every release or phones refuse to update.
+    needs: check
+    if: ${{ !cancelled() && (needs.check.result == 'success' || needs.check.result == 'skipped') }}
     runs-on: ubuntu-24.04
 
     env:
@@ -259,11 +311,11 @@ jobs:
           node-version: 20
           cache: npm
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
         with:
           targets: aarch64-linux-android,armv7-linux-androideabi
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: src-tauri
 
@@ -298,7 +350,7 @@ jobs:
 
       # Gradle from GitHub's cache (filled by ci.yml on master), so a release
       # does not depend on downloading it (504s for hours on 2026-11-08).
-      - uses: gradle/actions/setup-gradle@v6
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
         with:
           cache-read-only: true
 
@@ -345,8 +397,8 @@ jobs:
       - name: Package
         run: |
           mkdir -p out
-          cp src-tauri/gen/android/app/build/outputs/apk/universal/release/*.apk "out/kinema-android.apk"
-          cd out && sha256sum kinema-android.apk > kinema-android.apk.sha256
+          cp src-tauri/gen/android/app/build/outputs/apk/universal/release/*.apk "out/skrin-android.apk"
+          cd out && sha256sum skrin-android.apk > skrin-android.apk.sha256
 
       - uses: actions/upload-artifact@v7
         with:
@@ -356,7 +408,10 @@ jobs:
   publish:
     # Only for a pushed tag; a run started by hand stops at the artifacts.
     if: github.event_name == 'push'
-    needs: [windows, linux, android]
+    needs: [windows, linux, android, fedora]
+    # The only job that writes to the repository (it makes the release).
+    permissions:
+      contents: write
     runs-on: ubuntu-24.04
 
     steps:
@@ -367,7 +422,7 @@ jobs:
 
       # The winget manifest is for winget.yml, not a file for users.
       - name: Leave the winget manifest out
-        run: rm -f files/Basswaves.Kinema*.yaml
+        run: rm -f files/Basswaves.Skrin*.yaml
 
       - name: Read the checksums for the notes
         run: |
@@ -375,27 +430,27 @@ jobs:
           version="${GITHUB_REF_NAME#v}"
           {
             echo "VERSION=$version"
-            echo "WIN_SHA=$(cut -d' ' -f1 kinema-windows-x64.zip.sha256)"
-            echo "SETUP_SHA=$(cut -d' ' -f1 kinema-windows-x64-setup.exe.sha256)"
+            echo "WIN_SHA=$(cut -d' ' -f1 skrin-windows-x64.zip.sha256)"
+            echo "SETUP_SHA=$(cut -d' ' -f1 skrin-windows-x64-setup.exe.sha256)"
           } >> "$GITHUB_ENV"
 
       - name: Publish release
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3.0.4
         with:
           draft: true
           files: files/*
           body: |
             ## Windows
 
-            **Installer:** download `kinema-windows-x64-setup.exe`
+            **Installer:** download `skrin-windows-x64-setup.exe`
             and run it. It installs for your Windows account only (no
-            administrator) and adds Kinema to the Start menu. Uninstall it
+            administrator) and adds Skrin to the Start menu. Uninstall it
             from Settings → Apps: it removes the program, its shortcuts and its
             "Open with" entries, and asks before deleting your library and
             settings.
 
-            **Portable:** or download `kinema-windows-x64.zip`,
-            extract it anywhere, and run `kinema.exe`. Nothing is written
+            **Portable:** or download `skrin-windows-x64.zip`,
+            extract it anywhere, and run `skrin.exe`. Nothing is written
             outside the folder and your app data.
 
             **Windows 11.** Needs the WebView2 runtime, which ships with
@@ -404,15 +459,15 @@ jobs:
 
             #### Windows will ask once whether to run it
 
-            Kinema is not code-signed, so the first time you open it Windows
+            Skrin is not code-signed, so the first time you open it Windows
             shows *"Windows protected your PC"*. Click **More info**, then
             **Run anyway**; Windows remembers. To check that the file you
             downloaded is the one that was published, run this in PowerShell
             in the folder you downloaded it to:
 
             ```powershell
-            Get-FileHash .\kinema-windows-x64-setup.exe -Algorithm SHA256
-            Get-FileHash .\kinema-windows-x64.zip -Algorithm SHA256
+            Get-FileHash .\skrin-windows-x64-setup.exe -Algorithm SHA256
+            Get-FileHash .\skrin-windows-x64.zip -Algorithm SHA256
             ```
 
             Expected: `${{ env.SETUP_SHA }}` for the installer,
@@ -421,24 +476,29 @@ jobs:
 
             ## Linux
 
-            Kinema uses your system's mpv and WebKitGTK; the packages install
+            Skrin uses your system's mpv and WebKitGTK; the packages install
             them for you. For x86-64 PCs take the `amd64` / `x86_64` files,
             for ARM the `arm64` / `aarch64` ones.
 
             **Ubuntu 24.04 or later, Debian 13:**
 
             ```bash
-            sudo apt install ./kinema-linux-amd64.deb
+            sudo apt install ./skrin-linux-amd64.deb
             ```
 
             **Fedora:**
 
             ```bash
-            sudo dnf install ./kinema-linux-x86_64.rpm
+            sudo dnf install ./skrin-linux-x86_64.rpm
             ```
 
-            **Anything else:** unpack `kinema-linux-x86_64.tar.gz`
-            and run `./kinema`; its README.txt names the two libraries (mpv
+            Over Kinema (Skrin's name until 0.17.0), use
+            `sudo dnf swap kinema ./skrin-linux-x86_64.rpm` instead: dnf
+            does not replace a package of another name by itself. Your
+            library is kept.
+
+            **Anything else:** unpack `skrin-linux-x86_64.tar.gz`
+            and run `./skrin`; its README.txt names the two libraries (mpv
             and WebKitGTK) to install. HDR on Wayland needs mpv 0.40 or later — Ubuntu 26.04,
             Debian 13, Fedora 43 and Arch have it.
 
@@ -448,19 +508,20 @@ jobs:
             ## Android (early version)
 
             For Android TV boxes, installed by hand (sideloaded): download
-            `kinema-android.apk`, copy it to the device and
+            `skrin-android.apk`, copy it to the device and
             open it (Android asks once to allow installs from that source).
             It is an early version, tried on one TV box and the emulator; a
-            phone has not been tried. See the README for what has been tested
-            and what is still missing. Check the download with
-            `sha256sum -c kinema-android.apk.sha256`; the
-            certificate it is signed with is named in the README.
+            phone has not been tried. [Platform support](https://github.com/basswaves/skrin/blob/master/docs/PLATFORMS.md#android-tv-early-version)
+            says what has been tested and what is still missing. Check the
+            download with `sha256sum -c skrin-android.apk.sha256`; the
+            certificate it is signed with is named in
+            [Installing Skrin](https://github.com/basswaves/skrin/blob/master/docs/INSTALL.md#android-tv).
 
             ## First run
 
-            Kinema asks where it will be watched and where your movies and TV
+            Skrin asks where it will be watched and where your movies and TV
             folders are, then scans — with a few skippable setup pages while it
-            does. Posters and descriptions come from TMDB through a key Kinema
+            does. Posters and descriptions come from TMDB through a key Skrin
             carries, so there is nothing to sign up for; a free key of your own
             can be entered in Settings instead.
 
@@ -470,6 +531,6 @@ jobs:
             you may replace; on Linux the system's libmpv is used; Android uses
             Google's Media3 (Apache-2.0) — see [NOTICE.md](NOTICE.md).
 
-            Something not working, or it works on a device the README does not
-            list? Say so: [bug report](https://github.com/Basswaves/kinema/issues/new?template=bug_report.yml)
-            or [device report](https://github.com/Basswaves/kinema/issues/new?template=device_report.yml).
+            Something not working, or it works on a device Platform support
+            does not list? Say so: [bug report](https://github.com/basswaves/skrin/issues/new?template=bug_report.yml)
+            or [device report](https://github.com/basswaves/skrin/issues/new?template=device_report.yml).

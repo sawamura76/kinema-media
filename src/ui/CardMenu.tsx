@@ -51,7 +51,7 @@ export default function CardMenuHost(props: Props) {
   return (
     <>
       {/* On whichever engine the screen under it is (round 7, F2): over a
-          screen on Kinema's own a menu that holds the ring while open and
+          screen on Skrin's own a menu that holds the ring while open and
           gives it back to the card when it closes (focusStore.ts). */}
       {request && (
         <CardMenu

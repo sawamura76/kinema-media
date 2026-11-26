@@ -990,6 +990,17 @@ async function walkSystem(ctx: Ctx): Promise<void> {
     async (p) => {
       const out: ScreenResult[] = [];
       const android = ctx.system === 'android';
+      // The quiet line above the first question, and its page (round 11).
+      if (await pressUntil(p, 'ArrowUp', isLabel('Keep everything on this computer'), 3)) {
+        await press(p, 'Enter');
+        await drawn(p);
+        await quiet(p);
+        out.push(await w(p, 'first-run-keep', 'First run: Keep everything on this computer', KB));
+        await pressUntil(p, 'ArrowRight', isLabel('Back'), 2);
+        await press(p, 'Enter');
+        await drawn(p);
+        await quiet(p);
+      }
       if (!android) {
         await pressUntil(p, 'ArrowDown', isLabel('A TV, from the sofa'), 4);
         await press(p, 'Enter');
@@ -1002,7 +1013,7 @@ async function walkSystem(ctx: Ctx): Promise<void> {
       if (android) {
         await quiet(p);
         out.push(
-          await w(p, 'first-run-folders', 'First run: Kinema’s own folder browser', KB)
+          await w(p, 'first-run-folders', 'First run: Skrin’s own folder browser', KB)
         );
         await press(p, 'Enter');
         await press(p, 'ArrowUp');

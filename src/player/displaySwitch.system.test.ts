@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Screen } from './displayMode';
 
-// The system's way (Android): Kinema asks the system for a mode and the
+// The system's way (Android): Skrin asks the system for a mode and the
 // system answers. Everything outside displaySwitch.ts is stood in for.
 const screen = vi.hoisted(() => ({ now: null as Screen | null }));
 const asked = vi.hoisted(() => [] as number[]);
@@ -62,6 +62,21 @@ describe('matching the screen through the system', () => {
     await vi.runAllTimersAsync();
     await expect(done).resolves.toBe(true);
     expect(said).toHaveBeenCalledTimes(1);
+    expect(asked).toEqual([23.976]);
+  });
+
+  it('waits for what runs before a switch (F pauses the film there) and not at all when nothing switches', async () => {
+    const now = mode(3840, 2160, 50);
+    const cinema = mode(3840, 2160, 23.976);
+    screen.now = { ...now, gdi_name: 'display 0', hdr: 'unknown', modes: [now, cinema] };
+    const order: string[] = [];
+    const done = switchForFilm(film, async () => {
+      await Promise.resolve();
+      order.push(`before(${asked.length} asked)`);
+    });
+    await vi.runAllTimersAsync();
+    await expect(done).resolves.toBe(true);
+    expect(order).toEqual(['before(0 asked)']);
     expect(asked).toEqual([23.976]);
   });
 });

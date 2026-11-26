@@ -58,7 +58,7 @@ describe('reading a matched file again', () => {
     expect(two).toMatchObject({ kind: 'title', was: 'Back to the Future' });
     expect(three).toMatchObject({ kind: 'title', was: 'Back to the Future' });
     expect(whyWords(JSON.stringify(two), 'Back to the Future')).toBe(
-      'The file\'s own name says Part 2, which Kinema did not read before. It is linked to “Back to the Future”.'
+      'The file\'s own name says Part 2, which Skrin did not read before. It is linked to “Back to the Future”.'
     );
     // The first film itself reads as it did: not listed.
     expect(check(matched(`${dir}/Back to the Future (1985).mkv`, old))).toBeNull();

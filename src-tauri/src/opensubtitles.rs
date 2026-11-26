@@ -14,12 +14,12 @@
 //! - **An account is optional.** Without one, 5 downloads a day per network;
 //!   signed in, 20. A sign-in lasts about a day, so the password is kept to
 //!   sign in again: encrypted to the Windows user with DPAPI on Windows, and in
-//!   Kinema's own settings elsewhere, as Kodi and Jellyfin keep theirs.
-//! - **Subtitles are saved in Kinema's app data**, never beside the video:
+//!   Skrin's own settings elsewhere, as Kodi and Jellyfin keep theirs.
+//! - **Subtitles are saved in Skrin's app data**, never beside the video:
 //!   media folders are read, never written. Each is fetched once per file, so a
 //!   rewatch costs no download.
 //!
-//! The app key (`Api-Key`) is Kinema's own, built into releases from a
+//! The app key (`Api-Key`) is Skrin's own, built into releases from a
 //! repository secret like the TMDB key.
 
 use crate::library::Db;
@@ -57,7 +57,7 @@ const TIMEOUT: Duration = Duration::from_secs(20);
 
 fn user_agent() -> String {
     // The form OpenSubtitles asks for: an app name and version.
-    format!("Kinema v{}", env!("CARGO_PKG_VERSION"))
+    format!("Skrin v{}", env!("CARGO_PKG_VERSION"))
 }
 
 fn api_key(conn: &Connection) -> Option<String> {
@@ -65,7 +65,6 @@ fn api_key(conn: &Connection) -> Option<String> {
         .map(|k| k.trim().to_string())
         .or_else(|| BUILTIN_API_KEY.map(str::trim).filter(|k| !k.is_empty()).map(String::from))
 }
-
 
 fn store(conn: &Connection, key: &str, value: &str) -> Result<(), String> {
     crate::settings::store(conn, key, value)
@@ -79,94 +78,16 @@ fn clear(conn: &Connection, key: &str) -> Result<(), String> {
 
 // ---- the password -------------------------------------------------------------
 
-/// Kept so Kinema can sign in again when the day's sign-in runs out.
-///
-/// On Windows it is encrypted with DPAPI to the Windows user — only that user
-/// on that PC can read it back, so the weekly safety copies of the library
-/// carry only the encrypted form. Elsewhere it is kept as it is, in Kinema's
-/// own settings, which is how Kodi and Jellyfin keep theirs; a port needs no
-/// secret store to work.
+/// Kept so Skrin can sign in again when the day's sign-in runs out. The
+/// settings code locks it with the rest of the sign-ins and keys
+/// (`secrets.rs`); the `plain:` marker is how an older Skrin wrote it and
+/// still reads back.
 fn protect(password: &str) -> String {
-    #[cfg(windows)]
-    if let Some(sealed) = dpapi::seal(password.as_bytes()) {
-        return format!("dpapi:{}", hex(&sealed));
-    }
     format!("plain:{password}")
 }
 
 fn unprotect(stored: &str) -> Option<String> {
-    if let Some(plain) = stored.strip_prefix("plain:") {
-        return Some(plain.to_string());
-    }
-    #[cfg(windows)]
-    if let Some(sealed) = stored.strip_prefix("dpapi:") {
-        let bytes = unhex(sealed)?;
-        return dpapi::open(&bytes).and_then(|b| String::from_utf8(b).ok());
-    }
-    None
-}
-
-#[cfg_attr(not(windows), allow(dead_code))]
-fn hex(bytes: &[u8]) -> String {
-    bytes.iter().map(|b| format!("{b:02x}")).collect()
-}
-
-#[cfg_attr(not(windows), allow(dead_code))]
-fn unhex(text: &str) -> Option<Vec<u8>> {
-    if !text.len().is_multiple_of(2) {
-        return None;
-    }
-    (0..text.len())
-        .step_by(2)
-        .map(|i| u8::from_str_radix(text.get(i..i + 2)?, 16).ok())
-        .collect()
-}
-
-#[cfg(windows)]
-mod dpapi {
-    use windows::Win32::Foundation::{LocalFree, HLOCAL};
-    use windows::Win32::Security::Cryptography::{
-        CryptProtectData, CryptUnprotectData, CRYPTPROTECT_UI_FORBIDDEN, CRYPT_INTEGER_BLOB,
-    };
-
-    fn take(blob: &CRYPT_INTEGER_BLOB) -> Vec<u8> {
-        // SAFETY: the blob was filled in by DPAPI, which owns `cbData` bytes at
-        // `pbData` until LocalFree below.
-        let out = unsafe { std::slice::from_raw_parts(blob.pbData, blob.cbData as usize).to_vec() };
-        unsafe {
-            let _ = LocalFree(Some(HLOCAL(blob.pbData as _)));
-        }
-        out
-    }
-
-    pub fn seal(data: &[u8]) -> Option<Vec<u8>> {
-        let input = CRYPT_INTEGER_BLOB {
-            cbData: data.len() as u32,
-            pbData: data.as_ptr() as *mut u8,
-        };
-        let mut output = CRYPT_INTEGER_BLOB::default();
-        // SAFETY: input points at `data`, alive for the call; output is
-        // allocated by DPAPI and freed in `take`.
-        unsafe {
-            CryptProtectData(&input, None, None, None, None, CRYPTPROTECT_UI_FORBIDDEN, &mut output)
-                .ok()?;
-        }
-        Some(take(&output))
-    }
-
-    pub fn open(data: &[u8]) -> Option<Vec<u8>> {
-        let input = CRYPT_INTEGER_BLOB {
-            cbData: data.len() as u32,
-            pbData: data.as_ptr() as *mut u8,
-        };
-        let mut output = CRYPT_INTEGER_BLOB::default();
-        // SAFETY: as in `seal`.
-        unsafe {
-            CryptUnprotectData(&input, None, None, None, None, CRYPTPROTECT_UI_FORBIDDEN, &mut output)
-                .ok()?;
-        }
-        Some(take(&output))
-    }
+    Some(stored.strip_prefix("plain:").unwrap_or(stored).to_string())
 }
 
 // ---- the file's fingerprint -----------------------------------------------------
@@ -195,7 +116,7 @@ pub fn movie_hash(path: &Path) -> Option<String> {
 
 // ---- asking ---------------------------------------------------------------------
 
-/// A language as OpenSubtitles spells it. Kinema's codes are two letters;
+/// A language as OpenSubtitles spells it. Skrin's codes are two letters;
 /// OpenSubtitles splits Portuguese and Chinese, so both halves are asked for.
 fn os_languages(code: &str) -> String {
     match code.trim().to_ascii_lowercase().as_str() {
@@ -207,7 +128,8 @@ fn os_languages(code: &str) -> String {
 }
 
 fn http() -> Option<tauri_plugin_http::reqwest::Client> {
-    tauri_plugin_http::reqwest::Client::builder()
+    crate::net::client(crate::net::Service::OpenSubtitles)
+        .ok()?
         .timeout(TIMEOUT)
         .build()
         .ok()
@@ -434,7 +356,7 @@ async fn session(app: &tauri::AppHandle) -> Result<Session, String> {
     let (key, base, token, token_at, username, password) = {
         let db = app.state::<Db>();
         let conn = db.0.lock().map_err(to_string_err)?;
-        let key = api_key(&conn).ok_or("This copy of Kinema has no OpenSubtitles app key.")?;
+        let key = api_key(&conn).ok_or("This copy of Skrin has no OpenSubtitles app key.")?;
         (
             key,
             base(&conn),
@@ -576,7 +498,8 @@ pub fn opensubtitles_status(db: tauri::State<Db>) -> Result<SubtitleStatus, Stri
         // no grant to cut off (a second sign-in is simply a second token), and
         // a copy of the library keeps what it fetches in its own folder. It is
         // how the real search and download are tested end to end.
-        available: api_key(&conn).is_some(),
+        // "Find subtitles online" is not offered in Keep everything on this computer.
+        available: api_key(&conn).is_some() && !crate::net::offline(),
         user: setting(&conn, USERNAME_KEY),
         remaining: setting(&conn, REMAINING_KEY).and_then(|s| s.parse().ok()),
         reset: setting(&conn, RESET_KEY),
@@ -595,7 +518,7 @@ pub async fn opensubtitles_sign_in(
     let key = {
         let db = app.state::<Db>();
         let conn = db.0.lock().map_err(to_string_err)?;
-        api_key(&conn).ok_or("This copy of Kinema has no OpenSubtitles app key.")?
+        api_key(&conn).ok_or("This copy of Skrin has no OpenSubtitles app key.")?
     };
     let username = username.trim().to_string();
     log_in(&app, &key, &username, &password).await?;
@@ -667,7 +590,7 @@ async fn search(
     }
 }
 
-/// Download one subtitle into Kinema's own folder, and remember it for this
+/// Download one subtitle into Skrin's own folder, and remember it for this
 /// file. Returns where it is.
 async fn download(
     app: &tauri::AppHandle,
@@ -928,18 +851,16 @@ mod tests {
 
     #[test]
     fn a_kept_password_reads_back() {
-        let kept = protect("correct horse");
-        // Elsewhere it is kept as given, in a folder only this account can
-        // open (`util::keep_private`): the owner's "no extra work for the
-        // ports".
-        #[cfg(windows)]
-        {
-            assert!(kept.starts_with("dpapi:"), "encrypted on Windows");
-            assert!(!kept.contains("correct horse"));
-        }
+        // Locked or not is the settings code's business (`secrets.rs`).
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch("CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);").unwrap();
+        store(&conn, PASSWORD_KEY, &protect("correct horse")).unwrap();
+        let kept = setting(&conn, PASSWORD_KEY).unwrap();
         assert_eq!(unprotect(&kept).as_deref(), Some("correct horse"));
-        assert_eq!(unprotect("plain:abc").as_deref(), Some("abc"));
-        assert_eq!(unprotect("dpapi:zz"), None);
+        // An older Skrin's plain value still reads back.
+        conn.execute("UPDATE settings SET value = 'plain:old secret'", []).unwrap();
+        let old = setting(&conn, PASSWORD_KEY).unwrap();
+        assert_eq!(unprotect(&old).as_deref(), Some("old secret"));
     }
 
     #[test]

@@ -1,4 +1,4 @@
-//! Offering Kinema to Windows as a video player (Settings → Playback). On
+//! Offering Skrin to Windows as a video player (Settings → Playback). On
 //! Linux the same button puts the unpacked folder in the app menu and in
 //! "Open with" (`app_menu.rs`); the packages do that themselves.
 //!
@@ -6,39 +6,50 @@
 //! choice is the user's, made in Settings → Default apps, and protected so no
 //! program can write it. What a program can do is say what it opens. This
 //! writes that, for this Windows account only (HKCU, no administrator), and
-//! then opens Kinema's page in Default apps, where the user picks.
+//! then opens Skrin's page in Default apps, where the user picks.
 //!
-//! What is written, all under `HKCU\Software`:
+//! What is written, all under `HKCU\Software`. The keys keep the name the
+//! app had until 0.17.0, Kinema: an offer made then is this offer, so a
+//! renamed copy finds it and only moves it (`refresh`). Nobody sees a key;
+//! the names Windows shows are Skrin.
 //!
-//!  * `Classes\KinemaMusic.Video` — how a video is opened with Kinema: the program
+//!  * `Classes\KinemaMusic.Video` — how a video is opened with Skrin: the program
 //!    with the file after it, and its icon.
 //!  * `Classes\.mkv\OpenWithProgids\KinemaMusic.Video` and the same for every
-//!    other extension the library scans — Kinema in each type's "Open with".
-//!  * `Classes\Applications\kinema.exe` — Kinema's name in those lists.
-//!  * `Kinema\Capabilities` and `RegisteredApplications\Kinema` — Kinema in
+//!    other extension the library scans — Skrin in each type's "Open with".
+//!  * `Classes\Applications\kinema-media.exe` — Skrin's name in those lists (the
+//!    old `kinema.exe` one is taken away).
+//!  * `Kinema\Capabilities` and `RegisteredApplications\Kinema` — Skrin in
 //!    Default apps, with the types it can open.
 //!
 //! Remove takes every one of those away again, and the empty keys it leaves
 //! under a type. Nothing outside these is touched: never another program's
 //! entries, never the user's choice of default.
 //!
-//! The folder Kinema runs from can move (it is a ZIP), so at launch an offer
-//! that names another place is written again for this one (`refresh`).
+//! The folder Skrin runs from can move (it is a ZIP, and the installer's
+//! folder was renamed with the app), so at launch an offer that names
+//! another place is written again for this one (`refresh`).
 
 // The offer's shape is built and tested everywhere; only Windows writes it.
 #![cfg_attr(not(windows), allow(dead_code))]
 
 use serde::Serialize;
 
-/// The name Windows lists Kinema under in Default apps.
-const APP: &str = "Kinema Music"; // Stable registration identity.
-const DISPLAY_NAME: &str = "Kinema Media";
-/// How a video opened with Kinema is described to Windows.
+/// The key Windows lists Skrin under in Default apps. It keeps the name the
+/// app had until 0.17.0 (Kinema), so an offer made then is still this one:
+/// keys are never seen, the name shown is `NAME`.
+const APP: &str = "Kinema Music";
+/// The name shown in Default apps and in "Open with".
+const NAME: &str = "Kinema Media";
+/// How a video opened with Skrin is described to Windows (an old name too).
 const PROG_ID: &str = "KinemaMusic.Video";
+/// The program file until 0.17.0, whose "Open with" name is taken away when
+/// an offer is written for the renamed one.
+const OLD_EXE: &str = "kinema-music.exe";
 
 #[derive(Serialize)]
 pub struct PlayerOffer {
-    /// Kinema is offered to Windows as a video player.
+    /// Skrin is offered to Windows as a video player.
     pub offered: bool,
 }
 
@@ -67,9 +78,9 @@ fn offer_values(base: &str, exe: &str, exe_name: &str, extensions: &[&str]) -> V
         value(prog.clone(), None, "Video"),
         value(format!(r"{prog}\DefaultIcon"), None, icon.clone()),
         value(format!(r"{prog}\shell\open\command"), None, command.clone()),
-        value(app.clone(), Some("FriendlyAppName"), DISPLAY_NAME),
+        value(app.clone(), Some("FriendlyAppName"), NAME),
         value(format!(r"{app}\shell\open\command"), None, command),
-        value(caps.clone(), Some("ApplicationName"), DISPLAY_NAME),
+        value(caps.clone(), Some("ApplicationName"), NAME),
         value(
             caps.clone(),
             Some("ApplicationDescription"),
@@ -276,13 +287,16 @@ mod offer {
         let name = path
             .file_name()
             .map(|n| n.to_string_lossy().into_owned())
-            .ok_or("Kinema's program file has no name")?;
+            .ok_or("Skrin's program file has no name")?;
         Ok((path.to_string_lossy().into_owned(), name))
     }
 
     pub fn write(base: &str, exe: &str, exe_name: &str) -> Result<(), String> {
         for v in offer_values(base, exe, exe_name, crate::scanner::video_extensions()) {
             registry::write(&v)?;
+        }
+        if !exe_name.eq_ignore_ascii_case(OLD_EXE) {
+            registry::delete_tree(&format!(r"{base}\Classes\Applications\{OLD_EXE}"));
         }
         Ok(())
     }
@@ -295,6 +309,7 @@ mod offer {
         registry::delete_value(&format!(r"{base}\RegisteredApplications"), APP);
         registry::delete_tree(&format!(r"{base}\Classes\{PROG_ID}"));
         registry::delete_tree(&format!(r"{base}\Classes\Applications\{exe_name}"));
+        registry::delete_tree(&format!(r"{base}\Classes\Applications\{OLD_EXE}"));
         registry::delete_tree(&format!(r"{base}\{APP}\Capabilities"));
         registry::delete_if_empty(&format!(r"{base}\{APP}"));
         for ext in crate::scanner::video_extensions() {
@@ -322,7 +337,7 @@ mod offer {
 #[cfg(windows)]
 const BASE: &str = "Software";
 
-/// Whether Kinema is offered to Windows as a video player.
+/// Whether Skrin is offered to Windows as a video player.
 #[tauri::command]
 pub fn player_offer() -> PlayerOffer {
     #[cfg(windows)]
@@ -339,7 +354,7 @@ pub fn player_offer() -> PlayerOffer {
     }
 }
 
-/// Offer Kinema to Windows, then open its page in Default apps for the user to
+/// Offer Skrin to Windows, then open its page in Default apps for the user to
 /// choose what it opens.
 #[tauri::command]
 pub fn offer_as_player(app: tauri::AppHandle) -> Result<(), String> {
@@ -354,7 +369,7 @@ pub fn offer_as_player(app: tauri::AppHandle) -> Result<(), String> {
     {
         let _ = app;
         crate::app_menu::add()?;
-        crate::log!("default player: Kinema added to the app menu");
+        crate::log!("default player: Skrin added to the app menu");
         Ok(())
     }
     #[cfg(not(any(windows, target_os = "linux")))]
@@ -364,7 +379,7 @@ pub fn offer_as_player(app: tauri::AppHandle) -> Result<(), String> {
     }
 }
 
-/// Kinema's page in Settings → Default apps.
+/// Skrin's page in Settings → Default apps.
 #[tauri::command]
 pub fn open_default_apps(app: tauri::AppHandle) -> Result<(), String> {
     use tauri_plugin_opener::OpenerExt;
@@ -382,14 +397,14 @@ pub fn remove_as_player() -> Result<(), String> {
         offer::remove(BASE, &name);
         crate::log!("default player: offer to Windows removed");
         if offer::is_offered(BASE) {
-            return Err("Windows kept Kinema's entry; try again.".into());
+            return Err("Windows kept Skrin's entry; try again.".into());
         }
         Ok(())
     }
     #[cfg(target_os = "linux")]
     {
         crate::app_menu::remove()?;
-        crate::log!("default player: Kinema taken out of the app menu");
+        crate::log!("default player: Skrin taken out of the app menu");
         Ok(())
     }
     #[cfg(not(any(windows, target_os = "linux")))]
@@ -398,7 +413,7 @@ pub fn remove_as_player() -> Result<(), String> {
     }
 }
 
-/// At launch: an offer naming another place for Kinema (the folder was moved)
+/// At launch: an offer naming another place for Skrin (the folder was moved)
 /// is written again for this one, quietly. Release builds only — a
 /// development build must not take over the entries of the copy in use.
 pub fn refresh() {
@@ -407,7 +422,7 @@ pub fn refresh() {
         let Ok((exe, name)) = offer::exe() else { return };
         if offer::is_offered(BASE) && offer::stale(BASE, &exe) {
             match offer::write(BASE, &exe, &name) {
-                Ok(()) => crate::log!("default player: Kinema has moved; the offer now names {exe}"),
+                Ok(()) => crate::log!("default player: Skrin has moved; the offer now names {exe}"),
                 Err(e) => crate::log!("default player: could not update the offer: {e}"),
             }
         }
@@ -420,13 +435,13 @@ pub fn refresh() {
 
 /// Windows' own cache of program names, one pair of values per program the
 /// shell has started (`<path>.FriendlyAppName`, `<path>.ApplicationCompany`).
-/// Windows writes it whether or not Kinema was ever offered as a player.
+/// Windows writes it whether or not Skrin was ever offered as a player.
 #[cfg(windows)]
 const MUI_CACHE: &str = r"Software\Classes\Local Settings\Software\Microsoft\Windows\Shell\MuiCache";
 
 /// Run by the installer's uninstaller (`kinema.exe --uninstall-cleanup`, see
 /// `src-tauri/windows/hooks.nsh`) before it deletes the program: the offer, if
-/// it names this copy of Kinema, and Windows' cached name for this copy. An
+/// it names this copy of Skrin, and Windows' cached name for this copy. An
 /// offer naming another copy (a ZIP elsewhere) is that copy's, and stays.
 /// Silent: it runs before anything else in the process, with no log open.
 pub fn uninstall_cleanup() {
@@ -451,14 +466,14 @@ mod tests {
 
     #[test]
     fn an_offer_names_every_type_and_the_command() {
-        let values = offer_values("Software", r"C:\Kinema\kinema.exe", "kinema.exe", &["mkv", "mp4"]);
+        let values = offer_values("Software", r"C:\Skrin\kinema-media.exe", "kinema-media.exe", &["mkv", "mp4"]);
         let has = |key: &str, name: Option<&str>, data: &str| {
             values.iter().any(|v| v.key == key && v.name.as_deref() == name && v.data == data)
         };
         assert!(has(
             r"Software\Classes\KinemaMusic.Video\shell\open\command",
             None,
-            r#""C:\Kinema\kinema.exe" "%1""#
+            r#""C:\Skrin\kinema-media.exe" "%1""#
         ));
         assert!(has(r"Software\Classes\.mkv\OpenWithProgids", Some("KinemaMusic.Video"), ""));
         assert!(has(r"Software\Classes\.mp4\OpenWithProgids", Some("KinemaMusic.Video"), ""));
@@ -468,7 +483,10 @@ mod tests {
             Some("Kinema Music"),
             r"Software\Kinema Music\Capabilities"
         ));
-        assert!(has(r"Software\Classes\Applications\kinema.exe", Some("FriendlyAppName"), "Kinema Media"));
+        // Keys keep the old name (an offer made by Kinema is the same offer);
+        // what Windows shows is the new one.
+        assert!(has(r"Software\Classes\Applications\kinema-media.exe", Some("FriendlyAppName"), "Kinema Media"));
+        assert!(has(r"Software\Kinema Music\Capabilities", Some("ApplicationName"), "Kinema Media"));
     }
 
     /// The real calls, on a scratch key of this account that names no type
@@ -498,11 +516,31 @@ mod tests {
         offer::remove(&base, "kinema.exe");
         assert!(!offer::is_offered(&base));
         assert!(!offer::exists(&format!(r"{base}\Classes\KinemaMusic.Video")));
-        assert!(!offer::exists(&format!(r"{base}\Kinema Music")));
+        assert!(!offer::exists(&format!(r"{base}\Skrin")));
         assert!(!offer::exists(&format!(r"{base}\Classes\.mp4")));
         assert!(registry::read(&format!(r"{base}\Classes\.mkv\OpenWithProgids"), Some("Other.Player"))
             .is_some());
 
+        registry::delete_tree(&base);
+        assert!(!offer::exists(&base));
+    }
+
+    /// An offer Kinema made, written again by the renamed program (its launch
+    /// refresh): the new name is in "Open with" and the old program file is not.
+    #[cfg(windows)]
+    #[test]
+    fn an_offer_from_the_old_name_moves_to_the_new_one() {
+        let base = format!(r"Software\KinemaTest-renamed-{}", std::process::id());
+        offer::write(&base, r"C:\Old\kinema-music.exe", "kinema-music.exe").unwrap();
+        assert!(offer::exists(&format!(r"{base}\Classes\Applications\kinema-music.exe")));
+        let new = r"C:\New\kinema-media.exe";
+        assert!(offer::stale(&base, new));
+        offer::write(&base, new, "kinema-media.exe").unwrap();
+        assert!(offer::is_offered(&base));
+        assert!(offer::exists(&format!(r"{base}\Classes\Applications\kinema-media.exe")));
+        assert!(!offer::exists(&format!(r"{base}\Classes\Applications\kinema-music.exe")));
+        offer::remove(&base, "kinema-media.exe");
+        assert!(!offer::is_offered(&base));
         registry::delete_tree(&base);
         assert!(!offer::exists(&base));
     }

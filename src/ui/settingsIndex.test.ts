@@ -9,6 +9,7 @@ const code = Object.values(
 ).join('\n');
 
 const desktop = {
+  engine: 'mpv',
   windowed: true,
   network_shares: false,
   offers_player: true,
@@ -67,6 +68,11 @@ describe('Settings search', () => {
     expect(first.entry.label).toBe('Intros and credits');
     expect(first.value).toBe('Skip them');
     expect(first.sectionName).toBe('Skipping intros');
+  });
+
+  it('finds the version by "version" and "about" (GitHub #27)', () => {
+    expect(searchSettings('version', desktop)[0].entry.label).toBe('Version');
+    expect(searchSettings('about', desktop).map((m) => m.entry.label)).toContain('Version');
   });
 
   it('leaves out what this system does not have', () => {

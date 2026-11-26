@@ -39,7 +39,7 @@ test('PC TV and Handheld modes resize the UI and save the selected preset', asyn
   const modes = page.getByRole('radiogroup', { name: 'Where Kinema is used', exact: true });
   await modes.getByRole('button', { name: 'Handheld', exact: true }).click();
   await expect(page.locator('html')).toHaveAttribute('data-ui-mode','handheld');
-  expect(await page.evaluate(() => getComputedStyle(document.documentElement).fontSize)).toBe('18px');
+  expect(await page.evaluate(() => getComputedStyle(document.documentElement).fontSize)).toBe('20px');
   expect(await modes.getByRole('button', { name: /Handheld$/ }).evaluate((node) => node.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
   for (const size of [{width:1280,height:720},{width:854,height:480}]) {
     await page.setViewportSize(size);

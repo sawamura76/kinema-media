@@ -85,10 +85,111 @@ pub fn shut_down<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
     #[cfg(desktop)]
     {
         use tauri_plugin_libmpv::MpvExt;
-        if let Err(e) = app.mpv().destroy("main") {
-            crate::log!("mpv: could not shut down on exit: {e}");
+        // mpv's demuxer thread can sit in a read() on a share that has gone
+        // silent, and destroy waits for it: the process stayed alive after
+        // quit (A5-01). Wait a short while, then go on and leave it.
+        let handle = app.clone();
+        match within(EXIT_WAIT, move || handle.mpv().destroy("main").map_err(|e| e.to_string())) {
+            Some(Ok(())) => {}
+            Some(Err(e)) => crate::log!("mpv: could not shut down on exit: {e}"),
+            None => crate::log!(
+                "mpv: did not shut down within {} s (the film's drive is not answering?); leaving it",
+                EXIT_WAIT.as_secs()
+            ),
         }
     }
     #[cfg(mobile)]
     let _ = app;
+}
+
+/// How long quitting waits on the film's drive or on mpv before leaving them.
+#[cfg_attr(mobile, allow(dead_code))]
+pub const EXIT_WAIT: std::time::Duration = std::time::Duration::from_secs(3);
+
+/// The longest the whole exit may take once it has begun; then the process
+/// ends whatever is still waiting (a window close the plugin handles itself,
+/// a file look on a dead mount).
+const EXIT_LIMIT: std::time::Duration = std::time::Duration::from_secs(8);
+
+/// Run `f` on its own thread and wait at most `limit` for its answer. `None`
+/// if it has not finished: the thread is left behind, to end with the process.
+#[cfg_attr(mobile, allow(dead_code))]
+pub fn within<T: Send + 'static>(
+    limit: std::time::Duration,
+    f: impl FnOnce() -> T + Send + 'static,
+) -> Option<T> {
+    let (tx, rx) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let _ = tx.send(f());
+    });
+    rx.recv_timeout(limit).ok()
+}
+
+/// Once the app has begun to quit, end the process after `EXIT_LIMIT` whatever
+/// is still waiting. The library saves on its own as each change is made, so
+/// nothing of Skrin's own is lost by this; only a wait on a drive is cut.
+pub fn arm_exit_limit<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
+    static ARMED: std::sync::Once = std::sync::Once::new();
+    ARMED.call_once(|| {
+        let app = app.clone();
+        std::thread::spawn(move || {
+            std::thread::sleep(EXIT_LIMIT);
+            crate::log!(
+                "exit: still running {} s after quit began; ending the process",
+                EXIT_LIMIT.as_secs()
+            );
+            // A thread stuck on a dead mount keeps even an ended process
+            // listed, holding the single-instance name: the next start then
+            // waits on it for good (Linux test PC). Give the name back first.
+            #[cfg(desktop)]
+            within(std::time::Duration::from_secs(1), move || {
+                tauri_plugin_single_instance::destroy(&app)
+            });
+            #[cfg(mobile)]
+            let _ = app;
+            hard_exit();
+        });
+    });
+}
+
+/// End the process at once, without the exit-time clean-up: `process::exit`
+/// runs that clean-up, and on the Linux test PC it waited on the dead mount
+/// too (the limit fired, the process stayed). Nothing of Skrin's own is
+/// pending here: the library writes each change as it is made.
+fn hard_exit() -> ! {
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    // SAFETY: `_exit` takes a plain status and never returns.
+    unsafe {
+        libc::_exit(0)
+    }
+    #[cfg(windows)]
+    {
+        use windows::Win32::System::Threading::{GetCurrentProcess, TerminateProcess};
+        // SAFETY: the pseudo-handle of this process; on success it does not return.
+        let _ = unsafe { TerminateProcess(GetCurrentProcess(), 0) };
+        std::process::exit(0)
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "android", windows)))]
+    std::process::exit(0)
+}
+
+#[cfg(test)]
+mod exit_tests {
+    use super::within;
+    use std::time::{Duration, Instant};
+
+    #[test]
+    fn a_quick_job_gives_its_answer() {
+        assert_eq!(within(Duration::from_secs(2), || 7), Some(7));
+    }
+
+    #[test]
+    fn a_stuck_job_is_left_after_the_limit() {
+        let start = Instant::now();
+        let r = within(Duration::from_millis(200), || {
+            std::thread::sleep(Duration::from_secs(30));
+        });
+        assert!(r.is_none());
+        assert!(start.elapsed() < Duration::from_secs(5));
+    }
 }

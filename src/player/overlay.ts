@@ -20,11 +20,11 @@
  * while mpv's window covers the page (webkit_drawing.rs). A photo that does not
  * come back is then an error of its own (`STOPPED`): mpv says on the film why
  * the controls are gone, the photos go on being asked for in case they come
- * back, and Kinema draws on the processor from its next start.
+ * back, and Skrin draws on the processor from its next start.
  *
- * The photo is the size of Kinema's window; mpv 0.38 and later scale it to
+ * The photo is the size of Skrin's window; mpv 0.38 and later scale it to
  * their own (`dw`/`dh`), so the controls land where they would on the screen.
- * An older mpv cannot, so Kinema's window — hidden behind mpv's anyway — is
+ * An older mpv cannot, so Skrin's window — hidden behind mpv's anyway — is
  * made full screen for as long as the player is open, and the two sizes
  * match; it is put back afterwards.
  */
@@ -56,8 +56,8 @@ export const STOPPED = 'photos stopped';
 /** What mpv says on the film when the photos stopped; `next` when the next start draws another way. */
 export function stoppedMessage(next: boolean): string {
   return next
-    ? 'Kinema cannot show its controls over the film on this computer until it is started again.\nThe film plays on, and the keys still work.'
-    : 'Kinema cannot show its controls over the film right now.\nThe film plays on, and the keys still work.';
+    ? 'Skrin cannot show its controls over the film on this computer until it is started again.\nThe film plays on, and the keys still work.'
+    : 'Skrin cannot show its controls over the film right now.\nThe film plays on, and the keys still work.';
 }
 
 interface Drawing {
@@ -72,7 +72,7 @@ async function sayStopped(): Promise<void> {
   console.warn(
     `overlay: no photo of the page came back while mpv covered it${next ? '; the processor draws the page from the next start' : ''}`
   );
-  // Level 0: shown although Kinema keeps mpv's own messages off (osd-level 0).
+  // Level 0: shown although Skrin keeps mpv's own messages off (osd-level 0).
   await mpvCommand('show-text', [stoppedMessage(next), 15000, 0]).catch(() => undefined);
 }
 /** The first overlay id; each band takes the next (overlay.rs: at most four). */
@@ -155,7 +155,7 @@ async function canScale(): Promise<boolean> {
  * The largest box of the film's shape (`aspect`, width ÷ height) that fits in
  * a page of `width` × `height`, at its top left.
  *
- * Kinema's window is whatever size the desktop gives it — floated at the
+ * Skrin's window is whatever size the desktop gives it — floated at the
  * screen's size where that works (display.rs `player_window`), but a tiling
  * desktop may squeeze it beside the film's window, and Sway 1.11 floated it
  * 90 pixels larger than asked. Scaling a page of another shape to mpv's
@@ -275,10 +275,10 @@ export function startOverlay(): () => void {
   };
   const opened = performance.now();
   // The page's size against mpv's, said whenever either changes: a page of
-  // another shape is drawn stretched (a tiling desktop squeezing Kinema's
+  // another shape is drawn stretched (a tiling desktop squeezing Skrin's
   // window — display.rs `player_window`), and app.log is where that shows.
   let lastSizes = '';
-  // Whether this pump made Kinema's window full screen, to undo it.
+  // Whether this pump made Skrin's window full screen, to undo it.
   let madeFullscreen = false;
 
   const tick = async () => {
@@ -328,10 +328,10 @@ export function startOverlay(): () => void {
           // mpv before 0.38 takes no size to scale to ("has only 9
           // arguments" in mpv.log; the error itself just says the command
           // failed): drawn at the page's own size, which matches as long as
-          // Kinema's window is the size of the screen. Decided by mpv's
+          // Skrin's window is the size of the screen. Decided by mpv's
           // version, not by the failure: mpv shutting down as the player
           // closes fails it too (seen on the test stick with mpv 0.41), and
-          // concluding "old mpv" from that would make Kinema's window full
+          // concluding "old mpv" from that would make Skrin's window full
           // screen after the player had gone.
           if (stopped || (await canScale())) throw e;
           scaled = false;

@@ -1,6 +1,6 @@
 /**
  * The detail page's badges: what a file holds, in three rows — picture, sound,
- * file — the way a Kodi skin or a Zidoo player shows them, in Kinema's own
+ * file — the way a Kodi skin or a Zidoo player shows them, in Skrin's own
  * lettering rather than the brands' logos (see HISTORY.md, "Picture and sound
  * badges").
  *
@@ -191,6 +191,15 @@ export function channelLabel(track: Pick<AudioTrack, 'layout' | 'channels'>): st
   return track.channels ? `${track.channels} ch` : null;
 }
 
+/** A track Auro-3D can ride in: PCM or lossless (it cannot be in AAC, AC3...). */
+function couldHoldAuro(t: AudioTrack): boolean {
+  return (
+    t.codec.startsWith('pcm_') ||
+    ['truehd', 'flac', 'alac'].includes(t.codec) ||
+    (t.codec === 'dts' && (t.profile ?? '').includes('MA'))
+  );
+}
+
 /**
  * One audio track as a badge. The heading is the format, the value what it
  * carries: `DOLBY TRUEHD` / `Atmos · 7.1`, `DTS-HD MA` / `DTS:X · 7.1`.
@@ -339,9 +348,25 @@ export function buildBadges(
     seen.add(key);
     if (sound.length < MAX_SOUND_BADGES) sound.push(badge);
   }
-  if (release?.auro3d) sound.push({ label: 'Immersive', value: 'Auro-3D' });
+  // Auro-3D hides inside PCM or lossless sound, so the name's word is shown
+  // only if the file has such a track. With the file unread, the name is all
+  // there is.
+  if (release?.auro3d && (!details || (details.audio ?? []).some(couldHoldAuro))) {
+    sound.push({ label: 'Immersive', value: 'Auro-3D' });
+  }
 
-  const source = release ? sourceLabel(release) : null;
+  // The name's "UHD" is dropped when the file's own picture is below 4K: the
+  // source can only come from the name, but not against what was measured.
+  const measured = video && video.width > 0 && video.height > 0;
+  const belowUhd =
+    measured && !['4K UHD', '8K'].includes(resolutionLabel(video.width, video.height, video.interlaced));
+  const named =
+    release && belowUhd && release.source === 'Ultra HD Blu-ray'
+      ? { ...release, source: 'Blu-ray' }
+      : release && belowUhd && release.source === 'Ultra HDTV'
+        ? { ...release, source: 'HDTV' }
+        : release;
+  const source = named ? sourceLabel(named) : null;
   if (source) file.push({ label: 'Source', value: source });
   for (const edition of release?.editions ?? []) file.push({ label: 'Edition', value: edition });
   const subtitles = details?.subtitles ?? [];

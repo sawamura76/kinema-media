@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  A newer setup run by hand updates Kinema in place: in Windows Sandbox,
+  A newer setup run by hand updates Skrin in place: in Windows Sandbox,
   never on this PC.
 
 .DESCRIPTION
@@ -35,8 +35,10 @@ if (-not (Test-Path $sandbox)) {
 $setup = if ($Installer) { @(Get-Item $Installer) } else { @(Get-ChildItem (Join-Path $root 'src-tauri\target\release\bundle\nsis\*-setup.exe')) }
 if ($setup.Count -ne 1) { throw 'Expected one installer in src-tauri\target\release\bundle\nsis.' }
 
-$stage = Join-Path $env:TEMP ('kinema-sandbox-update-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
+$stage = Join-Path $env:TEMP ('skrin-sandbox-update-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
 New-Item -ItemType Directory $stage | Out-Null
+. (Join-Path $PSScriptRoot 'sandbox-common.ps1')
+$webview = Add-SandboxWebView2 $stage
 Copy-Item $setup[0].FullName (Join-Path $stage 'setup.exe')
 Copy-Item $Previous (Join-Path $stage 'previous.exe')
 Copy-Item $Short (Join-Path $stage 'short.mkv')
@@ -46,25 +48,26 @@ $inside = 'C:\Users\WDAGUtilityAccount\Desktop\kinema'
 $ErrorActionPreference = 'Continue'
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $out = Join-Path $here 'result.txt'
+. (Join-Path $here 'webview2.ps1')
 function Say($text) { Add-Content -Path $out -Value $text }
-$installDir = Join-Path $env:LOCALAPPDATA 'Kinema'
-$startLnk = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\Kinema.lnk'
-$deskLnk = Join-Path ([Environment]::GetFolderPath('Desktop')) 'Kinema.lnk'
+$installDir = Join-Path $env:LOCALAPPDATA 'Skrin'
+$startLnk = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\Skrin.lnk'
+$deskLnk = Join-Path ([Environment]::GetFolderPath('Desktop')) 'Skrin.lnk'
 $pinDir = Join-Path $env:APPDATA 'Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar'
-$pinLnk = Join-Path $pinDir 'Kinema.lnk'
-$uninstallKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Kinema'
+$pinLnk = Join-Path $pinDir 'Skrin.lnk'
+$uninstallKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Skrin'
 function Stamp($f) { if (Test-Path $f) { (Get-Item $f).CreationTimeUtc.Ticks } else { 'missing' } }
 function RegLines($file) {
     if (-not (Test-Path $file)) { return @() }
     $key = ''
     Get-Content $file | ForEach-Object {
         if ($_ -like '[[]*') { $key = $_ }
-        if ($_ -match '(?i)kinema|basswaves') { "$key  $_" }
+        if ($_ -match '(?i)kinema|skrin|basswaves') { "$key  $_" }
     } | Select-Object -Unique
 }
 function State($label) {
     Say $label
-    Say "  version in Apps: $((Get-ItemProperty $uninstallKey -ErrorAction SilentlyContinue).DisplayVersion); program file version: $((Get-Item (Join-Path $installDir 'kinema.exe') -ErrorAction SilentlyContinue).VersionInfo.FileVersion)"
+    Say "  version in Apps: $((Get-ItemProperty $uninstallKey -ErrorAction SilentlyContinue).DisplayVersion); program file version: $((Get-Item (Join-Path $installDir 'skrin.exe') -ErrorAction SilentlyContinue).VersionInfo.FileVersion)"
     Say "  start menu shortcut: $(Stamp $startLnk); desktop: $(Stamp $deskLnk); pinned copy: $(Stamp $pinLnk)"
     Say "  default-player registration: RegisteredApplications $([bool](Get-ItemProperty HKCU:\Software\RegisteredApplications -Name Kinema -ErrorAction SilentlyContinue)); Kinema.Video $(Test-Path 'HKCU:\Software\Classes\Kinema.Video')"
 }
@@ -72,7 +75,7 @@ function WaitIdle {
     $deadline = (Get-Date).AddSeconds(180)
     Start-Sleep -Seconds 5
     while ((Get-Date) -lt $deadline) {
-        $busy = Get-Process | Where-Object { $_.ProcessName -match '^(kinema-setup|setup|previous|Un|Un_\w*|Au_\w*|uninstall)$' }
+        $busy = Get-Process | Where-Object { $_.ProcessName -match '^(skrin-setup|setup|previous|Un|Un_\w*|Au_\w*|uninstall)$' }
         if (-not $busy) { return $true }
         Start-Sleep -Seconds 2
     }
@@ -88,7 +91,7 @@ try {
     # 1. The previous release, installed silently.
     $p = Start-Process (Join-Path $here 'previous.exe') -ArgumentList '/S' -PassThru -Wait
     Say "1 previous release installed: exit $($p.ExitCode)"
-    $exe = Join-Path $installDir 'kinema.exe'
+    $exe = Join-Path $installDir 'skrin.exe'
 
     # 2. What an owner has by then.
     if (-not (Test-Path $startLnk)) { Copy-Item $deskLnk $startLnk -ErrorAction SilentlyContinue }
@@ -104,7 +107,7 @@ try {
     Remove-Item Env:\KINEMA_SELFTEST
     $p.WaitForExit(60000) | Out-Null
     Get-Process SystemSettings -ErrorAction SilentlyContinue | Stop-Process -Force
-    Get-Process kinema -ErrorAction SilentlyContinue | Stop-Process -Force
+    Get-Process skrin -ErrorAction SilentlyContinue | Stop-Process -Force
     State '2 before the update:'
     $stamps = @{ s = Stamp $startLnk; d = Stamp $deskLnk; p = Stamp $pinLnk }
 
@@ -113,8 +116,8 @@ try {
     Start-Process (Join-Path $here 'setup.exe') | Out-Null
     Say "3 new setup started with defaults; finished $(WaitIdle) after $([int]((Get-Date) - $t0).TotalSeconds) s"
     Start-Sleep -Seconds 10
-    Say "  Kinema started at the end: $([bool](Get-Process kinema -ErrorAction SilentlyContinue))"
-    Get-Process kinema -ErrorAction SilentlyContinue | Stop-Process -Force
+    Say "  Skrin started at the end: $([bool](Get-Process skrin -ErrorAction SilentlyContinue))"
+    Get-Process skrin -ErrorAction SilentlyContinue | Stop-Process -Force
     State '  after the update:'
     Say "  same files, not recreated: start $((Stamp $startLnk) -eq $stamps.s); desktop $((Stamp $deskLnk) -eq $stamps.d); pinned copy $((Stamp $pinLnk) -eq $stamps.p)"
     & reg export HKCU\Software (Join-Path $here 'updated.reg') /y | Out-Null
@@ -127,7 +130,7 @@ try {
     & reg export HKCU\Software (Join-Path $here 'after.reg') /y | Out-Null
     $before = @(RegLines (Join-Path $here 'before.reg'))
     $after = @(RegLines (Join-Path $here 'after.reg'))
-    Say "  registry lines naming Kinema: before $($before.Count), after uninstall $($after.Count)"
+    Say "  registry lines naming Kinema or Skrin: before $($before.Count), after uninstall $($after.Count)"
     $after | Where-Object { $before -notcontains $_ } | ForEach-Object { Say "  left: $_" }
 } catch {
     Say "script failed: $_"
@@ -145,6 +148,7 @@ $wsb = Join-Path $stage 'kinema.wsb'
       <SandboxFolder>$inside</SandboxFolder>
       <ReadOnly>false</ReadOnly>
     </MappedFolder>
+    $($webview.Mapping)
   </MappedFolders>
   <LogonCommand>
     <Command>powershell.exe -NoProfile -ExecutionPolicy Bypass -File $inside\inner.ps1</Command>

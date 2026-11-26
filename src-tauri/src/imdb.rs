@@ -11,7 +11,7 @@
 //! 3. **A credit line**, "Information courtesy of IMDb (https://www.imdb.com).
 //!    Used with permission." — in Settings, beside TMDB's.
 //!
-//! Each copy of Kinema fetches the file for itself, and not often: when it
+//! Each copy of Skrin fetches the file for itself, and not often: when it
 //! has never been fetched, when it is over 30 days old, or when a title has
 //! joined the library since the last fetch and that was over a week ago. A
 //! title the file was searched for and did not have is remembered as such
@@ -19,7 +19,7 @@
 //! megabytes down every week for ever.
 //!
 //! Why this and not OMDb, which has IMDb's rating per title: OMDb's free keys
-//! allow 1,000 lookups a day, and one key built into every copy of Kinema
+//! allow 1,000 lookups a day, and one key built into every copy of Skrin
 //! would run out within hours for everyone (see HISTORY.md, "Picture and sound
 //! badges"). OMDb stays, with the user's own key, for Rotten Tomatoes.
 
@@ -32,7 +32,7 @@ use std::io::{BufRead, BufReader, Read};
 use std::time::Duration;
 use tauri::Manager;
 
-const RATINGS_URL: &str = "https://datasets.imdbws.com/title.ratings.tsv.gz";
+pub const RATINGS_URL: &str = "https://datasets.imdbws.com/title.ratings.tsv.gz";
 
 /// Setting key: when the file was last read, in seconds since the epoch.
 const FETCHED_AT_KEY: &str = "imdb_ratings_fetched_at";
@@ -180,9 +180,9 @@ pub async fn refresh_imdb_ratings(app: tauri::AppHandle) -> Result<ImdbReport, S
     // A nine-megabyte download and a few seconds of unpacking: neither is
     // started while a film plays (the lock above is already let go).
     crate::jobs::wait_for_turn_async().await;
-    let client = tauri_plugin_http::reqwest::Client::builder()
+    let client = crate::net::client(crate::net::Service::ImdbRatings)?
         .timeout(TIMEOUT)
-        .user_agent(concat!("Kinema/", env!("CARGO_PKG_VERSION")))
+        .user_agent(concat!("Skrin/", env!("CARGO_PKG_VERSION")))
         .build()
         .map_err(to_string_err)?;
     let response = client

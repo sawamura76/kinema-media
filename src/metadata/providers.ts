@@ -17,6 +17,21 @@
 import { fetch } from '@tauri-apps/plugin-http';
 import { getSetting, setSetting } from './api';
 import { noteTmdbRejection } from './builtinKey';
+import { proxyFetchOptions } from '../net/proxy';
+import { refuseOffline } from '../net/offline';
+import {
+  detailsLanguage,
+  episodeKey,
+  imageLanguages,
+  isEnglish,
+  localiseDetail,
+  mergeEpisodes,
+  posterInLanguage,
+  splitLanguage,
+  type EpisodeText,
+  type TmdbPosterImage,
+  type TmdbTranslation,
+} from './detailsLanguage';
 import type { Candidate } from './score';
 import type { PersonInput } from '../library/person';
 
@@ -50,6 +65,15 @@ export interface TitleMetadata {
    * has none. Left out by every provider but TMDB, which keeps what is stored.
    */
   certification?: string | null;
+  /**
+   * Every country's age rating, tab-separated `DK=15` (TMDB only; empty when
+   * it has none). The page shows the system's country and nothing otherwise.
+   */
+  certifications?: string | null;
+  /** TMDB's recommendations, comma-separated TMDB ids (TMDB only). */
+  similar_ids?: string | null;
+  /** A series' season posters (TMDB only). */
+  season_posters?: Array<{ season: number; poster_url: string }>;
   /** Production companies (a film) or networks (a series). TMDB only. */
   studios?: Studio[];
   /**
@@ -66,6 +90,15 @@ export interface TitleMetadata {
   next_air_date?: string;
   next_air_season?: number | null;
   next_air_episode?: number | null;
+  /**
+   * TMDB's title as asked without a language — the English one, or the
+   * original where there is none. Kept beside a translated `title` so search
+   * finds a film by its English name too, and Worth a look compares a file's
+   * name with what it was matched by. TMDB only.
+   */
+  english_title?: string | null;
+  /** The language the details were fetched in (detailsLanguage.ts). TMDB only. */
+  details_language?: string;
 }
 
 export interface Studio {
@@ -147,17 +180,20 @@ interface TmdbCastMember {
  *
  * English before language-neutral before anything else: a neutral logo is
  * usually the original-language one, which is right when there is no English
- * treatment and wrong when there is.
+ * treatment and wrong when there is. With details in another language, a
+ * treatment lettered in it comes first: the title it draws is the one shown.
  */
-function pickLogo(logos: TmdbImage[] | undefined): string | null {
+export function pickLogo(logos: TmdbImage[] | undefined, language = 'en'): string | null {
   if (!logos?.length) return null;
+  const { lang } = splitLanguage(language);
 
   const rank = (logo: TmdbImage): number => {
     const isPng = !logo.file_path.toLowerCase().endsWith('.svg');
-    if (!isPng) return 3;
-    if (logo.iso_639_1 === 'en') return 0;
-    if (!logo.iso_639_1) return 1;
-    return 2;
+    if (!isPng) return 4;
+    if (lang !== 'en' && logo.iso_639_1 === lang) return 0;
+    if (logo.iso_639_1 === 'en') return 1;
+    if (!logo.iso_639_1) return 2;
+    return 3;
   };
 
   const best = [...logos].sort((a, b) => {
@@ -168,7 +204,7 @@ function pickLogo(logos: TmdbImage[] | undefined): string | null {
 
   // Every candidate was an SVG. Better none than one that renders at the wrong
   // size over the hero image.
-  return rank(best) === 3 ? null : `${TMDB_IMAGE}${best.file_path}`;
+  return rank(best) === 4 ? null : `${TMDB_IMAGE}${best.file_path}`;
 }
 
 /** TMDB's release dates for a film, per country, each with its rating. */
@@ -201,17 +237,48 @@ export function usCertification(
   releaseDates: TmdbReleaseDates | undefined,
   contentRatings: TmdbContentRatings | undefined
 ): string {
+  return certificationIn('US', kind, releaseDates, contentRatings);
+}
+
+/** One country's rating, `''` when TMDB has none for it. */
+export function certificationIn(
+  country: string,
+  kind: 'movie' | 'series',
+  releaseDates: TmdbReleaseDates | undefined,
+  contentRatings: TmdbContentRatings | undefined
+): string {
   if (kind === 'series') {
-    return contentRatings?.results?.find((r) => r.iso_3166_1 === 'US')?.rating?.trim() ?? '';
+    return contentRatings?.results?.find((r) => r.iso_3166_1 === country)?.rating?.trim() ?? '';
   }
-  const us = releaseDates?.results?.find((r) => r.iso_3166_1 === 'US')?.release_dates ?? [];
-  const rated = us.filter((d) => d.certification?.trim());
+  const here = releaseDates?.results?.find((r) => r.iso_3166_1 === country)?.release_dates ?? [];
+  const rated = here.filter((d) => d.certification?.trim());
   const rank = (type: number | undefined) => {
     const index = RELEASE_TYPE_ORDER.indexOf(type ?? 0);
     return index === -1 ? RELEASE_TYPE_ORDER.length : index;
   };
   rated.sort((a, b) => rank(a.type) - rank(b.type));
   return rated[0]?.certification?.trim() ?? '';
+}
+
+/**
+ * Every country's rating TMDB holds, tab-separated `DK=15`, so the page can
+ * show the system's own country without asking again.
+ */
+export function allCertifications(
+  kind: 'movie' | 'series',
+  releaseDates: TmdbReleaseDates | undefined,
+  contentRatings: TmdbContentRatings | undefined
+): string {
+  const countries = new Set<string>([
+    ...(releaseDates?.results ?? []).map((r) => r.iso_3166_1),
+    ...(contentRatings?.results ?? []).map((r) => r.iso_3166_1),
+  ]);
+  const out: string[] = [];
+  for (const country of [...countries].sort()) {
+    const rating = certificationIn(country, kind, releaseDates, contentRatings);
+    if (country && rating && !/[\t=]/.test(rating)) out.push(`${country}=${rating}`);
+  }
+  return out.join('\t');
 }
 
 /** How many studios to keep. The page shows up to three; this leaves spares. */
@@ -376,11 +443,65 @@ const omdbQueued = makeQueue(OMDB_GAP_MS);
 const RATE_LIMIT_RETRIES = 2;
 
 /**
+ * A page lookup that has not answered in this long is dead. The queues run one
+ * request after another, so one that waits for ever would stop every later
+ * lookup to that service until restart.
+ */
+export const REQUEST_TIMEOUT_MS = 30_000;
+
+/**
+ * The longest `Retry-After` that is waited out. A service asking for more (a
+ * day, say) is failed at once, so the queue moves on instead of standing still.
+ */
+export const MAX_RETRY_WAIT_MS = 60_000;
+
+/** A service asked us to wait longer than we are willing to. */
+export class RateLimited extends Error {}
+
+/** A lookup got no answer within {@link REQUEST_TIMEOUT_MS}. */
+export class RequestTimedOut extends Error {}
+
+/**
+ * The same limit for the body: headers that arrive and a body that then stalls
+ * would otherwise wait for ever, because the timer above ends with the headers.
+ * Reading the body gets what is left of {@link REQUEST_TIMEOUT_MS}.
+ */
+function limitBody(
+  response: Response,
+  controller: AbortController,
+  startedAt: number,
+  label: string
+): Response {
+  for (const method of ['json', 'text', 'arrayBuffer'] as const) {
+    const read = response[method]?.bind(response) as (() => Promise<unknown>) | undefined;
+    if (!read) continue;
+    (response as unknown as Record<string, () => Promise<unknown>>)[method] = () => {
+      const left = Math.max(0, REQUEST_TIMEOUT_MS - (Date.now() - startedAt));
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const limit = new Promise<never>((_, reject) => {
+        timer = setTimeout(() => {
+          controller.abort();
+          reject(new RequestTimedOut(`${label}: no answer within ${REQUEST_TIMEOUT_MS / 1000} s`));
+        }, left);
+      });
+      const body = read();
+      body.catch(() => undefined);
+      return Promise.race([body, limit]).finally(() => clearTimeout(timer));
+    };
+  }
+  return response;
+}
+
+/**
  * `fetch`, but a 429 is waited out rather than treated as a failure.
  *
- * Honours `Retry-After` when the server sends one, and backs off exponentially
- * when it does not. Everything else — 404, 401, a dead network — is handed
+ * Honours `Retry-After` when the server sends one (up to MAX_RETRY_WAIT_MS),
+ * and backs off exponentially when it does not. Every request has a time limit
+ * for the whole answer. Everything else — 404, 401, a dead network — is handed
  * straight back to the caller, which already knows what to do with it.
+ *
+ * Every request of the page's own goes through here, so this is where
+ * "Keep everything on this computer" refuses them (`KeptOnDevice`).
  */
 export async function fetchPolitely(
   url: string,
@@ -388,15 +509,59 @@ export async function fetchPolitely(
   headers?: Record<string, string>,
   connectTimeout?: number
 ): Promise<Response> {
+  await refuseOffline();
   for (let attempt = 0; ; attempt++) {
-    const response = await fetch(url, { method: 'GET', headers, connectTimeout });
-    if (response.status !== 429 || attempt >= RATE_LIMIT_RETRIES) return response;
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const limit = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        controller.abort();
+        reject(new RequestTimedOut(`${label}: no answer within ${REQUEST_TIMEOUT_MS / 1000} s`));
+      }, REQUEST_TIMEOUT_MS);
+    });
+    let response: Response;
+    const startedAt = Date.now();
+    try {
+      const request = proxyFetchOptions().then((proxy) =>
+        fetch(url, { method: 'GET', headers, connectTimeout, signal: controller.signal, ...proxy })
+      );
+      request.catch(() => undefined); // a request lost to the limit must not end unhandled
+      response = await Promise.race([request, limit]);
+    } finally {
+      clearTimeout(timer);
+    }
+    if (response.status !== 429 || attempt >= RATE_LIMIT_RETRIES) {
+      return limitBody(response, controller, startedAt, label);
+    }
 
     const header = Number(response.headers.get('retry-after'));
     const waitMs = Number.isFinite(header) && header > 0 ? header * 1000 : 1000 * 2 ** attempt;
+    if (waitMs > MAX_RETRY_WAIT_MS) {
+      throw new RateLimited(`${label}: the service asked for a wait of ${Math.round(waitMs / 1000)} s; try again later`);
+    }
     console.warn(`${label}: rate limited, waiting ${waitMs}ms`);
     await new Promise((r) => setTimeout(r, waitMs));
   }
+}
+
+/**
+ * An answer's body as JSON, or a plain sentence when it is not: a portal's
+ * page, a cut-short answer, `null`. Never the parser's own words (A6-07).
+ */
+export async function readJson<T>(response: Response, service: string): Promise<T> {
+  let data: unknown;
+  try {
+    data = await response.json();
+  } catch (e) {
+    if (e instanceof RequestTimedOut) throw e;
+    const plain = new Error(`${service} sent an answer Skrin could not read`);
+    (plain as Error & { cause?: unknown }).cause = e;
+    throw plain;
+  }
+  if (data === null || typeof data !== 'object') {
+    throw new Error(`${service} sent an answer Skrin could not read`);
+  }
+  return data as T;
 }
 
 export async function tvmazeSearch(title: string): Promise<Candidate[]> {
@@ -405,7 +570,8 @@ export async function tvmazeSearch(title: string): Promise<Candidate[]> {
     const response = await fetchPolitely(url, 'TVmaze search');
     if (!response.ok) throw new Error(`TVmaze search failed: HTTP ${response.status}`);
 
-    const results = (await response.json()) as Array<{ show: TvmazeShow }>;
+    const results = await readJson<Array<{ show: TvmazeShow }>>(response, 'TVmaze');
+    if (!Array.isArray(results)) throw new Error('TVmaze sent an answer Skrin could not read');
     return results.slice(0, 8).map(({ show }) => ({
       providerId: String(show.id),
       title: show.name,
@@ -423,7 +589,7 @@ export async function tvmazeGetShow(id: string): Promise<TitleMetadata> {
   const show = await tvmazeQueued(async () => {
     const response = await fetchPolitely(`https://api.tvmaze.com/shows/${id}`, 'TVmaze show');
     if (!response.ok) throw new Error(`TVmaze show failed: HTTP ${response.status}`);
-    return (await response.json()) as TvmazeShow;
+    return readJson<TvmazeShow>(response, 'TVmaze');
   });
 
   // Backdrop art lives on a separate endpoint and is the reason TVmaze is
@@ -610,6 +776,7 @@ async function tmdbFetch(
         }
         return response;
       } catch (e) {
+        if (e instanceof RateLimited) throw e; // the other address is the same service
         console.warn(`TMDB ${path}: no answer from ${host}:`, e instanceof Error ? e.message : String(e));
       }
     }
@@ -628,7 +795,7 @@ async function tmdbGet<T>(key: string, path: string, params?: Record<string, str
       throw new TmdbKeyRejected(`TMDB ${path} failed: HTTP 401, the key was not accepted`);
     }
     if (!response.ok) throw new Error(`TMDB ${path} failed: HTTP ${response.status}`);
-    return (await response.json()) as T;
+    return readJson<T>(response, 'TMDB');
   });
 }
 
@@ -693,15 +860,41 @@ export async function tmdbAltTitles(
   return [...new Set(names.filter(Boolean))];
 }
 
+/**
+ * The parameters of a title's one detail request. In English, exactly what
+ * was asked before the details language existed; in another language, TMDB's
+ * translations ride along on the same request, and pictures lettered in that
+ * language are asked for before English ones. The request itself stays in
+ * English, so genres and the collection keep the interface's language, and
+ * every field has its English answer to fall back on.
+ */
+export function tmdbDetailParams(kind: 'movie' | 'series', language: string): Record<string, string> {
+  // The age rating lives in a different sub-resource for each kind.
+  const append = ['external_ids', 'videos', 'images', 'credits'];
+  append.push(kind === 'movie' ? 'release_dates' : 'content_ratings');
+  // What the page's "More like this" picks from (only titles held are shown).
+  append.push('recommendations');
+  if (!isEnglish(language)) append.push('translations');
+  return {
+    append_to_response: append.join(','),
+    include_image_language: imageLanguages(language),
+  };
+}
+
 export async function tmdbGetTitle(
   key: string,
   id: string,
-  kind: 'movie' | 'series'
+  kind: 'movie' | 'series',
+  language?: string
 ): Promise<TitleMetadata> {
+  const lang = language ?? (await detailsLanguage());
   const detail = await tmdbGet<{
     id: number;
     title?: string;
     name?: string;
+    original_title?: string;
+    original_name?: string;
+    original_language?: string;
     release_date?: string;
     first_air_date?: string;
     overview: string;
@@ -713,7 +906,8 @@ export async function tmdbGetTitle(
     backdrop_path: string | null;
     external_ids?: { imdb_id: string | null };
     videos?: { results: TmdbVideo[] };
-    images?: { logos?: TmdbImage[] };
+    images?: { logos?: TmdbImage[]; posters?: TmdbPosterImage[] };
+    translations?: { translations?: TmdbTranslation[] };
     credits?: { cast?: TmdbCastMember[]; crew?: TmdbCrewMember[] };
     belongs_to_collection?: { id: number; name?: string } | null;
     created_by?: Array<{ name?: string }>;
@@ -721,21 +915,30 @@ export async function tmdbGetTitle(
     next_episode_to_air?: { air_date?: string; season_number?: number; episode_number?: number } | null;
     release_dates?: TmdbReleaseDates;
     content_ratings?: TmdbContentRatings;
+    recommendations?: { results?: Array<{ id?: number }> };
+    seasons?: Array<{ season_number?: number; poster_path?: string | null }>;
     production_companies?: TmdbCompany[];
     networks?: TmdbCompany[];
     // Everything is appended to the one detail request, so a new match stays a
     // single round trip however much of it we use. `include_image_language`
     // is what makes `images` useful: without it TMDB returns only images
     // tagged with the request language, which for logos is usually none.
-  }>(key, kind === 'movie' ? `/movie/${id}` : `/tv/${id}`, {
-    // The age rating lives in a different sub-resource for each kind.
-    append_to_response: `external_ids,videos,images,credits,${
-      kind === 'movie' ? 'release_dates' : 'content_ratings'
-    }`,
-    include_image_language: 'en,null',
-  });
+  }>(key, kind === 'movie' ? `/movie/${id}` : `/tv/${id}`, tmdbDetailParams(kind, lang));
 
   const trailer = pickTrailer(detail.videos?.results);
+  const englishTitle = (detail.title ?? detail.name ?? '') as string;
+  const text = localiseDetail(
+    {
+      title: englishTitle,
+      overview: detail.overview || null,
+      originalTitle: detail.original_title ?? detail.original_name ?? null,
+      originalLanguage: detail.original_language ?? null,
+    },
+    detail.translations?.translations,
+    lang,
+    kind
+  );
+  const posterPath = posterInLanguage(detail.images?.posters, lang) ?? detail.poster_path;
 
   return {
     kind,
@@ -743,13 +946,15 @@ export async function tmdbGetTitle(
     provider_id: String(detail.id),
     imdb_id: detail.external_ids?.imdb_id ?? null,
     tmdb_id: String(detail.id),
-    title: (detail.title ?? detail.name ?? '') as string,
+    title: text.title,
+    english_title: englishTitle,
+    details_language: lang,
     year: yearOf(detail.release_date ?? detail.first_air_date ?? null),
-    overview: detail.overview || null,
+    overview: text.overview,
     genres: detail.genres?.length ? JSON.stringify(detail.genres.map((g) => g.name)) : null,
     runtime_mins: detail.runtime ?? detail.episode_run_time?.[0] ?? null,
     rating: detail.vote_average || null,
-    poster_url: detail.poster_path ? `${TMDB_IMAGE}${detail.poster_path}` : null,
+    poster_url: posterPath ? `${TMDB_IMAGE}${posterPath}` : null,
     backdrop_url: detail.backdrop_path ? `${TMDB_IMAGE}${detail.backdrop_path}` : null,
     // Empty string, not null, when TMDB has none. Null means "never asked"
     // and is what the other providers send, so `save_title` can COALESCE
@@ -760,7 +965,7 @@ export async function tmdbGetTitle(
     // it did not — `trailer_key` was null for a title with no trailer, so
     // `list_titles_needing_detail` offered it again and every scan re-fetched
     // its whole TMDB detail. On this library that was one title, every launch.
-    logo_url: pickLogo(detail.images?.logos) ?? '',
+    logo_url: pickLogo(detail.images?.logos, lang) ?? '',
     trailer_key: trailer?.key ?? '',
     trailer_site: trailer?.site ?? '',
     cast: (detail.credits?.cast ?? [])
@@ -775,6 +980,19 @@ export async function tmdbGetTitle(
         profile_url: c.profile_path ? `https://image.tmdb.org/t/p/w185${c.profile_path}` : null,
       })),
     certification: usCertification(kind, detail.release_dates, detail.content_ratings),
+    certifications: allCertifications(kind, detail.release_dates, detail.content_ratings),
+    similar_ids: (detail.recommendations?.results ?? [])
+      .map((r) => r.id)
+      .filter((id): id is number => typeof id === 'number')
+      .join(','),
+    ...(kind === 'series' && {
+      season_posters: (detail.seasons ?? [])
+        .filter((x) => typeof x.season_number === 'number' && x.poster_path)
+        .map((x) => ({
+          season: x.season_number as number,
+          poster_url: `${TMDB_IMAGE}${x.poster_path}`,
+        })),
+    }),
     studios: pickStudios(kind, detail.networks, detail.production_companies),
     // A show's crew changes by episode; who made it is `created_by`.
     directors:
@@ -834,21 +1052,26 @@ export interface TmdbPoster {
 const POSTER_CHOICES = 24;
 
 /**
- * TMDB's posters for one title with English lettering or none, best rated
- * first. Asked for when the poster list is opened (T20), never ahead.
+ * TMDB's posters for one title lettered in the details language, in English
+ * or not at all; the details language's first, then best rated. Asked for
+ * when the poster list is opened (T20), never ahead.
  */
 export async function tmdbPosters(
   key: string,
   id: string,
-  kind: 'movie' | 'series'
+  kind: 'movie' | 'series',
+  language?: string
 ): Promise<TmdbPoster[]> {
+  const lang = language ?? (await detailsLanguage());
+  const own = splitLanguage(lang).lang;
   const data = await tmdbGet<{ posters?: TmdbImage[] }>(
     key,
     `/${kind === 'movie' ? 'movie' : 'tv'}/${encodeURIComponent(id)}/images`,
-    { include_image_language: 'en,null' }
+    { include_image_language: imageLanguages(lang) }
   );
+  const first = (p: TmdbImage) => (own !== 'en' && p.iso_639_1 === own ? 0 : 1);
   return [...(data.posters ?? [])]
-    .sort((a, b) => (b.vote_average ?? 0) - (a.vote_average ?? 0))
+    .sort((a, b) => first(a) - first(b) || (b.vote_average ?? 0) - (a.vote_average ?? 0))
     .slice(0, POSTER_CHOICES)
     .map((p) => ({ url: `${TMDB_IMAGE}${p.file_path}`, language: p.iso_639_1 || null }));
 }
@@ -876,16 +1099,54 @@ const TMDB_APPEND_MAX = 20;
  * season, all through the same rate-limited queue: a long-running show cost
  * thirty-odd round trips to match, and a first scan of a library of them was
  * minutes of waiting on TMDB's pacing for data it hands out in bulk.
+ *
+ * With details in another language the seasons are asked for twice — in
+ * English, then in that language — and the second laid over the first field
+ * by field (`mergeEpisodes`): TMDB answers a missing translation with an
+ * empty description or a made-up `Odcinek 4`, never with the English.
  */
-export async function tmdbGetEpisodes(key: string, id: string): Promise<EpisodeMetadata[]> {
+export async function tmdbGetEpisodes(
+  key: string,
+  id: string,
+  language?: string
+): Promise<EpisodeMetadata[]> {
+  const lang = language ?? (await detailsLanguage());
   const show = await tmdbGet<{ seasons?: Array<{ season_number: number }> }>(key, `/tv/${id}`);
   // Season 0 is specials; include it, since files often reference it.
   const numbers = (show.seasons ?? []).map((season) => season.season_number);
-  const episodes: EpisodeMetadata[] = [];
 
+  const episodes: EpisodeMetadata[] = (await tmdbSeasons(key, id, numbers, {})).map((e) => ({
+    season: e.season_number,
+    episode: e.episode_number,
+    name: e.name || null,
+    overview: e.overview || null,
+    air_date: e.air_date || null,
+    runtime_mins: e.runtime ?? null,
+    still_url: e.still_path ? `${TMDB_IMAGE}${e.still_path}` : null,
+  }));
+  if (isEnglish(lang) || episodes.length === 0) return episodes;
+
+  const local = new Map<string, EpisodeText>();
+  for (const e of await tmdbSeasons(key, id, numbers, { language: lang })) {
+    local.set(episodeKey(e.season_number, e.episode_number), { name: e.name, overview: e.overview });
+  }
+  return mergeEpisodes(episodes, local);
+}
+
+type TmdbEpisode = NonNullable<TmdbSeason['episodes']>[number];
+
+/** The episodes of these seasons, twenty seasons to a request. */
+async function tmdbSeasons(
+  key: string,
+  id: string,
+  numbers: number[],
+  params: Record<string, string>
+): Promise<TmdbEpisode[]> {
+  const episodes: TmdbEpisode[] = [];
   for (let i = 0; i < numbers.length; i += TMDB_APPEND_MAX) {
     const batch = numbers.slice(i, i + TMDB_APPEND_MAX);
     const data = await tmdbGet<Record<string, TmdbSeason | undefined>>(key, `/tv/${id}`, {
+      ...params,
       append_to_response: batch.map((n) => `season/${n}`).join(','),
     });
 
@@ -894,21 +1155,15 @@ export async function tmdbGetEpisodes(key: string, id: string): Promise<EpisodeM
       // one season at a time. Missing seasons would otherwise match the show
       // with no episodes at all — silently, since that is a valid answer.
       const season =
-        data[`season/${n}`] ?? (await tmdbGet<TmdbSeason>(key, `/tv/${id}/season/${n}`));
-      for (const e of season.episodes ?? []) {
-        episodes.push({
-          season: e.season_number,
-          episode: e.episode_number,
-          name: e.name || null,
-          overview: e.overview || null,
-          air_date: e.air_date || null,
-          runtime_mins: e.runtime ?? null,
-          still_url: e.still_path ? `${TMDB_IMAGE}${e.still_path}` : null,
-        });
-      }
+        data[`season/${n}`] ??
+        (await tmdbGet<TmdbSeason>(
+          key,
+          `/tv/${id}/season/${n}`,
+          Object.keys(params).length ? params : undefined
+        ));
+      episodes.push(...(season.episodes ?? []));
     }
   }
-
   return episodes;
 }
 
@@ -963,7 +1218,7 @@ export async function omdbGetMovie(key: string, imdbId: string): Promise<TitleMe
   );
   if (!response.ok) throw new Error(`OMDb lookup failed: HTTP ${response.status}`);
 
-  const d = (await response.json()) as Record<string, string>;
+  const d = await readJson<Record<string, string>>(response, 'OMDb');
   if (d.Response === 'False') throw new Error(`OMDb: ${d.Error ?? 'unknown error'}`);
 
   const runtime = Number((d.Runtime ?? '').replace(/[^0-9]/g, ''));
@@ -1010,10 +1265,18 @@ export async function omdbTomatometer(key: string, imdbId: string): Promise<numb
   );
   let data: { Response?: string; Error?: string; Ratings?: Array<{ Source?: string; Value?: string }> } =
     {};
+  let readable = true;
   try {
-    data = await response.json();
+    const parsed: unknown = await response.json();
+    if (parsed === null || typeof parsed !== 'object') readable = false;
+    else data = parsed as typeof data;
   } catch {
-    // An unreadable body falls through to the status check below.
+    readable = false;
+  }
+  // An answer that is not an answer is an error, not "no score": a score
+  // already stored must not be written over with nothing (A6-07).
+  if (response.ok && !readable) {
+    throw new Error('OMDb sent an answer Skrin could not read');
   }
 
   if (!response.ok || data.Response === 'False') {

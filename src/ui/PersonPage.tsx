@@ -29,7 +29,7 @@ interface Props {
 }
 
 export default function PersonPage({ personId, name, titles, onSelect, onBack }: Props) {
-  // A column on Kinema's own engine (round 7): Back, IMDb, then the grid.
+  // A column on Skrin's own engine (round 7): Back, IMDb, then the grid.
   const { ref, focusKey } = useNavGroup({ kind: 'column' }, { focusKey: PERSON_FOCUS_KEY });
   const [person, setPerson] = useState<Person | null>(null);
   const [asked, setAsked] = useState(false);

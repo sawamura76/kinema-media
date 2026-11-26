@@ -60,7 +60,7 @@ export function useSoundLevel({
         if (!live) return;
         setNotApplied(n);
         // Listed for passthrough is not passed through: a device that says
-        // no gets decoded sound, and then the level is Kinema's to apply.
+        // no gets decoded sound, and then the level is Skrin's to apply.
         if (n === 'passthrough') {
           check = window.setTimeout(() => {
             void decodedAfterAll().then(async (decoded) => {
@@ -80,10 +80,10 @@ export function useSoundLevel({
   const changeLevel = useCallback(
     (next: SoundLevel) => {
       setLevel(next);
-      say(`${describeLevel(next)}, for this title`);
+      say(`${describeLevel(next, layout ?? null)}, for this title`);
       void saveLevel(titleKey, next).catch((e) => console.warn('audio: levelling not kept', e));
     },
-    [titleKey, say]
+    [titleKey, say, layout]
   );
 
   return { level, notApplied, canLift: canLiftDialogue(layout), changeLevel };

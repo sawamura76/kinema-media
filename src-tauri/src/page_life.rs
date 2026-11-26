@@ -1,9 +1,9 @@
-//! The page's process ending while Kinema goes on.
+//! The page's process ending while Skrin goes on.
 //!
 //! The whole interface lives in one process of the system's web engine:
 //! WebKitWebProcess, WebView2's renderer, Android's WebView renderer. When that
 //! process ends — the kernel killed it short of memory, it crashed — nothing
-//! tells the page, because the page is gone. Left alone, Kinema stayed running
+//! tells the page, because the page is gone. Left alone, Skrin stayed running
 //! with the last picture on the window, as if frozen, for as long as anyone
 //! cared to wait. So each system's own signal is heard here, the page is started
 //! again, and the new page says what happened (`page_recovery`,
@@ -13,7 +13,7 @@
 //! process: on a computer a film goes on playing meanwhile.
 //!
 //! A marker file carries the news to the new page, whichever way it is started:
-//! a reload here; a new Kinema where the web engine cannot be brought back
+//! a reload here; a new Skrin where the web engine cannot be brought back
 //! without one (WebView2's browser process; Android, by `PageGone.kt`, which
 //! writes the same file).
 
@@ -79,7 +79,7 @@ mod desktop {
 
     /// More than this many endings in `TOO_OFTEN` and reloading is doing harm:
     /// on a computer out of memory, each new page is one more round of the whole
-    /// machine crawling. Kinema says so and closes.
+    /// machine crawling. Skrin says so and closes.
     const TRIES: usize = 3;
     const TOO_OFTEN: Duration = Duration::from_secs(300);
 
@@ -94,7 +94,7 @@ mod desktop {
     }
 
     /// The page has ended: note it, and say whether it should be started again.
-    /// When not, this has already begun closing Kinema.
+    /// When not, this has already begun closing Skrin.
     pub(super) fn ended(app: &tauri::AppHandle, why: Why, what: &str) -> bool {
         crate::log!("page: {what}");
         if let Some(path) = marker(app) {
@@ -112,11 +112,11 @@ mod desktop {
             std::thread::spawn(move || {
                 app.dialog()
                     .message(
-                        "The part of Kinema that draws its window keeps stopping, so Kinema \
+                        "The part of Skrin that draws its window keeps stopping, so Skrin \
                          will close now. This computer may be short of memory; closing other \
                          programs can help.",
                     )
-                    .title("Kinema has to close")
+                    .title("Skrin has to close")
                     .kind(MessageDialogKind::Error)
                     .blocking_show();
                 app.exit(1);
@@ -194,7 +194,7 @@ mod platform {
     enum Then {
         Nothing,
         Reload,
-        NewKinema,
+        NewSkrin,
     }
 
     fn what_to_do(kind: COREWEBVIEW2_PROCESS_FAILED_KIND) -> (&'static str, Then) {
@@ -203,7 +203,7 @@ mod platform {
                 ("the page's process ended; starting the page again", Then::Reload)
             }
             COREWEBVIEW2_PROCESS_FAILED_KIND_BROWSER_PROCESS_EXITED => {
-                ("WebView2's browser process ended; starting Kinema again", Then::NewKinema)
+                ("WebView2's browser process ended; starting Skrin again", Then::NewSkrin)
             }
             // The next two are not the end of the page: WebView2 says the first
             // may pass, and brings its graphics process back by itself. In the
@@ -240,11 +240,11 @@ mod platform {
                                         reload_soon(again.clone());
                                     }
                                 }
-                                Then::NewKinema => {
+                                Then::NewSkrin => {
                                     if ended(&app, Why::Ended, what) {
                                         // On this thread `restart` skips the exit
                                         // event that frees the single-instance lock:
-                                        // the new Kinema would find it held and leave.
+                                        // the new Skrin would find it held and leave.
                                         tauri_plugin_single_instance::destroy(&app);
                                         app.restart();
                                     } else if let Some(path) = marker(&app) {

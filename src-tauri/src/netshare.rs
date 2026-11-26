@@ -1,13 +1,13 @@
-//! Network shares Kinema opens itself, over SMB.
+//! Network shares Skrin opens itself, over SMB.
 //!
-//! On Windows and Linux the system connects to a NAS and Kinema sees a folder
+//! On Windows and Linux the system connects to a NAS and Skrin sees a folder
 //! (`\\NAS\films`, a GNOME network mount). Android does not do that for an
-//! app, so there Kinema speaks SMB itself (owner's choice, 2026-10-04: one
+//! app, so there Skrin speaks SMB itself (owner's choice, 2026-10-04: one
 //! SMB client, in the core, used by everything that reads files).
 //!
 //! A file on a share is addressed as `smb://server/share/folder/file.mkv` —
 //! with a port after the server (`server:4450`) only where the share is not on
-//! SMB's own. The rest of Kinema keeps such a path as text, as it keeps any
+//! SMB's own. The rest of Skrin keeps such a path as text, as it keeps any
 //! other; only reading it comes here.
 //!
 //! One connection per server, opened on first use and kept: the scanner asks
@@ -29,7 +29,7 @@ const SCHEME: &str = "smb://";
 /// spin its disks up first; the scanner already runs off the interface.
 const TIMEOUT: Duration = Duration::from_secs(20);
 
-/// Whether a path is on a share Kinema opens itself.
+/// Whether a path is on a share Skrin opens itself.
 pub fn is_share_path(path: &str) -> bool {
     path.get(..SCHEME.len()).is_some_and(|s| s.eq_ignore_ascii_case(SCHEME))
 }
@@ -195,7 +195,7 @@ pub async fn check_server(server: String) -> Result<(), String> {
 }
 
 /// The shares a server offers that a person would pick: its disk shares,
-/// not the hidden ones (srvsvc.rs, which says why Kinema asks itself).
+/// not the hidden ones (srvsvc.rs, which says why Skrin asks itself).
 pub fn shares(server: &str) -> io::Result<Vec<String>> {
     use smb::{IoctlBuffer, PipeTransceiveRequest};
     let addr = parse(&format!("{SCHEME}{server}/IPC$"))?;
@@ -225,14 +225,14 @@ pub async fn list_shares(server: String) -> Result<Vec<String>, String> {
     crate::jobs::off_main(move || {
         shares(&server).map_err(|e| match e.kind() {
             io::ErrorKind::PermissionDenied => format!("{server} needs a sign-in first: {e}"),
-            _ => format!("Kinema could not ask {server} for its shares: {e}"),
+            _ => format!("Skrin could not ask {server} for its shares: {e}"),
         })
     })
     .await
 }
 
 /// The kept sign-ins are in memory (share_logins.rs). Until then a sign-in
-/// waits, a few seconds at most: a scan started as Kinema opens would
+/// waits, a few seconds at most: a scan started as Skrin opens would
 /// otherwise find its shares refusing it.
 pub fn logins_loaded() {
     let (ready, signal) = &*LOGINS_LOADED;
@@ -263,7 +263,7 @@ fn connect(addr: &Address) -> io::Result<Arc<Server>> {
                 let mut config = ClientConfig::default();
                 config.connection.port = addr.port;
                 config.connection.timeout = Some(TIMEOUT);
-                // DFS referrals lead to other servers Kinema has no sign-in for.
+                // DFS referrals lead to other servers Skrin has no sign-in for.
                 config.dfs = false;
                 Arc::new(Server { client: Arc::new(Client::new(config)), shares: Mutex::default() })
             })
@@ -433,7 +433,7 @@ fn parse(path: &str) -> io::Result<Address> {
     Address::parse(path).ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, format!("not a share address: {path}")))
 }
 
-/// The library's errors as the kinds the rest of Kinema already tells apart:
+/// The library's errors as the kinds the rest of Skrin already tells apart:
 /// not there, not allowed, anything else.
 fn to_io(e: smb::Error) -> io::Error {
     const NOT_FOUND: &[u32] = &[

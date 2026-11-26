@@ -1,5 +1,5 @@
 # The checks too slow for every push, once a night: the full navigation map
-# (`npm run test:nav`) in the engines Kinema's windows really use — Edge on
+# (`npm run test:nav`) in the engines Skrin's windows really use — Edge on
 # Windows (the engine of WebView2, and Chromium like Android's WebView) and
 # WebKit on Linux (WebKitGTK's engine). Not Playwright's WebKit on Windows:
 # it is neither, and it disagrees with both on one tie (GOTCHAS, "Playwright's

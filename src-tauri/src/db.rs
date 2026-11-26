@@ -7,7 +7,7 @@ use rusqlite::Connection;
 use std::path::Path;
 
 /// The schema this build understands. Bump it with every new `SCHEMA_V*`.
-pub const SCHEMA_VERSION: i64 = 43;
+pub const SCHEMA_VERSION: i64 = 45;
 
 /// What can go wrong opening the library.
 ///
@@ -30,13 +30,13 @@ impl std::fmt::Display for DbError {
             DbError::Sqlite(e) => write!(f, "{e}"),
             DbError::TooNew { found, supported } => write!(
                 f,
-                "This library was last used by a newer version of Kinema \
+                "This library was last used by a newer version of Skrin \
                  (database version {found}; this version understands {supported}). \
                  It was not changed, and that newer version can still use it."
             ),
             DbError::Backup(reason) => write!(
                 f,
-                "This version of Kinema needs to upgrade your library, and it \
+                "This version of Skrin needs to upgrade your library, and it \
                  makes a safety copy first. The copy could not be made, so \
                  nothing was changed.\n\n{reason}"
             ),
@@ -1029,6 +1029,36 @@ CREATE TABLE video_collection_roots (
 CREATE INDEX video_roots_collection ON video_collection_roots(collection_id);
 "#;
 
+/// Schema version 40: the details language (GitHub #18, #19). `title` is
+/// what is shown, in the chosen language; `english_title` is TMDB's own,
+/// for search and for Worth a look to compare file names with.
+/// `details_language` is the language a title was fetched in: a title in
+/// another language than the one chosen is fetched again
+/// (`metadata::titles_in_other_language`). NULL is English, which is what
+/// every title stored before this was.
+const SCHEMA_V44: &str = r#"
+ALTER TABLE titles ADD COLUMN english_title TEXT;
+ALTER TABLE titles ADD COLUMN details_language TEXT;
+"#;
+
+/// Schema version 41: the details page's later items, all from TMDB's one
+/// detail request. `certifications` is every country's age rating,
+/// tab-separated `DK=15`, so the page shows the system's country and says
+/// nothing when TMDB has none for it (the old `certification` stays the US
+/// one). `similar_ids` is TMDB's recommendations (comma-separated TMDB ids):
+/// only those the library holds are shown. `season_art` is each season's
+/// poster. NULL is never asked, so every TMDB title is fetched once more.
+const SCHEMA_V45: &str = r#"
+ALTER TABLE titles ADD COLUMN certifications TEXT;
+ALTER TABLE titles ADD COLUMN similar_ids TEXT;
+CREATE TABLE season_art (
+    title_id   INTEGER NOT NULL REFERENCES titles(id) ON DELETE CASCADE,
+    season     INTEGER NOT NULL,
+    poster_url TEXT    NOT NULL,
+    PRIMARY KEY (title_id, season)
+);
+"#;
+
 /// How long a statement waits for the write lock before giving up.
 ///
 /// Load-bearing from the moment there is more than one connection. SQLite
@@ -1074,11 +1104,36 @@ fn configure(conn: &Connection) -> rusqlite::Result<()> {
 
 pub fn open(path: &Path) -> Result<Connection, DbError> {
     let conn = Connection::open(path)?;
+    // SQLite quietly opens a file it may not write as read-only, and every later
+    // save then fails; a library that keeps nothing is said at start (A5-04).
+    if conn.is_readonly("main")? {
+        return Err(DbError::Sqlite(rusqlite::Error::SqliteFailure(
+            rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_READONLY),
+            Some(
+                "The library file or its folder is read-only, so nothing watched or changed \
+                 could be kept."
+                    .to_string(),
+            ),
+        )));
+    }
     configure(&conn)?;
     if let Some(dir) = path.parent() {
         backup_before_upgrade(&conn, &dir.join(BACKUP_DIR))?;
     }
     migrate(&conn)?;
+    clamp_future_times(&conn, crate::util::now_secs())?;
+    // Statistics an older Skrin took before matching keep Home slow until the
+    // next scan; check them at every start too (two counts when they are fine).
+    // Best effort: the library works without. A7-01, Linux test PC.
+    let started = std::time::Instant::now();
+    match refresh_statistics_if_stale(&conn) {
+        Ok(true) => crate::log!(
+            "library: query statistics refreshed at start in {} ms",
+            started.elapsed().as_millis()
+        ),
+        Ok(false) => {}
+        Err(e) => crate::log!("library: could not check the query statistics at start: {e}"),
+    }
     let reasked = crate::lifecycle::reask_after_new_rules(&conn)?;
     if reasked > 0 {
         crate::log!("matching: new rules; {reasked} refused or untitled file(s) will be read again");
@@ -1089,6 +1144,22 @@ pub fn open(path: &Path) -> Result<Connection, DbError> {
         crate::log!("matching: new rules; {to_check} matched file(s) to read again for Worth a look");
     }
     Ok(conn)
+}
+
+/// A time written while the clock ran ahead stays "newest" until real time
+/// catches up: first in Continue watching, and no TMDB refresh for just as
+/// long. Anything more than a day ahead of now is set to now (A5-05). A day's
+/// slack leaves a time-zone slip alone; every time here is seconds since 1970.
+fn clamp_future_times(conn: &Connection, now: i64) -> rusqlite::Result<usize> {
+    let limit = now + 86_400;
+    let mut n = 0;
+    n += conn.execute("UPDATE playback_state SET updated_at = ?1 WHERE updated_at > ?2", [now, limit])?;
+    n += conn.execute("UPDATE loose_playback SET updated_at = ?1 WHERE updated_at > ?2", [now, limit])?;
+    n += conn.execute("UPDATE titles SET fetched_at = ?1 WHERE fetched_at > ?2", [now, limit])?;
+    if n > 0 {
+        crate::log!("library: {n} time(s) written while the clock ran ahead set back to now");
+    }
+    Ok(n)
 }
 
 /// Where the safety copies go, beside the database.
@@ -1132,9 +1203,43 @@ fn backup_before_upgrade(conn: &Connection, dir: &Path) -> Result<Option<std::pa
 
     conn.execute("VACUUM INTO ?1", [target.to_string_lossy()])
         .map_err(|e| DbError::Backup(format!("{}: {e}", target.display())))?;
+    leave_secrets_out(&target)?;
 
     prune_backups(dir);
     Ok(Some(target))
+}
+
+/// Settings that hold a sign-in or a key: a safety copy of the library does
+/// not carry them, so a copy that is passed around or picked up by another
+/// backup tool never carries a way into someone's accounts. Restoring a copy
+/// means connecting SIMKL and Trakt again and typing the OMDb key and the
+/// OpenSubtitles password once more; the watch history is all there.
+pub(crate) const SECRET_SETTINGS: [&str; 9] = [
+    "simkl_access_token",
+    "simkl_refresh_token",
+    "trakt_access_token",
+    "trakt_refresh_token",
+    "trakt_client_secret",
+    "tmdb_api_key",
+    "omdb_api_key",
+    "opensubtitles_password",
+    "opensubtitles_token",
+];
+
+/// Removes [`SECRET_SETTINGS`] from a fresh copy. A copy that cannot be
+/// cleaned is deleted rather than kept with the secrets in it.
+fn leave_secrets_out(copy: &Path) -> Result<(), DbError> {
+    let clean = || -> rusqlite::Result<()> {
+        let conn = Connection::open(copy)?;
+        for key in SECRET_SETTINGS {
+            conn.execute("DELETE FROM settings WHERE key = ?1", [key])?;
+        }
+        Ok(())
+    };
+    clean().map_err(|e| {
+        let _ = std::fs::remove_file(copy);
+        DbError::Backup(format!("{}: {e}", copy.display()))
+    })
 }
 
 /// Keep the newest [`BACKUPS_KEPT`] copies. Best effort: a copy that cannot be
@@ -1214,7 +1319,7 @@ fn periodic_backup_at(
     now: u64,
 ) -> Result<Option<std::path::PathBuf>, DbError> {
     let has_videos: bool =
-        conn.query_row("SELECT EXISTS(SELECT 1 FROM media_files)", [], |r| r.get(0))?;
+        conn.query_row("SELECT EXISTS(SELECT 1 FROM media_files) OR EXISTS(SELECT 1 FROM music_tracks) OR EXISTS(SELECT 1 FROM game_shortcuts)", [], |r| r.get(0))?;
     if !has_videos {
         return Ok(None);
     }
@@ -1228,6 +1333,7 @@ fn periodic_backup_at(
     let target = dir.join(format!("{AUTO_PREFIX}v{SCHEMA_VERSION}-{now}.db"));
     conn.execute("VACUUM INTO ?1", [target.to_string_lossy()])
         .map_err(|e| DbError::Backup(format!("{}: {e}", target.display())))?;
+    leave_secrets_out(&target)?;
 
     let mut copies = auto_copies(dir);
     copies.sort_by_key(|(stamp, _)| std::cmp::Reverse(*stamp));
@@ -1249,6 +1355,87 @@ pub fn open_secondary(path: &Path) -> rusqlite::Result<Connection> {
     Ok(conn)
 }
 
+/// Refresh the query planner's statistics if they no longer describe the
+/// library. Returns whether it did. Call it once matching has ended.
+///
+/// SQLite picks an index by these statistics (`sqlite_stat1`). Taken at the
+/// wrong moment they are worse than none: the scan used to take them right
+/// after the file walk, when no file had a title yet, so the title index
+/// (`idx_media_title`) was recorded as useless — every file the same "title".
+/// Matching then linked the titles, and nothing took them again: `PRAGMA
+/// optimize` only looks at a table whose row count has changed a lot, and
+/// matching changes no counts. From then on the planner preferred
+/// `idx_media_files_missing` (`missing = 0`, every file) for each title's
+/// counts, so Home read every file once per title: 12–25 s at 5000 titles.
+/// With statistics that know the titles: about 0.1 s.
+///
+/// Cheap when nothing changed (two counts over an index), so it can run after
+/// every scan; that is also what repairs a library whose statistics were taken
+/// by an older Skrin. `analysis_limit` keeps the refresh itself short on a
+/// big library or a slow device: an estimate is all the planner needs.
+///
+/// The refreshed statistics reach only this connection. Another one keeps the
+/// statistics it loaded until it reads them again — see [`reload_statistics`].
+pub fn refresh_statistics_if_stale(conn: &Connection) -> rusqlite::Result<bool> {
+    // Files, and how many files share one title (no title counts as one group,
+    // the way ANALYZE counts it).
+    let (files, linked, groups): (i64, i64, i64) = conn.query_row(
+        "SELECT COUNT(*), COUNT(title_id),
+                COUNT(DISTINCT title_id) + (COUNT(*) > COUNT(title_id))
+           FROM media_files",
+        [],
+        |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+    )?;
+    // Statistics taken with no titles would only record that again.
+    if linked == 0 {
+        return Ok(false);
+    }
+    let has_table: bool = conn.query_row(
+        "SELECT EXISTS (SELECT 1 FROM sqlite_schema WHERE name = 'sqlite_stat1')",
+        [],
+        |r| r.get(0),
+    )?;
+    let stored: Option<String> = if has_table {
+        conn.query_row(
+            "SELECT stat FROM sqlite_stat1 WHERE idx = 'idx_media_title'",
+            [],
+            |r| r.get(0),
+        )
+        .map(Some)
+        .or_else(|e| match e {
+            rusqlite::Error::QueryReturnedNoRows => Ok(None),
+            e => Err(e),
+        })?
+    } else {
+        None
+    };
+    // "rows files-per-title"; anything unreadable is treated as missing.
+    let parsed = stored.as_deref().and_then(|s| {
+        let mut it = s.split_whitespace().map(|n| n.parse::<i64>().ok());
+        Some((it.next()??, it.next()??))
+    });
+    let actual = (files + groups - 1) / groups.max(1);
+    let stale = match parsed {
+        None => true,
+        Some((rows, per_title)) => {
+            per_title > actual * 2 + 1 || rows > files * 2 || files > rows * 2
+        }
+    };
+    if !stale {
+        return Ok(false);
+    }
+    conn.execute_batch("PRAGMA analysis_limit=1000; ANALYZE; PRAGMA analysis_limit=0;")?;
+    Ok(true)
+}
+
+/// Make this connection read the planner's statistics again, after another
+/// connection refreshed them. Each connection loads them once, when it first
+/// reads the schema, and an ANALYZE elsewhere does not tell it: without this
+/// the window's connection would keep the old ones until Skrin restarts.
+pub fn reload_statistics(conn: &Connection) -> rusqlite::Result<()> {
+    conn.execute_batch("ANALYZE sqlite_schema")
+}
+
 /// Every migration, in order. The index is the version it produces.
 pub(crate) const MIGRATIONS: [&str; SCHEMA_VERSION as usize] = [
     SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4, SCHEMA_V5, SCHEMA_V6, SCHEMA_V7, SCHEMA_V8,
@@ -1257,7 +1444,7 @@ pub(crate) const MIGRATIONS: [&str; SCHEMA_VERSION as usize] = [
     SCHEMA_V20, SCHEMA_V21, SCHEMA_V22, SCHEMA_V23, SCHEMA_V24, SCHEMA_V25,
     SCHEMA_V26, SCHEMA_V27, SCHEMA_V28, SCHEMA_V29, SCHEMA_V30, SCHEMA_V31,
     SCHEMA_V32, SCHEMA_V33, SCHEMA_V34, SCHEMA_V35, SCHEMA_V36, SCHEMA_V37, SCHEMA_V38,
-    SCHEMA_V39, SCHEMA_V40, SCHEMA_V41, SCHEMA_V42, SCHEMA_V43,
+    SCHEMA_V39, SCHEMA_V40, SCHEMA_V41, SCHEMA_V42, SCHEMA_V43, SCHEMA_V44, SCHEMA_V45,
 ];
 
 /// Bring the database up to [`SCHEMA_VERSION`].
@@ -1274,7 +1461,7 @@ pub(crate) const MIGRATIONS: [&str; SCHEMA_VERSION as usize] = [
 /// `PRAGMA user_version` lives in the database header and is written inside the
 /// transaction like anything else, so a rollback takes it with the schema.
 pub(crate) fn migrate(conn: &Connection) -> Result<(), DbError> {
-    let version: i64 = conn.query_row("PRAGMA user_version", [], |r| r.get(0))?;
+    let mut version: i64 = conn.query_row("PRAGMA user_version", [], |r| r.get(0))?;
 
     // Refuse a database from a newer build rather than limping on. Without this
     // the mismatch surfaces later as "no such column" from whichever query
@@ -1286,6 +1473,17 @@ pub(crate) fn migrate(conn: &Connection) -> Result<(), DbError> {
         });
     }
 
+    // Upstream used 40/41 for video metadata; our fork used 40-43 for music.
+    // Recognize the upstream layout by its tables, preserving existing video data.
+    let has_music: bool = conn.query_row("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name='music_tracks')", [], |row| row.get(0))?;
+    if (40..=41).contains(&version) && !has_music {
+        let tx = conn.unchecked_transaction()?;
+        for sql in [SCHEMA_V40, SCHEMA_V41, SCHEMA_V42, SCHEMA_V43] { tx.execute_batch(sql)?; }
+        tx.execute_batch("PRAGMA user_version=43;")?;
+        tx.commit()?;
+        version = 43;
+    }
+
     for (index, sql) in MIGRATIONS.iter().enumerate() {
         let target = index as i64 + 1;
         if version >= target {
@@ -1294,7 +1492,12 @@ pub(crate) fn migrate(conn: &Connection) -> Result<(), DbError> {
         // `unchecked_transaction` because the connection is behind a shared
         // reference here; nothing else can be using it during setup.
         let tx = conn.unchecked_transaction()?;
-        tx.execute_batch(sql)?;
+        let already_present = match target {
+            44 => tx.query_row("SELECT EXISTS(SELECT 1 FROM pragma_table_info('titles') WHERE name='english_title')", [], |row| row.get::<_, bool>(0))?,
+            45 => tx.query_row("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name='season_art')", [], |row| row.get::<_, bool>(0))?,
+            _ => false,
+        };
+        if !already_present { tx.execute_batch(sql)?; }
         tx.execute_batch(&format!("PRAGMA user_version={target};"))?;
         tx.commit()?;
     }
@@ -1305,6 +1508,41 @@ pub(crate) fn migrate(conn: &Connection) -> Result<(), DbError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn music_only_and_launcher_only_libraries_are_backed_up() {
+        for music in [true,false] {
+            let conn=at_version(SCHEMA_VERSION);
+            if music { conn.execute_batch("INSERT INTO music_roots(id,path) VALUES(1,'C:/Music'); INSERT INTO music_tracks(id,root_id,path,size_bytes,modified_at,title,artist,album_artist,album) VALUES(1,1,'C:/Music/song.mp3',100,1,'Song','Artist','Artist','Album');").unwrap(); }
+            else { conn.execute_batch("INSERT INTO game_shortcuts(title,target) VALUES('Game','steam://rungameid/1');").unwrap(); }
+            let folder=std::env::temp_dir().join(format!("kinema-media-backup-{}-{music}",std::process::id()));
+            std::fs::create_dir_all(&folder).unwrap();
+            assert!(periodic_backup_at(&conn,&folder,2000000).unwrap().is_some());
+        }
+    }
+    #[test]
+    fn fork_43_keeps_music_and_adds_upstream_video_fields() {
+        let conn = at_version(43);
+        conn.execute_batch("INSERT INTO music_roots(id,path) VALUES(1,'C:/Music'); INSERT INTO music_tracks(id,root_id,path,size_bytes,modified_at,title,artist,album_artist,album) VALUES(1,1,'C:/Music/song.mp3',100,1,'Song','Artist','Artist','Album');").unwrap();
+        migrate(&conn).unwrap();
+        assert_eq!(conn.query_row("SELECT title FROM music_tracks WHERE id=1",[],|r|r.get::<_,String>(0)).unwrap(), "Song");
+        conn.prepare("SELECT english_title,details_language,certifications,similar_ids FROM titles").unwrap();
+        migrate(&conn).unwrap();
+    }
+    #[test]
+    fn upstream_40_and_41_gain_music_without_repeating_video_migrations() {
+        for version in [40,41] {
+            let conn = at_version(39);
+            conn.execute_batch(SCHEMA_V44).unwrap();
+            if version == 41 { conn.execute_batch(SCHEMA_V45).unwrap(); }
+            conn.execute_batch(&format!("PRAGMA user_version={version}; INSERT INTO titles(id,kind,provider,provider_id,title,fetched_at) VALUES(1,'movie','tmdb','1','Kept movie',0);")).unwrap();
+            migrate(&conn).unwrap();
+            assert_eq!(conn.query_row("SELECT title FROM titles WHERE id=1",[],|r|r.get::<_,String>(0)).unwrap(), "Kept movie");
+            conn.prepare("SELECT * FROM music_tracks").unwrap();
+            conn.prepare("SELECT * FROM season_art").unwrap();
+            migrate(&conn).unwrap();
+        }
+    }
 
     /// A database migrated only as far as `version`, the way an older build
     /// would have left it.
@@ -1372,6 +1610,31 @@ mod tests {
         let kept: i64 = copy.query_row("SELECT COUNT(*) FROM media_files", [], |r| r.get(0)).unwrap();
         assert_eq!(files, kept);
         println!("upgraded {before} -> {SCHEMA_VERSION}, {files} files kept, copy {:?}", copies[0].file_name());
+    }
+
+    /// A5-04: a library file that may not be written is refused at start, said
+    /// as a start-up problem that does not call the file damaged.
+    #[test]
+    fn a_read_only_library_is_refused_not_opened_quietly() {
+        let dir = std::env::temp_dir().join(format!("kinema-ro-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("library.db");
+        drop(open(&path).unwrap());
+        let mut perms = std::fs::metadata(&path).unwrap().permissions();
+        perms.set_readonly(true);
+        std::fs::set_permissions(&path, perms).unwrap();
+        let writable = std::fs::OpenOptions::new().append(true).open(&path).is_ok();
+        let result = open(&path);
+        let mut perms = std::fs::metadata(&path).unwrap().permissions();
+        #[allow(clippy::permissions_set_readonly_false)]
+        perms.set_readonly(false);
+        std::fs::set_permissions(&path, perms).unwrap();
+        if !writable {
+            let err = result.expect_err("read-only library must not open quietly");
+            assert!(!err.may_be_damaged());
+            assert!(err.to_string().contains("read-only"));
+        }
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     fn version_of(conn: &Connection) -> i64 {
@@ -1490,10 +1753,23 @@ mod tests {
                  size_bytes, modified_at, first_seen_at, last_seen_at)
                  VALUES (1, 1, 'C:\\m\\a.mkv', 'C:\\m', 'a.mkv', 'mkv', 1, 1, 1, 1);
              INSERT INTO playback_state (file_id, position_secs, completed, updated_at)
-                 VALUES (1, 812.5, 0, 1);",
+                 VALUES (1, 812.5, 0, 1);
+             INSERT INTO settings (key, value) VALUES ('simkl_access_token', 'x'), ('opensubtitles_password', 'y');",
         )
         .unwrap();
         (dir, conn)
+    }
+
+    /// A5-05: times a year ahead come back to now; honest ones stay.
+    #[test]
+    fn times_from_a_wrong_clock_are_set_back() {
+        let (_dir, conn) = library_on_disk("clamp", 38);
+        conn.execute("UPDATE playback_state SET updated_at = 5000000", []).unwrap();
+        clamp_future_times(&conn, 1_000_000).unwrap();
+        let at: i64 = conn.query_row("SELECT updated_at FROM playback_state", [], |r| r.get(0)).unwrap();
+        assert_eq!(at, 1_000_000);
+        conn.execute("UPDATE playback_state SET updated_at = 999000", []).unwrap();
+        assert_eq!(clamp_future_times(&conn, 1_000_000).unwrap(), 0);
     }
 
     /// 0.15.2 (schema 38) to Files and title (39): every row and resume point
@@ -1802,6 +2078,16 @@ mod tests {
             })
             .expect("the resume point is in the copy");
         assert_eq!(position, 812.5);
+        let secrets_in = |c: &Connection| -> i64 {
+            c.query_row(
+                "SELECT COUNT(*) FROM settings WHERE key IN ('simkl_access_token', 'opensubtitles_password')",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap()
+        };
+        assert_eq!(secrets_in(&copy), 0, "sign-ins stay out of the copy");
+        assert_eq!(secrets_in(&writer), 2, "and stay in the library itself");
 
         assert!(periodic_backup_at(&writer, &backups, 1_000_000 + WEEK - 1).unwrap().is_none());
         assert!(periodic_backup_at(&writer, &backups, 1_000_000 + WEEK).unwrap().is_some());
@@ -1843,5 +2129,175 @@ mod tests {
         assert_eq!(auto_copy_stamp("library-auto-v18-1790682921.db"), Some(1790682921));
         assert_eq!(auto_copy_stamp("library-v13-1790682921.db"), None);
         assert_eq!(auto_copy_stamp("library-auto-v18-soon.db"), None);
+    }
+
+    /// A library as a first scan leaves it: `files` films, none with a title.
+    fn scanned_library(name: &str, files: i64) -> (std::path::PathBuf, Connection) {
+        let dir = std::env::temp_dir().join(format!("pn-db-stats-{name}"));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("library.db");
+        let conn = open(&path).unwrap();
+        conn.execute_batch(
+            "INSERT INTO library_roots (id, path, kind, added_at) VALUES (1, '/lib', 'movies', 0);",
+        )
+        .unwrap();
+        let tx = conn.unchecked_transaction().unwrap();
+        for i in 0..files {
+            tx.execute(
+                "INSERT INTO media_files (root_id, path, parent_dir, file_name, extension,
+                     size_bytes, modified_at, first_seen_at, last_seen_at, match_status)
+                 VALUES (1, ?1, '/lib', ?1, 'mkv', 1, 0, 0, 0, 'parsed')",
+                [format!("/lib/Film {i}.mkv")],
+            )
+            .unwrap();
+        }
+        tx.commit().unwrap();
+        (path, conn)
+    }
+
+    /// What matching does: a title for every file.
+    fn match_all(conn: &Connection) {
+        let tx = conn.unchecked_transaction().unwrap();
+        let ids: Vec<i64> = tx
+            .prepare("SELECT id FROM media_files")
+            .unwrap()
+            .query_map([], |r| r.get(0))
+            .unwrap()
+            .collect::<Result<_, _>>()
+            .unwrap();
+        for id in ids {
+            tx.execute(
+                "INSERT INTO titles (kind, provider, provider_id, title, fetched_at)
+                 VALUES ('movie', 'tmdb', ?1, ?1, 0)",
+                [id.to_string()],
+            )
+            .unwrap();
+            tx.execute(
+                "UPDATE media_files SET title_id = last_insert_rowid(), match_status = 'matched'
+                  WHERE id = ?1",
+                [id],
+            )
+            .unwrap();
+        }
+        tx.commit().unwrap();
+    }
+
+    /// The indexes Home's list (`list_titles`) reads files by.
+    fn home_plan(conn: &Connection) -> String {
+        let mut stmt = conn
+            .prepare(&format!("EXPLAIN QUERY PLAN {}", crate::metadata::TITLE_SELECT))
+            .unwrap();
+        let rows = stmt
+            .query_map(rusqlite::named_params! { ":art": "" }, |r| r.get::<_, String>(3))
+            .unwrap();
+        rows.map(Result::unwrap).collect::<Vec<_>>().join("\n")
+    }
+
+    /// Whether Home's list reads every file once per title: a full pass over
+    /// `media_files` (the bundled SQLite) or its `missing` index, which matches
+    /// every file (a SQLite without STAT4 chooses that).
+    fn reads_every_file(conn: &Connection) -> bool {
+        home_plan(conn)
+            .lines()
+            .any(|l| l.trim() == "SCAN m" || l.contains("idx_media_files_missing"))
+    }
+
+    /// The trap behind a 12 s Home: statistics taken before any file had a
+    /// title (what the scan used to do) make the planner read every file once
+    /// per title. Refreshing once matching has ended puts the title index back.
+    #[test]
+    fn statistics_taken_before_matching_are_refreshed_after_it() {
+        let (_, conn) = scanned_library("before-matching", 2000);
+        conn.execute_batch("PRAGMA optimize").unwrap();
+        match_all(&conn);
+        // `PRAGMA optimize` again (a later scan) does not notice: no row
+        // count changed. This is the state real libraries were left in.
+        conn.execute_batch("PRAGMA optimize").unwrap();
+        assert!(reads_every_file(&conn), "the trap should reproduce: {}", home_plan(&conn));
+
+        assert!(refresh_statistics_if_stale(&conn).unwrap());
+        assert!(!reads_every_file(&conn), "{}", home_plan(&conn));
+        assert!(home_plan(&conn).contains("idx_media_title"));
+        // Current now: the next scan's check does nothing.
+        assert!(!refresh_statistics_if_stale(&conn).unwrap());
+    }
+
+    /// A library left with the old statistics by an older Skrin is repaired
+    /// when it is opened, not only after the next scan (Linux test PC: Home
+    /// took 11–15 s at 5000 titles until a scan ran).
+    #[test]
+    fn stale_statistics_are_refreshed_when_the_library_opens() {
+        let (path, conn) = scanned_library("on-open", 2000);
+        conn.execute_batch("PRAGMA optimize").unwrap();
+        match_all(&conn);
+        assert!(reads_every_file(&conn), "the trap should reproduce: {}", home_plan(&conn));
+        drop(conn);
+        let conn = open(&path).unwrap();
+        assert!(!reads_every_file(&conn), "{}", home_plan(&conn));
+        assert!(!refresh_statistics_if_stale(&conn).unwrap());
+    }
+
+    /// A fresh library has no statistics; the first matching that links any
+    /// title takes them, and they record the titles.
+    #[test]
+    fn a_first_scan_ends_with_statistics_that_know_the_titles() {
+        let (_, conn) = scanned_library("first-scan", 500);
+        // Nothing linked yet (no network on the first run, say): nothing taken.
+        assert!(!refresh_statistics_if_stale(&conn).unwrap());
+        match_all(&conn);
+        assert!(refresh_statistics_if_stale(&conn).unwrap());
+        let stat: String = conn
+            .query_row("SELECT stat FROM sqlite_stat1 WHERE idx = 'idx_media_title'", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(stat.split_whitespace().nth(1), Some("1"), "{stat}");
+        assert!(!reads_every_file(&conn), "{}", home_plan(&conn));
+    }
+
+    /// Timings for the review finding A7-01, in the bundled SQLite:
+    /// `cargo test --lib home_list_timing -- --ignored --nocapture`.
+    #[test]
+    #[ignore]
+    fn home_list_timing_before_and_after_the_refresh() {
+        let files: i64 = std::env::var("KINEMA_A7_FILES").ok().and_then(|s| s.parse().ok()).unwrap_or(5000);
+        let (_, conn) = scanned_library("timing", files);
+        conn.execute_batch("PRAGMA optimize").unwrap();
+        match_all(&conn);
+        let time = |label: &str| {
+            let start = std::time::Instant::now();
+            let mut stmt = conn.prepare(crate::metadata::TITLE_SELECT).unwrap();
+            let rows = stmt
+                .query_map(rusqlite::named_params! { ":art": "" }, crate::metadata::map_title)
+                .unwrap()
+                .count();
+            eprintln!("A7-01 {label}: {rows} titles, {} ms", start.elapsed().as_millis());
+        };
+        time("statistics from before matching");
+        let start = std::time::Instant::now();
+        assert!(refresh_statistics_if_stale(&conn).unwrap());
+        eprintln!("A7-01 refresh: {} ms", start.elapsed().as_millis());
+        time("after the refresh");
+        let start = std::time::Instant::now();
+        assert!(!refresh_statistics_if_stale(&conn).unwrap());
+        eprintln!("A7-01 check with nothing to do: {} ms", start.elapsed().as_millis());
+    }
+
+    /// The scan refreshes on its own connection; the window's connection must
+    /// be told, or it keeps the old statistics until Skrin restarts.
+    #[test]
+    fn the_other_connection_uses_refreshed_statistics_once_reloaded() {
+        let (path, window) = scanned_library("two-connections", 2000);
+        window.execute_batch("PRAGMA optimize").unwrap();
+        match_all(&window);
+        let scanner = open_secondary(&path).unwrap();
+        assert!(reads_every_file(&window));
+
+        assert!(refresh_statistics_if_stale(&scanner).unwrap());
+        assert!(
+            reads_every_file(&window),
+            "an ANALYZE elsewhere is expected to reach this connection only on a reload"
+        );
+        reload_statistics(&window).unwrap();
+        assert!(!reads_every_file(&window), "{}", home_plan(&window));
     }
 }

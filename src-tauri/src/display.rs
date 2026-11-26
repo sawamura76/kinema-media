@@ -28,7 +28,7 @@ use serde::{Deserialize, Serialize};
 /// Whether this build can change the screen's refresh rate, resolution and
 /// HDR at all (`capabilities.rs`). Where it cannot, Settings does not offer
 /// to. On Linux that depends on the desktop, so it is asked: only a desktop
-/// Kinema knows how to ask counts.
+/// Skrin knows how to ask counts.
 pub fn switches() -> bool {
     #[cfg(windows)]
     return true;
@@ -72,10 +72,14 @@ pub struct ScreenNow {
     pub link_bits: Option<u32>,
     pub link_encoding: Option<String>,
     pub hdr: HdrState,
+    /// The screen's own resolution, where the system says (Windows'
+    /// "Recommended"). Auto never raises the resolution past it
+    /// (`displayMode.ts`).
+    pub native: Option<(u32, u32)>,
     pub modes: Vec<Mode>,
 }
 
-/// What the screen was before Kinema changed anything.
+/// What the screen was before Skrin changed anything.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Original {
     pub gdi_name: String,
@@ -92,6 +96,11 @@ pub struct Original {
     /// sdr-native (2) rather than the default, which "HDR off" alone loses.
     #[serde(default)]
     pub color_mode: Option<u32>,
+    /// Windows: the link's colour format before ("10-bit YCbCr 4:2:2"). A
+    /// switch the driver could make only in a smaller format lowers it, and
+    /// the restore checks it came back.
+    #[serde(default)]
+    pub link: Option<String>,
 }
 
 fn load_original(app: &tauri::AppHandle) -> Option<Original> {
@@ -132,6 +141,17 @@ fn describe_signal(signal: Option<(u32, u32, f64)>) -> String {
     }
 }
 
+/// The link's colour format: "10-bit YCbCr 4:2:2".
+#[cfg_attr(not(windows), allow(dead_code))]
+fn describe_link(s: &ScreenNow) -> String {
+    match (s.link_bits, s.link_encoding.as_deref()) {
+        (Some(b), Some(e)) => format!("{b}-bit {e}"),
+        (Some(b), None) => format!("{b}-bit"),
+        (None, Some(e)) => e.to_string(),
+        (None, None) => "link format unknown".into(),
+    }
+}
+
 /// Two signals are the same if size matches and the refresh is within 0.5 %.
 #[cfg_attr(not(windows), allow(dead_code))]
 fn same_signal(a: Option<(u32, u32, f64)>, b: Option<(u32, u32, f64)>) -> bool {
@@ -146,7 +166,7 @@ fn same_signal(a: Option<(u32, u32, f64)>, b: Option<(u32, u32, f64)>) -> bool {
 
 /// The screen the picture is on, now. `screen` names it where the picture is
 /// mpv's own window (Linux: mpv's `display-names`); on Windows it is the
-/// screen Kinema's window is on, and `screen` is not needed.
+/// screen Skrin's window is on, and `screen` is not needed.
 #[tauri::command]
 pub fn screen_now(window: tauri::WebviewWindow, screen: Option<String>) -> Result<ScreenNow, String> {
     #[cfg(windows)]
@@ -205,6 +225,7 @@ pub async fn switch_screen(
                 hdr_on: None,
                 signal: before.signal,
                 color_mode: None,
+                link: Some(describe_link(&before)),
             });
             if hdr_change.is_some() && original.hdr_on.is_none() {
                 original.hdr_on = Some(before.hdr == HdrState::On);
@@ -228,14 +249,16 @@ pub async fn switch_screen(
                 after = win::screen_now(&gdi)?;
             }
             crate::log!(
-                "display: {} {} HDR {:?} (signal {}) → {} HDR {:?} (signal {})",
+                "display: {} {} HDR {:?} (signal {}, {}) → {} HDR {:?} (signal {}, {})",
                 gdi,
                 describe(before.width, before.height, before.hz),
                 before.hdr,
                 describe_signal(before.signal),
+                describe_link(&before),
                 describe(after.width, after.height, after.hz),
                 after.hdr,
-                describe_signal(after.signal)
+                describe_signal(after.signal),
+                describe_link(&after)
             );
             if (after.width, after.height, after.hz) != (width, height, hz) {
                 crate::log!(
@@ -268,6 +291,7 @@ pub async fn switch_screen(
                 hdr_on: None,
                 signal: before.signal,
                 color_mode: colour,
+                link: None,
             });
             if hdr_change.is_some() && original.hdr_on.is_none() {
                 original.hdr_on = Some(before.hdr == HdrState::On);
@@ -326,12 +350,15 @@ pub fn restore(app: &tauri::AppHandle) -> Result<bool, String> {
         // only a full mode change (done by hand in the NVIDIA panel) cleared
         // it. So the signal is checked against the one before the first
         // switch, and a mismatch gets a forced mode change.
-        if !same_signal(original.signal, now.signal) {
+        let link_back = original.link.as_ref().is_none_or(|l| *l == describe_link(&now));
+        if !same_signal(original.signal, now.signal) || !link_back {
             crate::log!(
-                "display: {gdi} is back at {} but the signal is {} (was {}); forcing a full mode change",
+                "display: {gdi} is back at {} but the signal is {}, {} (was {}, {}); forcing a full mode change",
                 describe(now.width, now.height, now.hz),
                 describe_signal(now.signal),
-                describe_signal(original.signal)
+                describe_link(&now),
+                describe_signal(original.signal),
+                original.link.as_deref().unwrap_or("unknown")
             );
             // Belt and braces, so a refusal is no failure: the desktop is
             // already back at Windows' own mode. Returned as an error, it
@@ -345,11 +372,12 @@ pub fn restore(app: &tauri::AppHandle) -> Result<bool, String> {
             now = win::screen_now(gdi)?;
         }
         crate::log!(
-            "display: restored {} to {} HDR {:?} (signal {})",
+            "display: restored {} to {} HDR {:?} (signal {}, {})",
             gdi,
             describe(now.width, now.height, now.hz),
             now.hdr,
-            describe_signal(now.signal)
+            describe_signal(now.signal),
+            describe_link(&now)
         );
     }
     #[cfg(target_os = "linux")]
@@ -397,14 +425,14 @@ pub async fn restore_screen(app: tauri::AppHandle) -> Result<bool, String> {
     .await
 }
 
-/// Kinema's window while the player is open, on a tiling desktop.
+/// Skrin's window while the player is open, on a tiling desktop.
 ///
 /// Where mpv has a window of its own, the player's controls are a photo of
-/// Kinema's window drawn over the film at mpv's size. Sway and Hyprland tile
-/// windows, so when the film's window appears Kinema's is squeezed beside it
+/// Skrin's window drawn over the film at mpv's size. Sway and Hyprland tile
+/// windows, so when the film's window appears Skrin's is squeezed beside it
 /// and the photo comes out the wrong shape, blown up (seen on the test TV).
 /// Both float a window whose size is fixed when it appears (sway
-/// `wants_floating`, Hyprland `shouldBeFloated`), so for the player Kinema's
+/// `wants_floating`, Hyprland `shouldBeFloated`), so for the player Skrin's
 /// window is shown again — hidden first, which is what makes it a new window
 /// to them — at the screen's size and not resizable, and put back as it was
 /// when the player closes. Elsewhere (GNOME, Plasma, Windows) nothing is done:
@@ -427,7 +455,7 @@ fn fitted(window: (i32, i32, i32, i32), screen: (i32, i32, i32, i32)) -> Option<
     (window != screen).then_some(screen)
 }
 
-/// Kinema's window, when it is full screen, to the size of its screen as
+/// Skrin's window, when it is full screen, to the size of its screen as
 /// Windows reports it now. Called after every switch and restore, and
 /// whenever Windows says a screen changed mode (`watch_screen_changes`), so
 /// the window follows what Windows reports rather than a guess at when it is
@@ -535,7 +563,13 @@ mod tests {
             "before: {}×{}@{} ({:?}), signal {:?}",
             before.width, before.height, before.hz, before.hdr, before.signal
         );
-        win::set_mode(&gdi, 1920, 1080, hz).unwrap();
+        // KINEMA_SWITCH_CCD=1: the way Windows' Settings switches, which
+        // `set_mode` falls back to when the old call refuses a mode.
+        if std::env::var("KINEMA_SWITCH_CCD").is_ok() {
+            win::set_mode_letting_driver_fit(&gdi, 1920, 1080, hz).unwrap();
+        } else {
+            win::set_mode(&gdi, 1920, 1080, hz).unwrap();
+        }
         std::thread::sleep(std::time::Duration::from_secs(4));
         let during = win::screen_now(&gdi).unwrap();
         println!(

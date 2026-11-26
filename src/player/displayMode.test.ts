@@ -94,6 +94,32 @@ describe('chooseResolution', () => {
   it('a film bigger than any mode gets the screen at its largest', () => {
     expect(chooseResolution(devMonitor, film4k, 'auto')).toEqual({ width: 2560, height: 1600 });
   });
+
+  it('auto never goes past the screen’s own resolution (DSR/VSR modes, GitHub #21)', () => {
+    // A 1440p monitor whose driver lists a 4K mode it draws big and shrinks.
+    const dsr: Screen = {
+      ...devMonitor,
+      width: 1920,
+      height: 1080,
+      native: [2560, 1440],
+      modes: [mode(3840, 2160, 60), mode(2560, 1440, 60), mode(1920, 1080, 60)],
+    };
+    expect(chooseResolution(dsr, film4k, 'auto')).toEqual({ width: 2560, height: 1440 });
+    expect(chooseResolution({ ...dsr, width: 2560, height: 1440 }, film4k, 'auto')).toEqual({
+      width: 2560,
+      height: 1440,
+    });
+    // Where the system does not say, as before.
+    expect(chooseResolution({ ...dsr, native: null }, film4k, 'auto')).toEqual({
+      width: 3840,
+      height: 2160,
+    });
+    // A 4K TV that says it is 4K still goes up.
+    expect(chooseResolution({ ...tv(1920, 1080, 60), native: [3840, 2160] }, film4k, 'auto')).toEqual({
+      width: 3840,
+      height: 2160,
+    });
+  });
 });
 
 describe('chooseTarget', () => {

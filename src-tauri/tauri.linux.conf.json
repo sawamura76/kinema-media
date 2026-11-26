@@ -22,25 +22,35 @@
     "targets": ["deb", "rpm"],
     "category": "Video",
     "shortDescription": "A local, serverless media library for movies and TV shows",
-    "longDescription": "Kinema shows the films and series on your own drives and network shares as a library, and plays them with mpv. It runs no server and needs no account. Made for a TV and a remote as much as for a desk.",
+    "longDescription": "Skrin (formerly Kinema) shows the films and series on your own drives and network shares as a library, and plays them with mpv. It runs no server and needs no account. Made for a TV and a remote as much as for a desk.",
     "publisher": "Basswaves",
-    "homepage": "https://github.com/basswaves/kinema",
+    "homepage": "https://github.com/basswaves/skrin",
     "license": "MIT",
     "linux": {
       "deb": {
-        "desktopTemplate": "linux/kinema.desktop",
+        "desktopTemplate": "linux/skrin.desktop",
         "depends": ["libmpv2"],
+        "provides": ["kinema"],
+        "conflicts": ["kinema (<< 0.17.0)"],
+        "replaces": ["kinema (<< 0.17.0)"],
         "recommends": ["ffmpeg"],
         "files": {
-          "/usr/lib/kinema/libmpv-wrapper.so": "lib/libmpv-wrapper.so"
+          "/usr/lib/skrin/libmpv-wrapper.so": "lib/libmpv-wrapper.so",
+          "/usr/share/doc/skrin/LICENSE": "../LICENSE",
+          "/usr/share/doc/skrin/NOTICE.md": "../NOTICE.md"
         }
       },
       "rpm": {
-        "desktopTemplate": "linux/kinema.desktop",
+        "desktopTemplate": "linux/skrin.desktop",
         "depends": ["mpv-libs"],
+        "provides": ["kinema = 0.17.0"],
+        "obsoletes": ["kinema < 0.17.0"],
         "recommends": ["(ffmpeg or ffmpeg-free)"],
+        "postRemoveScript": "linux/rpm-postremove.sh",
         "files": {
-          "/usr/lib/kinema/libmpv-wrapper.so": "lib/libmpv-wrapper.so"
+          "/usr/lib/skrin/libmpv-wrapper.so": "lib/libmpv-wrapper.so",
+          "/usr/share/doc/skrin/LICENSE": "../LICENSE",
+          "/usr/share/doc/skrin/NOTICE.md": "../NOTICE.md"
         }
       }
     }

@@ -31,6 +31,8 @@
  */
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { useEffect, useState } from 'react';
+import { isRemote, proxyNow, remoteImage } from '../net/proxy';
+import { offlineNow } from '../net/offline';
 
 /** Bins for the brightness histogram. */
 const BINS = 64;
@@ -217,7 +219,7 @@ export function keepLight(pixels: Uint8ClampedArray, split: number): void {
   }
 }
 
-/** One look per logo, for as long as Kinema runs. */
+/** One look per logo, for as long as Skrin runs. */
 const looked = new Map<string, Promise<string | null>>();
 
 function load(src: string): Promise<HTMLImageElement> {
@@ -235,7 +237,11 @@ function load(src: string): Promise<HTMLImageElement> {
 async function lookAt(sources: string[]): Promise<string | null> {
   for (const src of sources) {
     try {
-      const img = await load(src);
+      // In Keep everything on this computer, never one from the internet.
+      if (isRemote(src) && (await offlineNow())) continue;
+      // With the proxy on, a logo from the internet is fetched through it.
+      const shown = isRemote(src) && (await proxyNow()).enabled ? await remoteImage(src) : src;
+      const img = await load(shown);
       const canvas = document.createElement('canvas');
       canvas.width = img.naturalWidth;
       canvas.height = img.naturalHeight;

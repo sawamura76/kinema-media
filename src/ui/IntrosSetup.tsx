@@ -1,7 +1,7 @@
 /**
  * The setup page about intros and credits (SetupPages.tsx).
  *
- * Kinema finds them by itself, so there is little to ask: whether to skip
+ * Skrin finds them by itself, so there is little to ask: whether to skip
  * them or be offered a button, and whether the two services that know them
  * from other viewers may be asked. That second one is here because a person
  * should hear on day one that playing an episode tells TheIntroDB and IntroDB
@@ -10,7 +10,7 @@
  *
  * Skiptro, a separate program, is brought up only when its database is on
  * this PC: to anyone else it is a name they have never heard, and Settings
- * says where it goes. Where Kinema cannot run programs (Android), never: it
+ * says where it goes. Where Skrin cannot run programs (Android), never: it
  * cannot listen to episodes itself there either, and says so.
  */
 import { useEffect, useState } from 'react';
@@ -18,6 +18,8 @@ import { open } from '@tauri-apps/plugin-dialog';
 import {
   INTRODB_APP_ENABLED_KEY,
   INTRODB_ENABLED_KEY,
+  FFMPEG_PATH_KEY,
+  ffmpegStatus,
   SKIPTRO_DB_PATH_KEY,
   SKIPTRO_PATH_KEY,
   skiptroFound,
@@ -44,6 +46,20 @@ export default function IntrosSetup() {
   const [skiptro, setSkiptro] = useState<boolean | null>(null);
   const [skiptroPath, setSkiptroPath] = useState('');
   const [error, setError] = useState<string | null>(null);
+  /** Whether ffmpeg is here; null until asked. Without it Skrin finds nothing itself. */
+  const [ffmpegHere, setFfmpegHere] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (!programs) return;
+    let live = true;
+    void getSetting(FFMPEG_PATH_KEY)
+      .then((path) => ffmpegStatus((path ?? '').trim()))
+      .then((s) => live && setFfmpegHere(s.available))
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [programs]);
 
   useEffect(() => {
     let live = true;
@@ -96,9 +112,11 @@ export default function IntrosSetup() {
   return (
     <>
       <p className="muted">
-        {programs
-          ? 'Kinema finds where intros, recaps and end credits are by itself, and new episodes are checked after every scan. Two choices about it; both are in Settings at any time.'
-          : `On ${can?.system ?? 'this system'} Kinema learns where intros, recaps and end credits are from times shared by other viewers. Two choices about it; both are in Settings at any time.`}
+        {programs && ffmpegHere === false
+          ? 'With ffmpeg (the last page) Skrin finds where intros, recaps and end credits are by itself; without it, only times shared by other viewers are used. Two choices about it; both are in Settings at any time.'
+          : programs
+          ? 'Skrin finds where intros, recaps and end credits are by itself, and new episodes are checked after every scan. Two choices about it; both are in Settings at any time.'
+          : `On ${can?.system ?? 'this system'} Skrin learns where intros, recaps and end credits are from times shared by other viewers. Two choices about it; both are in Settings at any time.`}
       </p>
       {error && <div className="settings-error">{error}</div>}
 
@@ -132,17 +150,17 @@ export default function IntrosSetup() {
           ]);
         }}
         note="TheIntroDB and IntroDB are free collections of intro and credit times shared by viewers. Asked the first time an episode or film plays, they answer at once, and IntroDB knows where a film has a scene after its credits."
-        hint={`Kinema tells them only which film or episode is playing, keeps each answer for a month and never looks up your whole library. No account or key. ${programs ? 'Off, Kinema relies on what it finds itself.' : 'Off, nothing tells Kinema where they are, so there is nothing to skip.'}`}
+        hint={`Skrin tells them only which film or episode is playing, keeps each answer for a month and never looks up your whole library. No account or key. ${programs ? (ffmpegHere === false ? 'Off, and with no ffmpeg, nothing tells Skrin where they are, so there is nothing to skip.' : 'Off, Skrin relies on what it finds itself.') : 'Off, nothing tells Skrin where they are, so there is nothing to skip.'}`}
       />
 
       {programs && skiptro === true && (
         <div className="choice-row">
           <div className="choice-label">Skiptro</div>
           <p className="choice-note">
-            Skiptro is on this PC, and Kinema already reads the intros it has found.
+            Skiptro is on this PC, and Skrin already reads the intros it has found.
             {skiptroPath
-              ? ' Kinema runs it after every scan that finds new episodes.'
-              : ' Choose skiptro.exe (the command-line one, not Skiptro-Desktop.exe) and Kinema also runs it after every scan that finds new episodes.'}
+              ? ' Skrin runs it after every scan that finds new episodes.'
+              : ' Choose skiptro.exe (the command-line one, not Skiptro-Desktop.exe) and Skrin also runs it after every scan that finds new episodes.'}
           </p>
           {skiptroPath ? (
             <p className="settings-hint">

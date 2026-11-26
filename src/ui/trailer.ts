@@ -5,17 +5,20 @@
  * reaches here (TitleDetail.tsx plays it through mpv). Then: where the system
  * opens videos in an app of its own (Android), the YouTube app gets the id;
  * where the page is served over http(s) (Windows' `http://tauri.localhost`),
- * YouTube's embedded player plays it in Kinema's overlay (TrailerOverlay.tsx);
+ * YouTube's embedded player plays it in Skrin's overlay (TrailerOverlay.tsx);
  * anywhere else, and whenever YouTube refuses, the browser gets the page, as
  * before. Linux serves the page from a scheme of its own (`tauri://`), which
  * YouTube's embed does not take as an address it may play for ("Error 153",
- * no Referer), so Linux keeps the browser.
+ * no Referer). So there the overlay shows a small page the core serves on this
+ * computer only (trailer_relay.rs, `http://127.0.0.1:<port>`), which holds the
+ * embed and passes messages through; if that page cannot start, the browser.
  *
  * The overlay talks to YouTube's player the way YouTube's IFrame API does, by
- * messages to its frame, without loading YouTube's script into Kinema's own
+ * messages to its frame, without loading YouTube's script into Skrin's own
  * page: nothing of YouTube's runs where it could reach the library. Ads are
  * YouTube's to show; nothing here blocks them (notes on this in CONTRIBUTING).
  */
+import { invoke } from '@tauri-apps/api/core';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { useSyncExternalStore } from 'react';
 import { capabilitiesNow } from '../capabilities';
@@ -28,6 +31,8 @@ export const EMBED_ORIGIN = 'https://www.youtube-nocookie.com';
 export interface ShownTrailer {
   key: string;
   title: string;
+  /** Where the embed sits behind a page of the core's own (Linux); else direct. */
+  relay?: string;
 }
 
 let shown: ShownTrailer | null = null;
@@ -52,8 +57,29 @@ export function embedUrl(key: string, origin: string): string {
   return `${EMBED_ORIGIN}/embed/${encodeURIComponent(key)}?${query.toString()}`;
 }
 
+/** The overlay frame's address, and the origin its messages come from and go to. */
+export function frameSource(trailer: ShownTrailer, pageOrigin: string): { src: string; origin: string } {
+  if (!trailer.relay) return { src: embedUrl(trailer.key, pageOrigin), origin: EMBED_ORIGIN };
+  const url = new URL(trailer.relay);
+  url.searchParams.set('k', trailer.key);
+  return { src: url.toString(), origin: url.origin };
+}
+
+/** The page's scheme; a mock run may say Linux's (`kinemaMockPageScheme=tauri:`). */
+function pageProtocol(): string {
+  if (import.meta.env.DEV) {
+    try {
+      const mock = localStorage.getItem('kinemaMockPageScheme');
+      if (mock) return mock;
+    } catch {
+      /* no storage: the real scheme */
+    }
+  }
+  return window.location.protocol;
+}
+
 /** Whether YouTube's embed can play for this page: an http(s) address. */
-export function pageCanEmbed(protocol: string = window.location.protocol): boolean {
+export function pageCanEmbed(protocol: string = pageProtocol()): boolean {
   return protocol === 'http:' || protocol === 'https:';
 }
 
@@ -70,6 +96,15 @@ export async function playTrailer(key: string, title: string): Promise<void> {
     shown = { key, title };
     emit();
     return;
+  } else {
+    try {
+      const relay = await invoke<string>('trailer_page_address');
+      shown = { key, title, relay };
+      emit();
+      return;
+    } catch (e) {
+      console.warn('trailer: the trailer page could not start, so the browser gets it', e);
+    }
   }
   await openLink(watchUrl(key));
 }

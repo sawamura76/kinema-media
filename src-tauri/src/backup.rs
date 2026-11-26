@@ -8,7 +8,7 @@
 //! strangely afterwards.
 //!
 //! Restoring is two steps, because the running app holds the library open and
-//! cannot replace it under itself. [`request_restore`] writes a note and Kinema
+//! cannot replace it under itself. [`request_restore`] writes a note and Skrin
 //! closes; [`apply_pending_restore`] runs at the next start, before anything
 //! opens the library, and does the swap.
 //!
@@ -101,7 +101,7 @@ pub fn request_restore(data_dir: &Path, name: &str) -> Result<(), String> {
         return Err(format!("There is no safety copy called {name}."));
     }
     std::fs::write(data_dir.join(MARKER), name)
-        .map_err(|e| format!("Kinema could not note the restore: {e}"))
+        .map_err(|e| format!("Skrin could not note the restore: {e}"))
 }
 
 /// What a restore did, for saying so.
@@ -159,7 +159,7 @@ pub fn put_back(data_dir: &Path, name: &str) -> Result<Restored, String> {
             Err(not_changed(reason))
         }
         Err(SwapFailed::LogsLeftAside(reason)) => Err(format!(
-            "The safety copy could not be put back, and Kinema could not put everything \
+            "The safety copy could not be put back, and Skrin could not put everything \
              back as it was. The library's latest changes may be missing from it now. A \
              complete copy of it is kept with the safety copies, under Settings, Advanced.\n\n\
              {reason}"
@@ -260,7 +260,7 @@ fn finish_interrupted_swap(data_dir: &Path) {
     }
 }
 
-/// The newest copy that is whole and that this Kinema can read, for offering
+/// The newest copy that is whole and that this Skrin can read, for offering
 /// when the library itself will not open.
 pub fn newest_good_copy(data_dir: &Path) -> Option<BackupCopy> {
     let backups = data_dir.join(BACKUP_DIR);
@@ -274,7 +274,7 @@ pub fn date_of(copy: &BackupCopy) -> String {
 }
 
 /// A copy that could help with this failure to open the library, if there is one.
-/// Putting one back is offered for damage and for a library from a newer Kinema,
+/// Putting one back is offered for damage and for a library from a newer Skrin,
 /// and not for a locked file or a full disk.
 pub fn copy_to_offer(data_dir: &Path, failure: &db::DbError) -> Option<BackupCopy> {
     let helps = failure.may_be_damaged() || matches!(failure, db::DbError::TooNew { .. });
@@ -314,8 +314,8 @@ pub fn failed_open_message(
     if matches!(failure, db::DbError::TooNew { .. }) {
         return match copy {
             Some(copy) => format!(
-                "{failure}\n\nTo use this version instead, Kinema can put back {} {keep}\n\n\
-                 Put that copy back? Or close Kinema and install the newer version again.",
+                "{failure}\n\nTo use this version instead, Skrin can put back {} {keep}\n\n\
+                 Put that copy back? Or close Skrin and install the newer version again.",
                 copy_is(copy)
             ),
             None => format!(
@@ -330,29 +330,29 @@ pub fn failed_open_message(
         } else {
             "\n\nThe file does not look damaged, and it was not changed. Usually something is \
              in the way: another program using it, a full disk, or no permission to write in \
-             that folder. See to that, then start Kinema again."
+             that folder. See to that, then start Skrin again."
                 .to_string()
         };
-        return format!("Kinema could not open its library.\n\n{library}\n\n{failure}{what}");
+        return format!("Skrin could not open its library.\n\n{library}\n\n{failure}{what}");
     }
     let opening = format!(
-        "Kinema could not open its library. The file looks damaged.\n\n{library}\n\n{failure}"
+        "Skrin could not open its library. The file looks damaged.\n\n{library}\n\n{failure}"
     );
     match copy {
         Some(copy) => format!(
-            "{opening}\n\nKinema can put back {} {keep}\n\nPut that copy back?",
+            "{opening}\n\nSkrin can put back {} {keep}\n\nPut that copy back?",
             copy_is(copy)
         ),
         None => format!(
             "{opening}\n\nThere is no good safety copy in {}.\n\nKeep that folder as it is, and \
              do not replace or delete library.db or the files beside it: a rescue may still be \
-             possible from them. Kinema's page on GitHub is the place to ask.",
+             possible from them. Skrin's page on GitHub is the place to ask.",
             backups.display()
         ),
     }
 }
 
-/// Refuse a copy that is damaged or too new for this Kinema, before it
+/// Refuse a copy that is damaged or too new for this Skrin, before it
 /// replaces anything.
 fn check_copy(path: &Path) -> Result<(), String> {
     let conn = Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_ONLY)
@@ -367,7 +367,7 @@ fn check_copy(path: &Path) -> Result<(), String> {
         .query_row("PRAGMA user_version", [], |r| r.get(0))
         .map_err(|e| format!("The safety copy could not be read: {e}"))?;
     if version > SCHEMA_VERSION {
-        return Err("The safety copy is from a newer Kinema than this one.".to_string());
+        return Err("The safety copy is from a newer Skrin than this one.".to_string());
     }
     Ok(())
 }
@@ -393,7 +393,7 @@ pub fn list_backups(app: tauri::AppHandle) -> Result<Vec<BackupCopy>, String> {
     Ok(list(&crate::data_dir(&app)?))
 }
 
-/// Note the restore and close Kinema, which puts the copy back as it starts
+/// Note the restore and close Skrin, which puts the copy back as it starts
 /// again.
 #[tauri::command]
 pub fn restore_backup(app: tauri::AppHandle, name: String) -> Result<(), String> {
@@ -599,7 +599,7 @@ mod tests {
         assert!(!dir.join("library.db-wal.restoring").exists());
     }
 
-    /// The copy offered at start-up: the newest whole one this Kinema can read.
+    /// The copy offered at start-up: the newest whole one this Skrin can read.
     #[test]
     fn the_newest_good_copy_skips_damaged_and_too_new_ones() {
         let dir = folder("newest");
@@ -650,7 +650,7 @@ mod tests {
     }
 
     /// Review 2026-11, finding 21: it promised "point it at a different library",
-    /// which nothing in Kinema can do. The real way back is the copy made before
+    /// which nothing in Skrin can do. The real way back is the copy made before
     /// the upgrade, and a copy too new for this version is not offered.
     #[test]
     fn a_library_from_a_newer_kinema_names_the_copy_made_before_the_upgrade() {
@@ -758,7 +758,7 @@ mod tests {
         request_restore(&dir, "library-auto-v99-500.db").unwrap();
         let refused = apply_pending_restore(&dir).unwrap_err();
 
-        assert!(refused.contains("newer Kinema"), "{refused}");
+        assert!(refused.contains("newer Skrin"), "{refused}");
         assert_eq!(position_in(&dir.join("library.db")), 900.0);
     }
 }

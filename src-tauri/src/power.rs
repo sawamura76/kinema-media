@@ -1,10 +1,10 @@
-//! Leaving from the sofa: close Kinema, put the PC to sleep, or shut it down.
+//! Leaving from the sofa: close Skrin, put the PC to sleep, or shut it down.
 //!
-//! In TV mode Kinema fills the screen and there is no title bar to close it
+//! In TV mode Skrin fills the screen and there is no title bar to close it
 //! from, so Back on Home offers these three. Each is only ever the user's own
 //! choice from that screen; nothing here runs by itself.
 //!
-//! All three go through Kinema's normal exit first where they can, so the
+//! All three go through Skrin's normal exit first where they can, so the
 //! screen mode is put back (`display::restore`, on `RunEvent::Exit`) and a
 //! detection run is stopped rather than left behind.
 //!
@@ -18,7 +18,7 @@
 //! `Suspend` and `PowerOff` a desktop's own menu uses. Offered only where
 //! logind says this session may without a password (`CanSuspend` /
 //! `CanPowerOff` answer "yes") — on a sofa there is nothing to type one
-//! with — and otherwise Leave offers to close Kinema only, as before.
+//! with — and otherwise Leave offers to close Skrin only, as before.
 
 #[cfg(not(target_os = "linux"))]
 use std::path::PathBuf;
@@ -34,7 +34,7 @@ enum Action {
 
 /// Whether this computer can be put to sleep and shut down from here
 /// (`capabilities.rs`, asked once per launch). Where it cannot, Leave offers
-/// only to close Kinema.
+/// only to close Skrin.
 pub fn can_sleep() -> bool {
     #[cfg(windows)]
     return true;
@@ -136,9 +136,9 @@ pub fn power_action(app: tauri::AppHandle, action: String) -> Result<(), String>
             app.exit(0);
             Ok(())
         }
-        // Kinema stays open: after waking up it is where it was left.
+        // Skrin stays open: after waking up it is where it was left.
         Action::Sleep => sleep(),
-        // Windows is asked first; only once it has agreed does Kinema close,
+        // Windows is asked first; only once it has agreed does Skrin close,
         // so a refusal leaves the app there to say so.
         Action::ShutDown => {
             shut_down()?;
@@ -150,7 +150,7 @@ pub fn power_action(app: tauri::AppHandle, action: String) -> Result<(), String>
 
 /// logind on the system bus. A missing logind, a refusal and a time-out all
 /// come out as "cannot", so a system without it simply keeps Leave to closing
-/// Kinema.
+/// Skrin.
 #[cfg(target_os = "linux")]
 mod logind {
     use std::time::Duration;

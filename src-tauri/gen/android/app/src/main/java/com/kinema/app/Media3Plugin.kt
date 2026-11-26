@@ -272,6 +272,8 @@ class Media3Plugin(private val activity: Activity) : Plugin(activity) {
   private var timingDone = false
   /** The sound that would not play, to be named once the next way is known. */
   private var failedSound: String? = null
+  /** This file's tracks were looked at for sound that none was chosen of (soundLeftOut). */
+  private var soundLooked = false
   /**
    * Kinema's volume, 0–100, and mute: the player's own, kept across the
    * player being built again (`fallBack`, `open`) as mpv keeps its own.
@@ -716,6 +718,7 @@ class Media3Plugin(private val activity: Activity) : Plugin(activity) {
 
       override fun onTracksChanged(tracks: Tracks) {
         announceSound(tracks)
+        soundLeftOut(p, tracks)
         rememberVideo(tracks)
         if (!loadedSaid && !tracks.isEmpty) {
           loadedSaid = true
@@ -859,8 +862,26 @@ class Media3Plugin(private val activity: Activity) : Plugin(activity) {
     return when {
       decoderTaken(error) ->
         "the video decoder on this device is in use by something else. Close other video apps and try again."
-      error.errorCode == PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED ->
-        "Android's player cannot open this kind of file" + (path?.substringAfterLast('.', "")?.takeIf { it.isNotEmpty() && it.length <= 5 }?.let { " (.$it)" } ?: "") + "."
+      error.errorCode == PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED -> {
+        val ext = path?.substringAfterLast('.', "")?.lowercase()?.takeIf { it.isNotEmpty() && it.length <= 5 }
+        // A kind Android's player does read, that it could not read here: the
+        // file is the trouble, not the kind (A4-03).
+        if (ext in setOf("mkv", "mp4", "m4v", "mov", "ts", "m2ts", "webm", "avi"))
+          "it could not be read as a video. The file may be damaged or incomplete."
+        else
+          "Android's player cannot open this kind of file" + (ext?.let { " (.$it)" } ?: "") + "."
+      }
+      error.errorCode == PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED ||
+        error.errorCode == PlaybackException.ERROR_CODE_PARSING_MANIFEST_MALFORMED ->
+        "it could not be read as a video. The file may be damaged or incomplete."
+      error.errorCode == PlaybackException.ERROR_CODE_IO_READ_POSITION_OUT_OF_RANGE ->
+        "the file ends sooner than it should. It may be incomplete."
+      error.errorCode == PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS ||
+        error.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED ||
+        error.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT ->
+        "could not read the file. It may be incomplete, or its drive or share may have gone away."
+      error.errorCode == PlaybackException.ERROR_CODE_IO_UNSPECIFIED ->
+        "could not read the file. It may be damaged, or its drive may be unavailable."
       error.errorCode == PlaybackException.ERROR_CODE_DECODER_INIT_FAILED ||
         error.errorCode == PlaybackException.ERROR_CODE_DECODING_FORMAT_EXCEEDS_CAPABILITIES ||
         error.errorCode == PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED ||
@@ -869,8 +890,9 @@ class Media3Plugin(private val activity: Activity) : Plugin(activity) {
       error.errorCode == PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND ->
         "the file is not there any more. It may have been moved, or its drive may be unplugged."
       error.errorCode == PlaybackException.ERROR_CODE_IO_NO_PERMISSION ->
-        "Kinema is not allowed to read it. Check Kinema's permissions in the system's settings."
-      else -> error.errorCodeName + (error.message?.let { ": $it" } ?: "")
+        "Skrin is not allowed to read it. Check Skrin's permissions in the system's settings."
+      // The code name is in the log; the screen gets words (A4-04).
+      else -> "the player stopped with an error it has no words for. The file may be damaged or unsupported."
     }
   }
 
@@ -1021,6 +1043,33 @@ class Media3Plugin(private val activity: Activity) : Plugin(activity) {
     announce(1, soundName(f))
   }
 
+  /**
+   * Media3 leaves out a sound track it cannot play without an error (a
+   * TrueHD track on a device that neither decodes it nor offers it to the
+   * receiver: NO_UNSUPPORTED_SUBTYPE), so fallBack never runs and the film
+   * plays silent. Once the tracks are known: a track that can play is chosen
+   * if there is one, and otherwise the film is said to play without sound.
+   */
+  private fun soundLeftOut(p: ExoPlayer, tracks: Tracks) {
+    if (soundLooked || audioStep != 0) return
+    val audio = tracks.groups.filter { it.type == C.TRACK_TYPE_AUDIO }
+    if (audio.isEmpty()) return
+    soundLooked = true
+    if (audio.any { it.isSelected }) return
+    for (g in audio) {
+      val i = (0 until g.length).firstOrNull { g.isTrackSupported(it) } ?: continue
+      Log.w("Kinema", "media3: no sound was chosen; choosing ${soundName(g.getTrackFormat(i))}, which can play")
+      p.trackSelectionParameters = p.trackSelectionParameters.buildUpon()
+        .setOverrideForType(TrackSelectionOverride(g.mediaTrackGroup, i))
+        .build()
+      return
+    }
+    val f = audio[0].getTrackFormat(0)
+    Log.w("Kinema", "media3: no sound track can play here (${soundName(f)}); the film plays without sound")
+    failedSound = soundName(f)
+    announce(2, null)
+  }
+
   private fun announce(step: Int, chosen: String?) {
     val format = failedSound ?: ""
     failedSound = null
@@ -1057,6 +1106,7 @@ class Media3Plugin(private val activity: Activity) : Plugin(activity) {
         timingDone = false
         main.removeCallbacks(timingTimeout)
         failedSound = null
+        soundLooked = false
         untouched = false
         loadedSaid = false
         videoDecoder = null
@@ -1164,6 +1214,8 @@ class Media3Plugin(private val activity: Activity) : Plugin(activity) {
         put("path", path ?: JSONObject.NULL)
         put("position", p?.let { it.currentPosition / 1000.0 } ?: JSONObject.NULL)
         put("duration", p?.duration?.takeIf { it > 0 }?.let { it / 1000.0 } ?: JSONObject.NULL)
+        // The seek bar's loaded part (bufferedAhead in engine.ts).
+        put("buffered", p?.let { it.bufferedPosition / 1000.0 } ?: JSONObject.NULL)
         put("paused", p?.playWhenReady?.not() ?: true)
         put("ended", p?.playbackState == Player.STATE_ENDED)
         put("video", video ?: JSONObject.NULL)

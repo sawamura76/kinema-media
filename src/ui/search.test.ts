@@ -64,6 +64,14 @@ describe('searchTitles', () => {
     expect(names('sa')).toEqual([]);
   });
 
+  /** Details in another language: the English title still finds it, and says so. */
+  it('finds a translated title by its English name', () => {
+    const translated = [title(5, 'Szybcy i wściekli', { english_title: 'Fast Example' })];
+    const hits = searchTitles(translated, 'fast');
+    expect(hits.map((h) => [h.title.title, h.why])).toEqual([['Szybcy i wściekli', 'Fast Example']]);
+    expect(searchTitles(translated, 'szybcy')[0].why).toBeNull();
+  });
+
   it('shows everything for an empty query', () => {
     expect(names('  ')).toHaveLength(4);
   });

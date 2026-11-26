@@ -33,6 +33,7 @@ import type { Arrow } from '../ui/focusModel';
 import { endsAtLabel } from '../ui/format';
 import { useTvMode } from '../ui/tv';
 import { episodeRefName, type EpisodeRef, type PlaybackTarget } from './api';
+import { createClickPause } from './clickPause';
 import { hasMpv, isPaused, seekBy, seekTo, setPaused, type Chapter } from './engine';
 import { PLAYER_PLAY_KEY, PLAYER_SHELL_KEY } from './focusKeys';
 import PlayerControls from './PlayerControls';
@@ -60,12 +61,14 @@ import { useSubDelay } from './useSubDelay';
 import { useSoundLevel } from './useSoundLevel';
 import { useUpNext } from './useUpNext';
 import { useBuffering } from './buffering';
+import { useBufferedEnd } from './buffered';
 import { useVolume } from './useVolume';
 import { VOLUME_STEP, wheelVolumeSteps } from './volume';
 import { nameOf, noteFirstFrame, targetFor } from '../library/opened';
 import { isSoundLostNotice } from './soundWatch';
 import FloatingPlayer from './FloatingPlayer';
 import { restoreFloating } from './floating';
+import { isNoPictureNotice } from './decodeCheck';
 
 interface Props {
   mini?: boolean;
@@ -140,7 +143,14 @@ export default function Player({ target, onExit, onPlayTarget, mini = false }: P
     closeChapters,
   } = usePanels();
   const { delayMs, changeDelay } = useAudioDelay(setNotice);
-  const { subDelayMs, changeTiming } = useSubDelay(setNotice);
+  const { subDelayMs, changeTiming, autoTiming, quietCheck } = useSubDelay(setNotice, {
+    video: target.path,
+    tracks,
+    sid,
+    subVisible,
+    aid,
+    duration,
+  });
   const sound = useSoundLevel({ target, tracks, aid, say: setNotice });
 
   const onlinePanel = useOnlineSubtitles({
@@ -151,6 +161,7 @@ export default function Player({ target, onExit, onPlayTarget, mini = false }: P
     showTracks,
     showFetched,
     duration,
+    onFetched: quietCheck,
   });
 
   const { matchScreen, exit, toggleFullscreen, backOut } = useScreen({
@@ -235,6 +246,7 @@ export default function Player({ target, onExit, onPlayTarget, mini = false }: P
     byPath: target.resumeByPath === true,
     sessionRef,
     countedCreditsStart,
+    say: setNotice,
   });
   usePlaybackEngine({
     target,
@@ -253,9 +265,10 @@ export default function Player({ target, onExit, onPlayTarget, mini = false }: P
 
   // A notice about the sound says its piece and goes; the film is playing.
   // Except the one saying the film paused because the sound went away: while
-  // paused, it is the only thing that tells whoever comes back why.
+  // paused, it is the only thing that tells whoever comes back why. And the
+  // one saying there is no picture: the screen stays black, so it stays.
   useEffect(() => {
-    if (!notice || (paused && isSoundLostNotice(notice))) return;
+    if (!notice || (paused && isSoundLostNotice(notice)) || isNoPictureNotice(notice)) return;
     const id = window.setTimeout(() => setNotice(null), AUDIO_NOTICE_MS);
     return () => window.clearTimeout(id);
   }, [notice, paused]);
@@ -274,15 +287,24 @@ export default function Player({ target, onExit, onPlayTarget, mini = false }: P
     }
   }, [showOsd, fail]);
 
+  // A click on the picture pauses after a short wait for a second click; a
+  // double click is full screen only (clickPause.ts, GitHub #24).
+  const clickPause = useMemo(() => createClickPause(), []);
+  useEffect(() => {
+    clickPause.setAction(() => void togglePause());
+  }, [clickPause, togglePause]);
+  useEffect(() => () => clickPause.cancel(), [clickPause]);
+
   /**
-   * Pause or play from a key or the remote. Pausing puts the ring on
-   * Play/Pause, so the next OK plays again and the arrows are already on the
-   * controls — a paused film is when you want them. A mouse click on the
-   * picture uses `togglePause` and moves nothing.
+   * Pause or play from a key or the remote. The ring stays where it is: Left
+   * and Right go on seeking while paused, as in every other player, and OK
+   * plays again either way (GitHub #25). It used to move onto Play/Pause, so
+   * the arrows changed meaning the moment the film paused. Up or Down is
+   * still the way onto the controls.
    */
   const togglePauseByKey = useCallback(async () => {
-    if (await togglePause()) enterOsdFocus();
-  }, [togglePause, enterOsdFocus]);
+    await togglePause();
+  }, [togglePause]);
 
   const seekRelative = useCallback(
     async (delta: number) => {
@@ -352,8 +374,22 @@ export default function Player({ target, onExit, onPlayTarget, mini = false }: P
   }, []);
 
   // ---- volume -------------------------------------------------------------
-  const { volume, muted, receiver, setVolumeLevel, changeVolume, toggleMute, volumeKey } =
-    useVolume({ fail, showOsd, osdVisible, path: target.path, frameShown: session.frameShown });
+  const {
+    volume,
+    max: volumeMax,
+    muted,
+    receiver,
+    setVolumeLevel,
+    changeVolume,
+    toggleMute,
+    volumeKey,
+  } = useVolume({
+    fail,
+    showOsd,
+    osdVisible,
+    path: target.path,
+    frameShown: session.frameShown,
+  });
   // The wheel over the picture is the volume, as in VLC, mpv and MPC (GitHub
   // #11). Not over a panel or list, which scroll, nor over the volume control,
   // which has its own. With the sound going to a receiver it only brings up
@@ -375,6 +411,7 @@ export default function Player({ target, onExit, onPlayTarget, mini = false }: P
   // ---- keyboard -----------------------------------------------------------
   usePlayerKeys({
     togglePauseByKey,
+    paused,
     toggleFullscreen: mini ? restoreFloating : toggleFullscreen,
     backOut: mini ? restoreFloating : backOut,
     exit,
@@ -419,6 +456,8 @@ export default function Player({ target, onExit, onPlayTarget, mini = false }: P
 
   const endsAt = endsAtLabel(timePos, duration, now);
   const controlsShown = osdVisible || showTracks || osdFocus;
+  /** How far the film is loaded, for the seek bar while it shows (buffered.ts). */
+  const loadedTo = useBufferedEnd(controlsShown, target.path, timePos, duration);
   const subTracks = tracks.filter((t) => t.type === 'sub');
   const audioTracks = tracks.filter((t) => t.type === 'audio');
 
@@ -440,7 +479,7 @@ export default function Player({ target, onExit, onPlayTarget, mini = false }: P
           )
         )
           return;
-        void togglePause();
+        clickPause.click(e.detail);
       }}
       onWheel={onWheel}
       onDoubleClick={(e) => {
@@ -450,6 +489,7 @@ export default function Player({ target, onExit, onPlayTarget, mini = false }: P
           )
         )
           return;
+        clickPause.cancel();
         if (mini) void restoreFloating(); else void toggleFullscreen();
       }}
     >
@@ -542,7 +582,7 @@ export default function Player({ target, onExit, onPlayTarget, mini = false }: P
           subSizes={hasMpv()}
           onSubStyle={(style) => void changeSubStyle(style)}
           delay={hasMpv() ? { ms: delayMs, onChange: changeDelay } : null}
-          timing={hasMpv() ? { ms: subDelayMs, onChange: changeTiming } : null}
+          timing={hasMpv() ? { ms: subDelayMs, onChange: changeTiming, auto: autoTiming } : null}
           level={hasMpv() && sound.level ? { ...sound, level: sound.level } : null}
           sid2={sid2}
           onSecond={hasMpv() ? (track) => void chooseSecond(track) : null}
@@ -557,11 +597,15 @@ export default function Player({ target, onExit, onPlayTarget, mini = false }: P
       <PlayerControls
         visible={controlsShown}
         timePos={timePos}
+        scrubbing={session.scrubbing}
+        fileId={target.fileId}
+        loadedTo={loadedTo}
         duration={duration}
         paused={paused}
         steps={steps}
         showTracks={showTracks}
         volume={volume}
+        volumeMax={volumeMax}
         muted={muted}
         receiver={receiver}
         tv={tv}

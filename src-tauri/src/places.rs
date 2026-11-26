@@ -1,9 +1,9 @@
-//! Kinema's own way of choosing a folder, for systems with no folder picker
+//! Skrin's own way of choosing a folder, for systems with no folder picker
 //! of their own (capabilities `folder_picker`).
 //!
 //! On Android a TV box often has no picker at all, and where it has one it
 //! hands back an address in Android's document system rather than a folder
-//! the library can read by path. So Kinema shows the folders itself
+//! the library can read by path. So Skrin shows the folders itself
 //! (`src/ui/FolderBrowser.tsx`): the drives Android has mounted — a USB drive,
 //! the box's own storage — come from the Kotlin side (`StoragePlugin.kt`,
 //! registered here), and what is inside a folder from `list_folders`, which is
@@ -48,7 +48,7 @@ pub fn list(path: &Path) -> std::io::Result<Listing> {
     Ok(listing(entries))
 }
 
-/// A folder on a network share Kinema opens itself (netshare.rs).
+/// A folder on a network share Skrin opens itself (netshare.rs).
 fn list_share(path: &str) -> std::io::Result<Listing> {
     let entries = crate::netshare::list(path)?;
     Ok(listing(entries.into_iter().map(|e| (e.name, e.is_dir))))
@@ -141,7 +141,7 @@ fn desktop_places() -> Vec<DesktopPlace> {
         }
     }
     // A drive with nothing in it must answer "not ready", not put Windows'
-    // own "There is no disk in the drive" box up over Kinema. This thread
+    // own "There is no disk in the drive" box up over Skrin. This thread
     // only, and as it was afterwards: it is a pool thread.
     let mut before = THREAD_ERROR_MODE(0);
     let quiet = unsafe { SetThreadErrorMode(SEM_FAILCRITICALERRORS, Some(&mut before)) }.is_ok();

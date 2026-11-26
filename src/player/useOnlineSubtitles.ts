@@ -1,6 +1,6 @@
 /**
  * "Find subtitles online" in the track panel (onlineSubtitles.ts): whether
- * this copy of Kinema can search, in which language, the search itself and
+ * this copy of Skrin can search, in which language, the search itself and
  * "Choose another" — and what the panel shows for it.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -29,13 +29,16 @@ async function onlineSearch(
   path: string,
   language: string,
   show: (path: string, language: string, release?: string) => Promise<void>,
-  duration: number | null
+  duration: number | null,
+  fetched?: (path: string) => void
 ): Promise<{ message: string; offers: Offer[] }> {
   const name = languageName(language) ?? language;
   try {
     const found = await findSubtitles(fileId, path, language);
     if (!found) return { message: `OpenSubtitles has no ${name} subtitles for this.`, offers: [] };
     await show(found.path, language, found.chosen.release);
+    // Made for this exact file: nothing to check (SUBTITLE-TIMING.md).
+    if (!found.chosen.matches_file) fetched?.(found.path);
     const misfit = coverageNote(await subtitleSpan(found.path), duration);
     return {
       message: misfit
@@ -56,11 +59,13 @@ async function onlineChoice(
   offer: Offer,
   language: string,
   show: (path: string, language: string, release?: string) => Promise<void>,
-  duration: number | null
+  duration: number | null,
+  fetched?: (path: string) => void
 ): Promise<string> {
   try {
     const path = await fetchSubtitle(fileId, offer.file_id, language);
     await show(path, language, offer.release);
+    if (!offer.matches_file) fetched?.(path);
     const misfit = coverageNote(await subtitleSpan(path), duration);
     return `Showing: ${offer.release || 'the one chosen'}.${misfit ? ` ${misfit}` : ''}`;
   } catch (e) {
@@ -76,6 +81,7 @@ export function useOnlineSubtitles({
   showTracks,
   showFetched,
   duration,
+  onFetched,
 }: {
   target: PlaybackTarget;
   tracks: Track[];
@@ -89,6 +95,11 @@ export function useOnlineSubtitles({
   showFetched: (path: string, language: string, release?: string) => Promise<void>;
   /** The file's length, to read a fetched subtitle against. */
   duration: number | null;
+  /**
+   * A downloaded subtitle not made for this exact file is on screen: the
+   * quiet timing check (useSubDelay.ts), which only ever offers.
+   */
+  onFetched?: (path: string) => void;
 }): OnlineSubtitles | null {
   /**
    * Whether this copy can, which of the offered languages is picked, and what
@@ -123,7 +134,7 @@ export function useOnlineSubtitles({
   const onlineLanguage = onlineLanguages[online.langIndex % Math.max(1, onlineLanguages.length)];
 
   // Whether this copy can search at all: asked when the panel opens, since a
-  // key can be entered in Settings while Kinema runs.
+  // key can be entered in Settings while Skrin runs.
   useEffect(() => {
     if (!showTracks) return;
     let live = true;
@@ -145,9 +156,9 @@ export function useOnlineSubtitles({
     const language = onlineLanguage;
     if (fileId === null || !language) return;
     setOnline((o) => ({ ...o, finding: true, message: null, offers: [] }));
-    const shown = await onlineSearch(fileId, target.path, language, showFetched, duration);
+    const shown = await onlineSearch(fileId, target.path, language, showFetched, duration, onFetched);
     setOnline((o) => ({ ...o, finding: false, ...shown }));
-  }, [target.fileId, target.path, onlineLanguage, showFetched, duration]);
+  }, [target.fileId, target.path, onlineLanguage, showFetched, duration, onFetched]);
 
   const chooseOffer = useCallback(
     async (offer: Offer) => {
@@ -155,7 +166,7 @@ export function useOnlineSubtitles({
       const language = onlineLanguage;
       if (fileId === null || !language) return;
       setOnline((o) => ({ ...o, finding: true, message: null }));
-      const message = await onlineChoice(fileId, offer, language, showFetched, duration);
+      const message = await onlineChoice(fileId, offer, language, showFetched, duration, onFetched);
       setOnline((o) => ({
         ...o,
         finding: false,
@@ -163,7 +174,7 @@ export function useOnlineSubtitles({
         offers: o.offers.filter((x) => x.file_id !== offer.file_id),
       }));
     },
-    [target.fileId, onlineLanguage, showFetched, duration]
+    [target.fileId, onlineLanguage, showFetched, duration, onFetched]
   );
 
   // What the track panel offers, or nothing when there is nothing to offer.

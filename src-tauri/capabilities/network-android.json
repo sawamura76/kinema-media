@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/mobile-schema.json",
   "identifier": "network-android",
-  "description": "Looking for network drives (NetworkPlugin.kt), for Kinema's own folder browser; the passwords' key store is reached from Rust only",
+  "description": "Looking for network drives (NetworkPlugin.kt), for Skrin's own folder browser; the passwords' key store is reached from Rust only",
   "windows": [
     "main"
   ],

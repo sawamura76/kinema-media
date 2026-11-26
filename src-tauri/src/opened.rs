@@ -1,6 +1,6 @@
-//! A video handed to Kinema from outside: named on the command line (a file
-//! opened from the file manager with Kinema, a file association, a file
-//! dropped on the shortcut), passed on by a second Kinema started that way,
+//! A video handed to Skrin from outside: named on the command line (a file
+//! opened from the file manager with Skrin, a file association, a file
+//! dropped on the shortcut), passed on by a second Skrin started that way,
 //! or dropped on the window.
 //!
 //! The file plays whether or not a library folder holds it. One in the library
@@ -8,7 +8,7 @@
 //! and anything else as a video of its own, resumed by path and size
 //! (`playback::get_loose_progress`).
 //!
-//! When Kinema was started for the file, the page closes it again once the
+//! When Skrin was started for the file, the page closes it again once the
 //! file ends or Back is pressed (LOCAL-MEDIA.md, owner's decision 2); when it
 //! was already running, it goes back to where it was.
 
@@ -19,21 +19,21 @@ use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
-/// The event a second Kinema's file arrives on, for the page (`opened.ts`).
-/// Desktop only: Android keeps one Kinema by itself and has no second start.
+/// The event a second Skrin's file arrives on, for the page (`opened.ts`).
+/// Desktop only: Android keeps one Skrin by itself and has no second start.
 #[cfg(desktop)]
 pub const EVENT: &str = "open-video";
 
-/// The file Kinema was started for, until the page has taken it.
+/// The file Skrin was started for, until the page has taken it.
 #[derive(Default)]
 pub struct AtLaunch(pub Mutex<Option<PathBuf>>);
 
 #[derive(Serialize, Clone)]
 pub struct Opened {
     pub path: String,
-    /// Kinema was started for this file, so it closes when the file is done.
+    /// Skrin was started for this file, so it closes when the file is done.
     pub launched: bool,
-    /// When this Kinema started (ms since 1970), for the log's "first frame
+    /// When this Skrin started (ms since 1970), for the log's "first frame
     /// after starting" — how long a double-click takes to become a picture.
     pub started_ms: u64,
 }
@@ -41,7 +41,7 @@ pub struct Opened {
 /// When `run` began, set once by `mark_start`.
 static STARTED_MS: std::sync::OnceLock<u64> = std::sync::OnceLock::new();
 
-/// Note the moment Kinema started; the first call wins.
+/// Note the moment Skrin started; the first call wins.
 pub fn mark_start() {
     let _ = STARTED_MS.get_or_init(crate::util::now_millis);
 }
@@ -66,7 +66,17 @@ where
         })
         // A flag is skipped by not being a playable file, not by its dash: a
         // video may be called "-clip.mkv".
-        .find_map(|p| playable(&p))
+        .find_map(|p| playable_within(&p))
+}
+
+/// `playable`, waited for at most `files::LOOK_WAIT`. A path whose drive does
+/// not answer is taken at its word when it is named as a video: the player
+/// then says the drive is not answering (`disc_source`), rather than Skrin
+/// freezing on it here or dropping it without a word.
+fn playable_within(path: &Path) -> Option<PathBuf> {
+    let owned = path.to_path_buf();
+    crate::files::within(path, crate::files::LOOK_WAIT, move || playable(&owned))
+        .unwrap_or_else(|| crate::scanner::has_video_extension(path).then(|| path.to_path_buf()))
 }
 
 /// What to play for `path`, if anything: a video file as it is; a Blu-ray
@@ -86,7 +96,7 @@ pub fn playable(path: &Path) -> Option<PathBuf> {
     crate::disc::disc_folder(disc).map(|_| disc.to_path_buf())
 }
 
-/// Take the file Kinema was started for. Once: a page reloaded later must not
+/// Take the file Skrin was started for. Once: a page reloaded later must not
 /// play it again.
 #[tauri::command]
 pub fn opened_at_launch(state: tauri::State<AtLaunch>) -> Option<Opened> {
@@ -94,13 +104,18 @@ pub fn opened_at_launch(state: tauri::State<AtLaunch>) -> Option<Opened> {
     Some(Opened { path: path.to_string_lossy().into_owned(), launched: true, started_ms: started_ms() })
 }
 
-/// The first playable video among files dropped on the window.
+/// The first playable video among files dropped on the window. Off the
+/// window's thread: files dropped from a share that has gone silent would
+/// hold it until the system gives up (A5-01).
 #[tauri::command]
-pub fn playable_path(paths: Vec<String>) -> Option<String> {
-    paths
-        .iter()
-        .find_map(|p| playable(Path::new(p)))
-        .map(|p| p.to_string_lossy().into_owned())
+pub async fn playable_path(paths: Vec<String>) -> Result<Option<String>, String> {
+    crate::jobs::off_main(move || {
+        Ok(paths
+            .iter()
+            .find_map(|p| playable_within(Path::new(p)))
+            .map(|p| p.to_string_lossy().into_owned()))
+    })
+    .await
 }
 
 /// The videos either side of one in its own folder, for the player's
@@ -269,14 +284,14 @@ mod tests {
         std::fs::write(dir.join("notes.txt"), b"x").unwrap();
         std::fs::write(dir.join("A film.mkv"), b"x").unwrap();
         std::fs::write(dir.join("-clip.mkv"), b"x").unwrap();
-        let args = ["kinema.exe", "--flag", "notes.txt", "A film.mkv", "missing.mkv"]
+        let args = ["skrin.exe", "--flag", "notes.txt", "A film.mkv", "missing.mkv"]
             .map(OsString::from);
         assert_eq!(from_args(args, &dir), Some(dir.join("A film.mkv")));
-        let args = ["kinema.exe", "--flag", "-clip.mkv"].map(OsString::from);
+        let args = ["skrin.exe", "--flag", "-clip.mkv"].map(OsString::from);
         assert_eq!(from_args(args, &dir), Some(dir.join("-clip.mkv")));
         // The program's own name is never the file, even when it is a video's.
         assert_eq!(from_args([OsString::from(dir.join("A film.mkv"))], &dir), None);
-        assert_eq!(from_args(["kinema.exe"].map(OsString::from), &dir), None);
+        assert_eq!(from_args(["skrin.exe"].map(OsString::from), &dir), None);
         std::fs::remove_dir_all(&dir).unwrap();
     }
 

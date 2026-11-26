@@ -29,7 +29,7 @@ describe('stageFor', () => {
   });
 
   it('keeps the shape of a page squeezed beside the film by a tiling desktop', () => {
-    // Hyprland, before Kinema's window was floated: 933 of 1920 wide.
+    // Hyprland, before Skrin's window was floated: 933 of 1920 wide.
     expect(stageFor(933, 1038, tv)).toEqual({ width: 933, height: 525 });
   });
 

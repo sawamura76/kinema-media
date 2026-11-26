@@ -1,4 +1,4 @@
-//! What this build of Kinema can do on the system it runs on.
+//! What this build of Skrin can do on the system it runs on.
 //!
 //! The interface asks this, once, and shows or hides what depends on it. It
 //! never asks which system it is on: a question like "can this switch the
@@ -27,20 +27,20 @@ pub struct Capabilities {
     pub audio_direct: bool,
     /// The screen's refresh rate, resolution and HDR can be switched.
     pub display_switching: bool,
-    /// Kinema runs in a window on a desktop, so it may be used at a desk as
+    /// Skrin runs in a window on a desktop, so it may be used at a desk as
     /// well as on a TV. Where it does not — Android, where an app is the whole
     /// screen of a TV box — it is always the TV layout and never asks.
     pub windowed: bool,
     /// The system has a folder picker of its own. Where it has none (Android
-    /// TV boxes, often), Kinema shows the folders itself (places.rs).
+    /// TV boxes, often), Skrin shows the folders itself (places.rs).
     pub folder_picker: bool,
     /// The system itself turns HDR on for an HDR film and passes sound to a
-    /// receiver untouched where it can (Android, through Media3). Kinema then
+    /// receiver untouched where it can (Android, through Media3). Skrin then
     /// only matches the screen's mode to the film, with one switch, and asks
-    /// nothing per device; `display_switching` and `audio_direct`, Kinema's
+    /// nothing per device; `display_switching` and `audio_direct`, Skrin's
     /// own way of doing both, stay off.
     pub system_output: bool,
-    /// Kinema can run programs the user installed themselves — ffmpeg and
+    /// Skrin can run programs the user installed themselves — ffmpeg and
     /// ffprobe for intro detection and a title's picture and sound details,
     /// Skiptro for intros. An Android app cannot run another program, so
     /// there nothing offers them.
@@ -49,13 +49,13 @@ pub struct Capabilities {
     /// package manager (Windows' winget, ffmpeg_install.rs). Elsewhere the
     /// interface links to ffmpeg's download page as before.
     pub installs_ffmpeg: bool,
-    /// Kinema can offer itself to the system as a video player, for the
+    /// Skrin can offer itself to the system as a video player, for the
     /// user to choose in the system's own settings (Windows' Default apps,
     /// default_player.rs), or on Linux put the unpacked folder in the app
     /// menu and "Open with" (app_menu.rs; the packages do it themselves).
     pub offers_player: bool,
     /// The system puts its own keyboard on screen whenever a text field takes
-    /// typing (Android). Kinema then lets a field take typing without it, and
+    /// typing (Android). Skrin then lets a field take typing without it, and
     /// opens it only when OK is pressed on the field (ui/typing.ts).
     pub screen_keyboard: bool,
     /// The system can show a folder in a file manager (the log folder, the
@@ -64,19 +64,22 @@ pub struct Capabilities {
     /// The system can hand a file to another app through its share sheet
     /// (Android): the log goes to a bug report that way (StoragePlugin.kt).
     pub shares_files: bool,
-    /// Kinema opens network shares itself (netshare.rs), because the system
+    /// Skrin opens network shares itself (netshare.rs), because the system
     /// does not open them for it (Android): the folder browser offers the
     /// network, and Settings lists the sign-ins it keeps.
     pub network_shares: bool,
     /// The system has a Back button of its own that the page never sees as
-    /// a key (an Android remote's, a phone's gesture); Kinema listens for it
+    /// a key (an Android remote's, a phone's gesture); Skrin listens for it
     /// and passes it on as one (src/backButton.ts). A desktop has none, and
     /// asking for it there was refused, with a warning in every log.
     pub back_button: bool,
     /// The system opens a video in an app of its own when handed its id
     /// (Android: `vnd.youtube:` goes to the YouTube app). A trailer goes
-    /// there first; elsewhere it plays in Kinema's overlay or the browser.
+    /// there first; elsewhere it plays in Skrin's overlay or the browser.
     pub video_apps: bool,
+    /// Pictures above the seek bar are made here (seek_preview.rs): a second
+    /// libmpv handle on a computer, a software decoder on Android.
+    pub seek_previews: bool,
     /// How much memory the computer has, in bytes; 0 where it could not be
     /// read. The player sizes its read-ahead from it (src/player/mpvOptions.ts,
     /// `cacheOptions`), so a machine with little is not asked for more than it
@@ -94,7 +97,7 @@ pub struct MpvVideo {
     pub gpu_api: &'static str,
     pub hwdec: &'static str,
     /// mpv shows the video in a full-screen window of its own, open only
-    /// while something plays, instead of beneath Kinema's transparent page.
+    /// while something plays, instead of beneath Skrin's transparent page.
     /// On Linux the page cannot be put over mpv any other way: Wayland has
     /// no `--wid`, and a second window cannot be kept above mpv's
     /// (docs/GOTCHAS.md). The controls then reach the screen through mpv.
@@ -120,7 +123,7 @@ fn mpv_video() -> MpvVideo {
 
 /// Worked out once per launch: on Linux it asks the desktop over D-Bus
 /// (`display::switches`), which is quick but not free, and the answer does
-/// not change while Kinema runs.
+/// not change while Skrin runs.
 pub fn current() -> Capabilities {
     static ONCE: std::sync::OnceLock<Capabilities> = std::sync::OnceLock::new();
     ONCE.get_or_init(work_out).clone()
@@ -146,6 +149,7 @@ fn work_out() -> Capabilities {
         network_shares: cfg!(target_os = "android"),
         back_button: cfg!(mobile),
         video_apps: cfg!(target_os = "android"),
+        seek_previews: cfg!(desktop) || cfg!(target_os = "android"),
         memory_bytes: memory_bytes(),
         sleep: crate::power::can_sleep(),
         shut_down: crate::power::can_shut_down(),
@@ -246,7 +250,7 @@ MemTotal:       16384 kB
 
     /// Elsewhere, nothing is claimed that has no implementation behind it.
     /// Linux has the equipment check (equipment/linux.rs), direct sound
-    /// (audio_reserve.rs), and switching where the desktop is one Kinema can
+    /// (audio_reserve.rs), and switching where the desktop is one Skrin can
     /// ask (display/linux.rs) — which depends on where the test runs.
     #[cfg(not(windows))]
     #[test]

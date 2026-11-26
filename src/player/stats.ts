@@ -40,14 +40,15 @@ import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { readProperty, type ScalarFormat, mpvGet } from './engine';
 import { outputCheck, type OutputFacts } from './outputCheck';
-import { readSwitchPolicies, screenIdOf, switchSettingsFor } from './displaySwitch';
+import { readSwitchPolicies, screenIdOf, switchOutcome, switchSettingsFor } from './displaySwitch';
 import { describeDelay } from './audioDelay';
+import { appliedSubDelay, describeSubDelay } from './subDelay';
 import { appliedLevel, describeLevel } from './soundLevel';
 import { startRow } from './startTime';
 import { goesDirect, readAudioSettings, targetDevice } from './audioOutput';
 import { getEquipment, type DisplayMode } from './equipment';
 import { capabilitiesNow, screenOwner } from '../capabilities';
-import { currentStepDown, stepsInForce, type StepState } from './stepDown';
+import { CLEAN_FILMS, currentStepDown, stepsInForce, type StepState } from './stepDown';
 
 export interface StatRow {
   label: string;
@@ -187,7 +188,12 @@ function near(value: number, target: number): boolean {
  * makes an uneven division even, and interpolating the difference away would
  * invent frames nobody shot.
  */
-export function describeCadence(sourceFps: number | null, displayHz: number | null): StatRow {
+export function describeCadence(
+  sourceFps: number | null,
+  displayHz: number | null,
+  /** Refresh rates the screen lists. A faster mode is only named when it is in here. */
+  modeRates: number[] = []
+): StatRow {
   if (!sourceFps || !displayHz) {
     return { label: 'Cadence', value: DASH };
   }
@@ -207,9 +213,11 @@ export function describeCadence(sourceFps: number | null, displayHz: number | nu
     return {
       label: 'Cadence',
       value: '3:2 pulldown, uneven',
-      note: `frames alternate between 3 and 2 refreshes; judders on pans. A ${(
-        sourceFps * 5
-      ).toFixed(0)} Hz display mode would give an even 5:5`,
+      note: `frames alternate between 3 and 2 refreshes; judders on pans${
+        modeRates.some((r) => near(r, sourceFps * 5))
+          ? `. The screen's ${(sourceFps * 5).toFixed(0)} Hz mode would give an even 5:5`
+          : ''
+      }`,
       warn: true,
     };
   }
@@ -298,33 +306,33 @@ export function describeDolbyVision(profile: number | null): StatRow | null {
       return {
         label,
         value: 'profile 5 → converted to HDR10',
-        note: 'no HDR10 layer in the file, so its own Dolby Vision metadata maps it; Kinema cannot send Dolby Vision itself',
+        note: 'no HDR10 layer in the file, so its own Dolby Vision metadata maps it; Skrin cannot send Dolby Vision itself',
       };
     case 7:
       return {
         label,
         value: 'profile 7 → HDR10 base layer',
-        note: 'the disc’s HDR10 layer is shown and the enhancement layer is not used; Kinema cannot send Dolby Vision itself',
+        note: 'the disc’s HDR10 layer is shown and the enhancement layer is not used; Skrin cannot send Dolby Vision itself',
       };
     case 8:
       return {
         label,
         value: 'profile 8 → HDR10 base layer',
-        note: 'made to fall back to HDR10 (or HLG), which is shown; Kinema cannot send Dolby Vision itself',
+        note: 'made to fall back to HDR10 (or HLG), which is shown; Skrin cannot send Dolby Vision itself',
       };
     default:
       return {
         label,
         value: `profile ${profile} → HDR10`,
-        note: 'Kinema cannot send Dolby Vision itself',
+        note: 'Skrin cannot send Dolby Vision itself',
       };
   }
 }
 
 /**
- * Which processing steps Kinema gave up to keep up, and why — only when one is
+ * Which processing steps Skrin gave up to keep up, and why — only when one is
  * in force for this film (stepDown.ts). The rows around it show the values mpv
- * is using; this says they are not the ones Kinema chose, and who changed them.
+ * is using; this says they are not the ones Skrin chose, and who changed them.
  * A step that cannot show in an SDR film's picture is not listed for it.
  */
 export function describeStepDown(state: StepState, hdrSource: boolean): StatRow | null {
@@ -339,7 +347,7 @@ export function describeStepDown(state: StepState, hdrSource: boolean): StatRow 
   return {
     label: 'Dropped to keep up',
     value: steps.map((s) => s.label).join(' · '),
-    note: `${why}. Remembered for this graphics card; the picture is otherwise as set.`,
+    note: `${why}. Remembered for this graphics card; after ${CLEAN_FILMS} films that play clean, one step is tried back, and Settings → Advanced can forget it. The picture is otherwise as set.`,
     warn: true,
   };
 }
@@ -375,18 +383,18 @@ export function describeAudioPath(
 
 /** Levelling and the dialogue lift (soundLevel.ts): what mpv's `af` holds now. */
 function levellingRow(): StatRow {
-  const { af, level, notApplied } = appliedLevel();
+  const { af, level, layout, notApplied } = appliedLevel();
   if (notApplied === 'passthrough' && (level.levelling !== 'off' || level.dialogue)) {
     return {
       label: 'Levelling',
       value: 'off for this track',
-      note: 'the sound goes to the receiver untouched; levelling works only on sound Kinema decodes',
+      note: 'the sound goes to the receiver untouched; levelling works only on sound Skrin decodes',
     };
   }
   return {
     label: 'Levelling',
-    value: af ? describeLevel(level) : 'none',
-    note: af ? 'on the decoded sound, before it leaves Kinema' : undefined,
+    value: af ? describeLevel(level, layout ?? null) : 'none',
+    note: af ? 'on the decoded sound, before it leaves Skrin' : undefined,
   };
 }
 
@@ -518,7 +526,7 @@ async function readRenderPasses(): Promise<{ rows: StatRow[]; unavailable: strin
 }
 
 /** Everything the webview can say about the panel it is being drawn on. */
-function displayGroup(
+export function displayGroup(
   refreshHz: number | null,
   outW: number | null,
   outH: number | null,
@@ -547,8 +555,11 @@ function displayGroup(
       },
       {
         label: 'Refresh',
-        value: num(refreshHz, 3, ' Hz'),
-        note: 'as measured by mpv, not as advertised by the driver',
+        // 0 is what mpv answers before it has measured anything.
+        value: refreshHz ? num(refreshHz, 3, ' Hz') : 'not known yet',
+        note: refreshHz
+          ? 'as measured by mpv, not as advertised by the driver'
+          : 'mpv has not reported a refresh rate',
       },
       { label: 'Output surface', value: resolution(outW, outH) },
       {
@@ -599,6 +610,7 @@ async function readOutputCheck(from: {
   fps: number | null;
   displayHz: number | null;
   hdrSource: boolean;
+  sourceKnown: boolean;
   hdrOut: OutputFacts['hdrOut'];
   dolbyVision: number | null;
   codec: string | null;
@@ -606,9 +618,13 @@ async function readOutputCheck(from: {
 }): Promise<StatGroup | null> {
   const [fullscreen, screen, policies, audioSettings, equipment, inCount, outCount] =
     await Promise.all([
-      getCurrentWindow()
-        .isFullscreen()
-        .catch(() => false),
+      // Where mpv has a window of its own it is started full screen (engine.ts);
+      // Skrin's own window is not the one on show.
+      capabilitiesNow()?.mpv_video.own_window
+        ? Promise.resolve(true)
+        : getCurrentWindow()
+            .isFullscreen()
+            .catch(() => false),
       invoke<ScreenNowRaw>('screen_now').catch(() => null),
       readSwitchPolicies(),
       readAudioSettings(),
@@ -637,9 +653,11 @@ async function readOutputCheck(from: {
     fps: from.fps,
     displayHz: from.displayHz,
     hdrSource: from.hdrSource,
+    sourceKnown: from.sourceKnown,
     hdrOut: from.hdrOut,
     dolbyVision: from.dolbyVision,
     switches,
+    switched: switchOutcome(),
     audio: {
       codec: from.codec,
       outFormat: from.outFormat,
@@ -678,7 +696,7 @@ export interface PageDrawing {
 
 /**
  * The row saying how the page (and so the controls over the film) is drawn,
- * where Kinema chooses that (Linux). Null elsewhere, or when unknown.
+ * where Skrin chooses that (Linux). Null elsewhere, or when unknown.
  */
 export function describeDrawing(d: PageDrawing | null): StatRow | null {
   if (!d) return null;
@@ -704,7 +722,7 @@ export function describeDrawing(d: PageDrawing | null): StatRow | null {
   if (d.mode === 'given') {
     return {
       label,
-      value: 'set outside Kinema',
+      value: 'set outside Skrin',
       note: `WEBKIT_DISABLE_DMABUF_RENDERER=${d.value ?? ''}`,
     };
   }
@@ -854,6 +872,7 @@ export async function readPlaybackStats(): Promise<StatGroup[]> {
     fps: displayedFps,
     displayHz: displayFps,
     hdrSource,
+    sourceKnown: gamma !== null,
     dolbyVision,
     hdrOut: hdrOutcome({
       sourceGamma: gamma,
@@ -1038,6 +1057,7 @@ export async function readPlaybackStats(): Promise<StatGroup[]> {
                 }`,
         },
         levellingRow(),
+        subTimingRow(),
       ],
     },
     {
@@ -1072,4 +1092,18 @@ export async function readPlaybackStats(): Promise<StatGroup[]> {
   }
 
   return groups;
+}
+
+/**
+ * The subtitle timing kept for this file (subDelay.ts), and its speed where
+ * "Fix timing automatically" found one — a speed is only ever found, never
+ * set by hand.
+ */
+function subTimingRow(): StatRow {
+  const { ms, speed } = appliedSubDelay();
+  const speedNote =
+    speed === 1
+      ? ''
+      : ` · ${speed > 1 ? 'slowed' : 'sped up'} ×${speed.toFixed(4)} (found automatically)`;
+  return { label: 'Subtitle timing', value: `${describeSubDelay(ms)}${speedNote}` };
 }

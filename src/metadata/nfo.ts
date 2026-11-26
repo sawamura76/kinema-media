@@ -26,6 +26,7 @@ import {
 } from './providers';
 import type { FileGroup, Provider, ProviderKeys } from './match';
 import { wikidataFindByImdb, wikidataFindByTmdb } from './wikidata';
+import { imdbGet } from './imdbOffline';
 
 export interface NfoIds {
   tmdb: string | null;
@@ -129,6 +130,16 @@ export async function resolveIds(
   keys: ProviderKeys
 ): Promise<NfoResolution | null> {
   const { tmdb, imdb, tvdb } = ids;
+
+  // Offline, only an IMDb id can be used: looked up in IMDb's list on this
+  // computer, and only for the same kind. Any other id falls through to the
+  // name, matched on this computer too.
+  if (keys.offline) {
+    const found = imdb ? await imdbGet(imdb).catch(() => null) : null;
+    return found && found.series === isSeries
+      ? { provider: 'imdb', providerId: found.imdbId, via: `imdb:${imdb}` }
+      : null;
+  }
 
   if (keys.tmdb) {
     if (tmdb) {

@@ -8,11 +8,19 @@
  * channel, where films put the speech, and lowers the others by as much.
  * A default in Settings; changed per title from the player's panel.
  *
- * Only on sound Kinema decodes. A track that goes to the receiver untouched
+ * Only on sound Skrin decodes. A track that goes to the receiver untouched
  * (`audio-spdif`) is never altered — the film's own sound is the receiver's
  * to decode — so the filters are left off for it and the panel says why.
  * Built-in ffmpeg filters through mpv's `af` (`dynaudnorm`, `pan`): no new
  * program. Desktop only: on Android Media3 plays the sound.
+ *
+ * The volume's boost above 100% lives here too, as the last filters on the
+ * same chain (`boostFilter`): a gain and then a limiter, so a boost — with
+ * levelling or without — makes the sound louder and never clips it. mpv's
+ * own `volume` stays at 100 at most (engine.ts `setVolume`). A change of the
+ * boost is sent to the gain filter alone (`af-command`), which leaves no gap
+ * in the sound; only switching it on or off rebuilds the chain (~2 ms), at
+ * 100%, where the volume rests anyway (volume.ts `stepVolume`).
  */
 import { getSetting, setSetting } from '../metadata/api';
 import { hasMpv, mpvCommand, readProperty, type Track } from './engine';
@@ -157,8 +165,15 @@ export async function saveLevel(titleKey: string, level: SoundLevel): Promise<vo
   await setSetting(SOUND_BY_TITLE_KEY, JSON.stringify(all));
 }
 
-/** The level in words, for the notice and the details panel. */
-export function describeLevel(level: SoundLevel): string {
+/**
+ * The level in words, for the notice and the details panel. Given the track's
+ * layout (null when unknown), says what `filterFor` builds for it: a track
+ * with no centre channel to lift is never called "lifted".
+ */
+export function describeLevel(level: SoundLevel, layout?: string | null): string {
+  if (layout !== undefined && level.dialogue && !(layout && canLiftDialogue(layout))) {
+    level = { ...level, dialogue: false };
+  }
   const label = LEVELLINGS.find((x) => x.id === level.levelling)?.label.toLowerCase() ?? 'off';
   const levelling = level.levelling === 'off' ? 'no levelling' : `levelling ${label}`;
   return level.dialogue ? `Dialogue lifted, ${levelling}` : `Sound as mixed, ${levelling}`;
@@ -167,7 +182,7 @@ export function describeLevel(level: SoundLevel): string {
 /**
  * Whether a track listed for passthrough was refused and decoded after all:
  * the device said no, and mpv fell back to PCM (`audio-out-params/format` is
- * not `spdif-*` once the sound is open). Then it is Kinema's sound again,
+ * not `spdif-*` once the sound is open). Then it is Skrin's sound again,
  * and the level applies; null while the sound is not open yet.
  */
 export async function decodedAfterAll(): Promise<boolean | null> {
@@ -175,8 +190,46 @@ export async function decodedAfterAll(): Promise<boolean | null> {
   return format ? !format.startsWith('spdif-') : null;
 }
 
+/**
+ * The boost for a volume above 100%, in dB: mpv's own volume curve (cubic,
+ * so 200% is +18 dB) carried on past 100, so each step up sounds like the
+ * steps below it. Null at 100% and under: no filter at all.
+ */
+export function boostDb(volume: number): number | null {
+  if (volume <= 100) return null;
+  return Math.round(60 * Math.log10(volume / 100) * 100) / 100;
+}
+
+/** Just under full scale, so nothing that leaves the limiter can clip. */
+const LIMIT = 0.944; // -0.5 dBFS
+
+/**
+ * The gain, named so `af-command` can reach it alone, then the limiter.
+ * `level=0`: the limiter only holds peaks down, it never raises the rest.
+ */
+export function boostFilter(db: number): string {
+  return `@skrinboost:lavfi=[volume@boost=volume=${db}dB,alimiter=limit=${LIMIT}:level=0]`;
+}
+
+/** The boost asked for, put on whenever the sound is Skrin's to change. */
+let boost: number | null = null;
+
+/** The whole chain for mpv's `af`: levelling and lift, then the boost. */
+function chain(levelAf: string, boostAt: number | null): string {
+  return [levelAf, boostAt === null ? '' : boostFilter(boostAt)].filter(Boolean).join(',');
+}
+
 /** What is on mpv now, for the details panel. */
-let applied: { af: string; level: SoundLevel; notApplied: NotApplied } = {
+let applied: {
+  af: string;
+  level: SoundLevel;
+  layout?: string | null;
+  notApplied: NotApplied;
+  /** The boost on mpv now, in dB; null when there is none. */
+  boost?: number | null;
+  /** A level has been put on this player: the sound path is known. */
+  ready?: boolean;
+} = {
   af: '',
   level: NO_LEVEL,
   notApplied: null,
@@ -196,12 +249,15 @@ export async function applyLevel(
   if (!hasMpv()) return null;
   const spdif = decoded ? '' : ((await readProperty<string>('audio-spdif', 'string')) ?? '');
   const notApplied: NotApplied = passesThrough(track?.codec, spdif) ? 'passthrough' : null;
-  const af = notApplied ? '' : filterFor(level, track?.layout);
-  if (af !== applied.af) {
+  const levelAf = notApplied ? '' : filterFor(level, track?.layout);
+  const boostAt = notApplied ? null : boost;
+  const af = chain(levelAf, boostAt);
+  if (af !== chain(applied.af, applied.boost ?? null)) {
     try {
       await mpvCommand('set', ['af', af]);
       console.log(
-        `audio: ${af ? describeLevel(level).toLowerCase() : 'no filters'}` +
+        `audio: ${levelAf ? describeLevel(level, track?.layout).toLowerCase() : 'no levelling'}` +
+          (boostAt !== null ? `, boost +${boostAt} dB with a limiter` : '') +
           (notApplied ? ' (sound goes to the receiver untouched)' : '')
       );
     } catch (e) {
@@ -211,10 +267,51 @@ export async function applyLevel(
       } catch {
         // Nothing more to undo.
       }
-      applied = { af: '', level, notApplied };
+      applied = { af: '', level, layout: track?.layout ?? null, notApplied, boost: null, ready: true };
       return notApplied;
     }
   }
-  applied = { af, level, notApplied };
+  applied = {
+    af: levelAf,
+    level,
+    layout: track?.layout ?? null,
+    notApplied,
+    boost: boostAt,
+    ready: true,
+  };
   return notApplied;
+}
+
+/**
+ * The volume's boost (`boostDb`), from the volume control. Kept until a
+ * level has been put on (`applyLevel`, which knows whether the sound goes to
+ * a receiver untouched: then there is no boost, as there is no levelling);
+ * after that a change of amount goes to the gain filter alone.
+ */
+export async function setBoost(volume: number): Promise<void> {
+  boost = hasMpv() ? boostDb(volume) : null;
+  if (!applied.ready || applied.notApplied) return;
+  const on = applied.boost ?? null;
+  if (on === boost) return;
+  if (on !== null && boost !== null) {
+    try {
+      await mpvCommand('af-command', ['skrinboost', 'volume', `${boost}dB`, 'volume@boost']);
+      applied = { ...applied, boost };
+      return;
+    } catch (e) {
+      console.warn('audio: boost not changed in place, rebuilding', e);
+    }
+  }
+  const af = chain(applied.af, boost);
+  try {
+    await mpvCommand('set', ['af', af]);
+    console.log(boost === null ? 'audio: no boost' : `audio: boost +${boost} dB with a limiter`);
+    applied = { ...applied, boost };
+  } catch (e) {
+    // The boost is lost, never the sound or the levelling.
+    console.warn(`audio: mpv refused af=${af}`, e);
+    boost = null;
+    await mpvCommand('set', ['af', applied.af]).catch(() => undefined);
+    applied = { ...applied, boost: null };
+  }
 }

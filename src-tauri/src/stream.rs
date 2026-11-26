@@ -1,4 +1,4 @@
-//! Films on a network share Kinema opens itself, handed to the player.
+//! Films on a network share Skrin opens itself, handed to the player.
 //!
 //! Media3 reads files and web addresses; it cannot speak SMB, and teaching
 //! it would mean a second SMB client in Kotlin beside the one in netshare.rs
@@ -116,6 +116,13 @@ fn server() -> io::Result<&'static Server> {
 /// The address the player can read a film on a share from.
 #[tauri::command]
 pub async fn stream_address(path: String) -> Result<String, String> {
+    address_for(&path)
+}
+
+/// The same, for Rust's own readers (seek previews on Android).
+#[cfg_attr(not(target_os = "android"), allow(dead_code))]
+pub fn address_for(path: &str) -> Result<String, String> {
+    let path = path.to_string();
     if !netshare::is_share_path(&path) {
         return Err(format!("not on a network share: {path}"));
     }

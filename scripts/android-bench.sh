@@ -437,6 +437,16 @@ make_clips() {
     -c:v libx264 -preset veryfast -g 240 -keyint_min 240 -sc_threshold 0 -b:v 1500k -pix_fmt yuv420p \
     -c:a aac -b:a 96k "$m/Kit Clip (2001)/Kit Clip (2001).mkv"
   [ -f "$m/Kit Styled (2002)/Kit Styled (2002).mkv" ] || cp "$m/Kit Clip (2001)/Kit Clip (2001).mkv" "$m/Kit Styled (2002)/Kit Styled (2002).mkv"
+  # HDR (PQ, BT.2020, 10-bit), 720p, 60 s, a keyframe every 10 s: seek previews' colours. VP9
+  # Profile 2, which Android's own software decoder takes (the emulator's HEVC one has no
+  # Main10, and its player plays none). Skipped where ffmpeg has no 10-bit libvpx.
+  mkdir -p "$m/Kit HDR (2003)"
+  [ -f "$m/Kit HDR (2003)/Kit HDR (2003).mkv" ] || ffmpeg -hide_banner -loglevel error -y \
+    -f lavfi -i 'testsrc2=s=1280x720:r=24:d=60' -f lavfi -i 'sine=f=440:d=60' \
+    -c:v libvpx-vp9 -profile:v 2 -pix_fmt yuv420p10le -b:v 3000k -g 240 -keyint_min 240 \
+    -deadline realtime -cpu-used 8 \
+    -color_primaries bt2020 -color_trc smpte2084 -colorspace bt2020nc -color_range tv \
+    -c:a libopus -b:a 96k "$m/Kit HDR (2003)/Kit HDR (2003).mkv" || rm -rf "$m/Kit HDR (2003)"
   python3 -I -c 'import sys
 m=sys.argv[1]
 t=lambda s:"%02d:%02d:%02d,000"%(s//3600,(s%3600)//60,s%60)

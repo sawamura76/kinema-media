@@ -14,18 +14,21 @@
  * own mouse commands in a windowless Sway (CONTRIBUTING).
  */
 import { expect, test, type Page } from '@playwright/test';
+import { pause } from './kb';
 
 interface FakeMpv {
   paused: boolean;
   position: number;
   duration: number | null;
   volume: number;
+  boostDb?: number | null;
 }
 
 function mpv(page: Page): Promise<FakeMpv> {
   return page.evaluate(() => {
     const f = (window as unknown as { __fakeMpv: FakeMpv }).__fakeMpv;
-    return { paused: f.paused, position: f.position, duration: f.duration, volume: f.volume };
+    const volume = f.boostDb == null ? f.volume : Math.round(f.volume * 10 ** (f.boostDb / 60));
+    return { paused: f.paused, position: f.position, duration: f.duration, volume };
   });
 }
 
@@ -64,7 +67,8 @@ test('the player by mouse: controls, pause, full screen, seek bar, volume and Ba
   await page.mouse.move(film.x, film.y);
   await expect(page.locator('.player.osd-hidden')).toHaveCount(0);
 
-  // A click on the film pauses, and another plays.
+  // A click on the film pauses (after a short wait for a second click, so
+  // not at once), and another plays.
   await page.mouse.click(film.x, film.y);
   await expect.poll(async () => (await mpv(page)).paused).toBe(true);
   await page.mouse.click(film.x, film.y);
@@ -82,13 +86,33 @@ test('the player by mouse: controls, pause, full screen, seek bar, volume and Ba
       'container-fps': 23.976,
     });
   });
+  // GitHub #24: a double click only switches full screen, and never pauses,
+  // not even for a moment. Sample the pause state through each double click
+  // and past the single-click wait.
+  const watchPause = () =>
+    page.evaluate(() => {
+      const f = (window as unknown as { __fakeMpv: { paused: boolean } }).__fakeMpv;
+      const w = window as unknown as { __everPaused: boolean; __pauseWatch?: number };
+      w.__everPaused = false;
+      window.clearInterval(w.__pauseWatch);
+      w.__pauseWatch = window.setInterval(() => {
+        if (f.paused) w.__everPaused = true;
+      }, 5);
+    });
+  const everPaused = () =>
+    page.evaluate(() => (window as unknown as { __everPaused: boolean }).__everPaused);
   const before = await fullscreen(page);
+  await watchPause();
   await page.mouse.dblclick(film.x, film.y);
   await expect.poll(() => fullscreen(page)).toBe(!before);
+  await pause(page, 600, 'past the single-click wait');
+  expect(await everPaused()).toBe(false);
+  await watchPause();
   await page.mouse.dblclick(film.x, film.y);
   await expect.poll(() => fullscreen(page)).toBe(before);
-  // Its two clicks paused and played again: still playing.
-  await expect.poll(async () => (await mpv(page)).paused).toBe(false);
+  await pause(page, 600, 'past the single-click wait');
+  expect(await everPaused()).toBe(false);
+  expect((await mpv(page)).paused).toBe(false);
 
   // The Pause button, by its name.
   await page.getByRole('button', { name: 'Pause' }).click();
@@ -119,6 +143,8 @@ test('the player by mouse: controls, pause, full screen, seek bar, volume and Ba
   // The wheel over the film is the volume too (GitHub #11): two notches down,
   // two steps, not one.
   const level = (await mpv(page)).volume;
+  // Back at 100%, where the volume rests before going on (volume.ts stepVolume).
+  await pause(page, 800, 'past the rest at 100%');
   await page.mouse.move(film.x, film.y);
   await page.mouse.wheel(0, 100);
   await page.mouse.wheel(0, 100);
@@ -129,7 +155,7 @@ test('the player by mouse: controls, pause, full screen, seek bar, volume and Ba
   await expect(page.locator('.player')).toHaveCount(0);
 });
 
-test('Android: Kinema’s own folder browser by mouse', async ({ page }) => {
+test('Android: Skrin’s own folder browser by mouse', async ({ page }) => {
   await page.setViewportSize({ width: 960, height: 540 });
   await page.addInitScript(() => {
     localStorage.setItem('kinemaMockSystem', 'android');
@@ -237,7 +263,7 @@ test('right-click: Copy on marked text, a text field keeps its own menu, nothing
     w.__menus = [];
     w.__copied = [];
     w.__ctrlC = [];
-    // Last in line, so it sees what Kinema's own listener decided.
+    // Last in line, so it sees what Skrin's own listener decided.
     window.addEventListener('contextmenu', (e) => w.__menus.push(e.defaultPrevented));
     window.addEventListener('keydown', (e) => {
       if (e.ctrlKey && e.key === 'c') w.__ctrlC.push(e.defaultPrevented);
@@ -258,12 +284,12 @@ test('right-click: Copy on marked text, a text field keeps its own menu, nothing
   const title = page.locator('.detail h1');
   await expect(title).toBeVisible();
 
-  // Right-click on a button: no browser menu, and no Kinema one either.
+  // Right-click on a button: no browser menu, and no Skrin one either.
   await page.locator('.detail-actions button').first().click({ button: 'right' });
   await expect(page.locator('.text-menu')).toHaveCount(0);
   expect(await seen('__menus')).toEqual([true]);
 
-  // Marked text: Kinema's menu, whose Copy copies it; Escape closes it and is not Back.
+  // Marked text: Skrin's menu, whose Copy copies it; Escape closes it and is not Back.
   await title.dblclick({ position: { x: 5, y: 10 } });
   const marked = await page.evaluate(() => String(window.getSelection()).trim());
   expect(marked.length).toBeGreaterThan(0);
@@ -310,4 +336,17 @@ test('rails by mouse: the edge arrows, and the heading opens the whole shelf (Gi
   await rail.locator('.rail-heading-link').click();
   await expect(page.locator('.rail')).toHaveCount(0);
   await expect(page.getByText(heading, { exact: false }).first()).toBeVisible();
+});
+
+test('a mouse side button and Alt+Left go Back like Escape', async ({ page }) => {
+  await play(page);
+  await page.keyboard.press('Alt+ArrowLeft');
+  await expect(page.locator('.player')).toHaveCount(0);
+
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.player')).toBeAttached();
+  await page.evaluate(() =>
+    window.dispatchEvent(new MouseEvent('mouseup', { button: 3, bubbles: true, cancelable: true }))
+  );
+  await expect(page.locator('.player')).toHaveCount(0);
 });

@@ -1,19 +1,26 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "mainBinaryName": "kinema",
+  "mainBinaryName": "kinema-media",
   "bundle": {
     "active": true,
-    "targets": ["nsis"],
-    "publisher": "Basswaves",
-    "homepage": "https://github.com/basswaves/kinema",
+    "targets": [
+      "nsis"
+    ],
+    "publisher": "Kinema Media contributors",
+    "homepage": "https://github.com/sawamura76/kinema-media",
     "license": "MIT",
-    "shortDescription": "A local, serverless media library for movies and TV shows",
+    "shortDescription": "Local movies, TV, music and game launcher",
     "resources": {
       "lib/libmpv-2.dll": "libmpv-2.dll",
-      "lib/libmpv-wrapper.dll": "libmpv-wrapper.dll"
+      "lib/libmpv-wrapper.dll": "libmpv-wrapper.dll",
+      "../LICENSE": "LICENSE",
+      "../NOTICE.md": "NOTICE.md"
     },
     "windows": {
-      "webviewInstallMode": { "type": "downloadBootstrapper", "silent": true },
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper",
+        "silent": true
+      },
       "nsis": {
         "installMode": "currentUser",
         "installerIcon": "icons/icon.ico",

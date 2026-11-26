@@ -73,7 +73,7 @@ describe('the one switch', () => {
 describe('what Settings says', () => {
   it("names the HDR kinds as Android's word, not the TV's, or says Android was told none", () => {
     expect(pictureNote(out({ hdr: ['HDR10', 'HLG'] }), 'Android')).toBe(
-      'Android says this screen takes HDR10 and HLG. Android sends such a film to it as it is; Kinema leaves that to it.'
+      'Android says this screen takes HDR10 and HLG. Android sends such a film to it as it is; Skrin leaves that to it.'
     );
     const none = pictureNote(out({ hdr: [] }), 'Android');
     expect(none).toContain('Android says this screen takes no HDR');

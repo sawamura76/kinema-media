@@ -1,21 +1,21 @@
 # Roadmap
 
-Where Kinema is going, what is deliberately not planned, and where help would
+Where Skrin is going, what is deliberately not planned, and where help would
 make the most difference. For what has already been built, see the
 [changelog](../CHANGELOG.md); for why things are the way they are, see
 [HISTORY.md](HISTORY.md) and [DESIGN.md](DESIGN.md).
 
-Ideas and reports are welcome as [issues](https://github.com/Basswaves/kinema/issues/new/choose).
+Ideas and reports are welcome as [issues](https://github.com/basswaves/skrin/issues/new/choose).
 
 ---
 
 ## Next
 
 The order, roughly. Films and TV shows come first, because they are what
-Kinema is used for every evening; playing every file as accurately as the
-equipment allows is what Kinema is, so that work follows close behind.
+Skrin is used for every evening; playing every file as accurately as the
+equipment allows is what Skrin is, so that work follows close behind.
 
-**Solid first.** 0.15.0 replaced the way Kinema moves between controls with
+**Solid first.** 0.15.0 replaced the way Skrin moves between controls with
 its own system, so remote, keyboard and mouse go to the same place on every
 screen and every system, and rebuilt the tests behind it. Next is the same
 for **Android**: a round that only fixes what is broken on TV boxes (focus,
@@ -24,14 +24,14 @@ the remote, what testers reported), nothing new.
 **Ready for newcomers.** A code-signed Windows download, so Windows no longer
 asks whether to run it — waiting on a free signing service for open-source
 projects. The rest of this step is done in 0.13.0: direct downloads from the
-[website](https://basswaves.github.io/kinema/), Send a report, the guides, the
+[website](https://skrin.org/), Send a report, the guides, the
 "what leaves your computer" page, Settings grouped by what you want and a
 search box in Settings.
 
 **Everyday films and TV.** Most of it is done in 0.14.0 and 0.15.0 (see the
 [changelog](../CHANGELOG.md)). Still to come: pictures on the seek bar;
 subtitle timing done automatically (by hand is in 0.15.0); volume levelling
-and the dialogue lift on Android; trailers playing inside Kinema on Linux
+and the dialogue lift on Android; trailers playing inside Skrin on Linux
 too, which is being tried; the rest of the title page (more like this,
 extras); and bringing in what you watched from Jellyfin, Emby or Plex by
 signing in rather than with an API key. Then **keep everything on this
@@ -42,7 +42,7 @@ in your library.
 **Plays anything, accurately.** Dolby Vision checked end to end on the
 desktop; 3D (below); more of the raw facts — what the TV and receiver said
 about themselves, and the exact player settings chosen — as text you can copy
-into a forum post; an **expert drawer** listing every decision Kinema made and
+into a forum post; an **expert drawer** listing every decision Skrin made and
 why, with overrides for facts about your equipment (never for taste), for
 troubleshooting and edge cases; a live bitrate graph and an HDR brightness
 graph; and **Check my setup**, which plays short reference clips (downloaded
@@ -57,8 +57,8 @@ your own shelf before the feature; a watching diary; a shelf for the physical
 side of a collection — editions, and discs not yet ripped; Home Assistant,
 so the lights follow the film; and your phone as a keyboard, remote and second
 screen, with no app to install. And **two-way Trakt and SIMKL sync**, so
-what you watch on another device shows as watched in Kinema too (today
-Kinema only sends; how often it syncs and which side wins when they disagree
+what you watch on another device shows as watched in Skrin too (today
+Skrin only sends; how often it syncs and which side wins when they disagree
 is being designed first).
 
 **Further out.** Music — a good player first (a library, bit-perfect and
@@ -68,7 +68,7 @@ WebDAV folder of your own; a Jellyfin server as a source beside your folders,
 played directly, never transcoded (Plex after a check of its terms); and
 themes and layouts for the interface — never for the film's picture.
 
-**Being looked into, nothing promised:** handing a film over to Kinema on
+**Being looked into, nothing promised:** handing a film over to Skrin on
 another TV in the house; watching together with a friend, each from their own
 copy; and searching in plain words ("the heist film with the twist").
 
@@ -76,10 +76,10 @@ copy; and searching in plain words ("the heist film with the twist").
 film stopped on one device continues on another; the next and previous file in
 a folder when a video was opened from Explorer; **Videos** folders for home
 videos and clips, with a picture taken from the file, under a Library tab; and
-**Folders**, browsing drives and shares inside Kinema and playing anything in
+**Folders**, browsing drives and shares inside Skrin and playing anything in
 them; and **playlists**, with `.m3u` import and export on desktops. Done in 0.11.0: a
 Windows installer beside the ZIP; Blu-ray folders and disc images on Windows
-and Linux; Kinema as a video player on Windows — open a file from Explorer,
+and Linux; Skrin as a video player on Windows — open a file from Explorer,
 or drop it on the window; and a film or show no database lists, kept under
 its own name from Needs attention.)
 
@@ -93,17 +93,17 @@ audio, Blu-ray folders, disc images and 4K UHD `.m2ts` files. See [Other platfor
 
 ### Projectors: tone mapping, screen shape and calibration
 
-Kinema sends HDR to the TV as it was mastered and lets the TV fit it to its
+Skrin sends HDR to the TV as it was mastered and lets the TV fit it to its
 panel, as a disc player does. Projectors (often 100–200 nits, with weak tone
 mapping of their own) and TVs set to HGIG expect the source to do it. Planned,
 as settings that describe the equipment rather than taste:
 
 - **Brightness and contrast** — how bright the projector really is and how
-  deep its black goes — so Kinema's frame-by-frame tone mapping fits it.
+  deep its black goes — so Skrin's frame-by-frame tone mapping fits it.
   Windows' own brightness figure is often a round number rather than a
   measurement, so it is entered rather than read.
 - **Screen shape** — 16:9, or a wide 2.35/2.40 screen filled by zooming or
-  an anamorphic lens. Films fill the height, and subtitles and Kinema's
+  an anamorphic lens. Films fill the height, and subtitles and Skrin's
   controls move inside the picture so nothing lands on the masked area;
   shape changes inside a film (IMAX scenes) are followed.
 - **Calibration** — a 3D LUT or ICC profile made with DisplayCAL, Calman or
@@ -116,7 +116,7 @@ not planned: they are taste or invented detail.
 
 The Windows installer came with 0.11.0: it leaves nothing behind when
 removed — the program, its shortcuts, the "Open with" entries, and the library
-and settings too, after asking. A winget package, `Basswaves.Kinema`, is
+and settings too, after asking. A winget package, `Basswaves.Skrin`, is
 ready; its first submission was made after 0.11.0 and is waiting for review
 by winget's volunteer moderators. It brings ffmpeg
 along, for the badges. Other package managers may follow. The
@@ -127,10 +127,10 @@ a new version needs little hand work there. Automatic updates stay out.
 
 Blending the one refresh where a 24 fps film changes frame on a 60 Hz screen
 (what madVR calls smooth motion) trades the regular judder for a slight smear.
-It changes frames, which goes against one of Kinema's principles — nothing is
+It changes frames, which goes against one of Skrin's principles — nothing is
 added to the picture that was not in the source — so it is a decision to be made
 deliberately, not an improvement to switch on. Matching the refresh rate, which
-Kinema already does, avoids the problem where the screen allows it.
+Skrin already does, avoids the problem where the screen allows it.
 
 ### 3D films
 
@@ -139,7 +139,7 @@ pictures, and a 3D Blu-ray plays in 2D without saying so. First, every 3D
 file will be shown correctly in 2D, with a "3D" badge. Then real 3D on
 projectors and 3D TVs: full HD for each eye when the screen is set to the
 1920×2205 frame-packing mode (made once in the graphics card's own settings;
-Kinema recognises it), and half-resolution side by side or top and bottom
+Skrin recognises it), and half-resolution side by side or top and bottom
 otherwise — which also covers VR headsets through a PC, with Virtual Desktop's
 3D mode. 3D Blu-ray in real 3D needs a decoder for its second eye (MVC), which
 ffmpeg does not have; the plan is to build on
@@ -150,17 +150,17 @@ removed.
 
 ### Machine-learning upscaling
 
-Some streaming boxes are bought for their AI upscaling alone, and Kinema is
+Some streaming boxes are bought for their AI upscaling alone, and Skrin is
 meant as much for people who want that as for purists. The well-known ones
 cannot be used here: they belong to one chip or one graphics maker, and
-Kinema behaves the same on AMD, Intel and NVIDIA. What could fit is a shader
+Skrin behaves the same on AMD, Intel and NVIDIA. What could fit is a shader
 that runs on any graphics card through mpv, of the kind that redraws edges
 cleanly rather than adding texture the film never had, used only where the
-graphics card has room for it, chosen by Kinema rather than by a slider, and
+graphics card has room for it, chosen by Skrin rather than by a slider, and
 named in the details panel (`i`) whenever it is on. The good ones are heavy
 for integrated graphics at 4K, and every one of them draws some detail of its
-own, which goes against one of Kinema's principles — so, as with smooth
-motion, it is a decision to be made deliberately. Until then Kinema upscales
+own, which goes against one of Skrin's principles — so, as with smooth
+motion, it is a decision to be made deliberately. Until then Skrin upscales
 with classical filters, which add nothing.
 
 ---
@@ -171,26 +171,26 @@ These have been considered and turned down; [HISTORY.md](HISTORY.md) has the
 reasons in full.
 
 - **Frame interpolation**, and **sharpening as a matter of taste** — a slider
-  or a "detail" setting. Kinema shows what is in the file. (Machine-learning
-  upscaling chosen by Kinema itself is under [Being considered](#machine-learning-upscaling).)
+  or a "detail" setting. Skrin shows what is in the file. (Machine-learning
+  upscaling chosen by Skrin itself is under [Being considered](#machine-learning-upscaling).)
 - **A picture-quality preset menu.** The right settings depend on the file and
-  the display, which Kinema can see; settings describe equipment, not taste.
+  the display, which Skrin can see; settings describe equipment, not taste.
 - **Anything that stops working by itself if left alone** — for example YouTube
   trailers in the app through a downloader or with ads blocked. (YouTube's own
   player, with its ads, plays them in the app on Windows and in the YouTube app
   on Android; on Linux, and whenever YouTube refuses, they open in the
-  browser — playing them inside Kinema on Linux too is being tried.)
-  Trailers on your disk play in Kinema first.
+  browser — playing them inside Skrin on Linux too is being tried.)
+  Trailers on your disk play in Skrin first.
 - **Bundled third-party programs.** ffmpeg and Skiptro can be used if you have
-  installed them; Kinema never ships or downloads them.
+  installed them; Skrin never ships or downloads them.
 - **Looking up a whole library in TheIntroDB at once.** It is asked about one
   episode at a time, when that episode is played, on its terms.
-- **Translations of the interface.** Kinema is in English, which nearly everyone
+- **Translations of the interface.** Skrin is in English, which nearly everyone
   who uses software like it reads, and a translation is work on every release.
-  A pull request from someone who wants Kinema in their language is welcome;
+  A pull request from someone who wants Skrin in their language is welcome;
   open an issue first, since the interface's text would need gathering in one
   place before it can be translated.
-- **Automatic updates.** Kinema says when a new version is out, and you
+- **Automatic updates.** Skrin says when a new version is out, and you
   download it when you choose. On Linux the `.deb` and `.rpm` are the system's
   own package format, which is how Linux users expect to install a program and
   what fetches mpv for them, and a folder is there too.
@@ -199,7 +199,7 @@ reasons in full.
 
 ## Other platforms
 
-**Linux** shipped in 0.8.0: packages that use the system's mpv, Kinema's
+**Linux** shipped in 0.8.0: packages that use the system's mpv, Skrin's
 own controls over the video, the equipment check, sound straight to the
 receiver and screen switching on GNOME, KDE Plasma, Sway and Hyprland — each
 checked on a real TV and receiver, with an NVIDIA and an AMD card. HDR
@@ -214,16 +214,16 @@ in the Linux player as it does on Windows.
 engine (Media3) for Dolby Vision and passthrough on TV boxes: the interface,
 the library, network shares, subtitles and playing a film work, tried on one TV
 box and the emulator. What is missing and untested is listed in the
-[README](../README.md#android-tv-early-version).
+[Platform support](PLATFORMS.md#android-tv-early-version).
 
 **macOS** is planned for later, once the Windows, Linux and Android work in
 hand is done; a port is welcome sooner. What is known so far: the interface
-and library carry over; whether the video can sit beneath Kinema's page as on
+and library carry over; whether the video can sit beneath Skrin's page as on
 Windows needs a trial first (Linux's own-window mode is the fallback); macOS
 cannot pass TrueHD or DTS-HD to a receiver, so those would be decoded and
 said so; the first builds would be unsigned, which macOS only lets open after one
 step the first time (to be explained with the build). See
-[Platform support](../README.md#platform-support).
+[Platform support](PLATFORMS.md).
 
 ---
 
@@ -245,7 +245,7 @@ useful contribution there is.
   goes somewhere odd, hides or makes the page jump is worth a report, with
   the screen and the keys pressed.
 
-- **Linux on more desktops, distributions and graphics cards.** Kinema is
+- **Linux on more desktops, distributions and graphics cards.** Skrin is
   built to work the same everywhere and fall back safely rather than tested
   on each; a setup where it still misbehaves is exactly what the bug report
   form is for.
@@ -285,7 +285,7 @@ useful contribution there is.
   answers; neither has been watched on a real file. A note of where Skip
   landed against where the scene really starts is a useful report.
 - **.nfo files from other programs** (Kodi, MediaElch, tinyMediaManager). Only
-  Kinema's own exported files have been read back.
+  Skrin's own exported files have been read back.
 - **TV overscan and the TV layout's size** from a sofa, on different TVs.
 - **Large libraries** — several hundred titles.
 - **Movies identified through Wikidata**, the fallback when no TMDB key works.
@@ -293,4 +293,4 @@ useful contribution there is.
   messily named movie collection is unknown. To try it, build from source
   without a key.
 - **Files whose container reports the wrong length.** One such file is known;
-  if they turn out to be common, Kinema could compare with ffprobe's length.
+  if they turn out to be common, Skrin could compare with ffprobe's length.

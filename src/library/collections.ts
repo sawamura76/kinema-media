@@ -1,6 +1,6 @@
 /**
  * Smart collections (PLAN phase 2): saved filters over the library, built
- * only from what Kinema knows about each title — what its files were measured
+ * only from what Skrin knows about each title — what its files were measured
  * to hold (collections.rs: 4K, HDR, Dolby Vision and its profile, HDR10+,
  * Atmos, DTS:X), its genre, decade and rating, and whether it was watched.
  *

@@ -53,10 +53,10 @@ pub(crate) fn no_window(_command: &mut Command) {}
 
 /// The configured ffmpeg, or plain `ffmpeg` to be resolved through `PATH`.
 ///
-/// On Windows, an ffmpeg that is not on the `PATH` Kinema started with is
+/// On Windows, an ffmpeg that is not on the `PATH` Skrin started with is
 /// looked for where an install made *since* would be (`installed_since_start`)
-/// — the one-press install (`ffmpeg_install.rs`) puts it there while Kinema
-/// runs, and nobody should have to restart Kinema to have it found. A
+/// — the one-press install (`ffmpeg_install.rs`) puts it there while Skrin
+/// runs, and nobody should have to restart Skrin to have it found. A
 /// configured path always wins, found or not: it is what the person said.
 pub fn resolve(configured: Option<&str>) -> PathBuf {
     match configured.map(str::trim).filter(|s| !s.is_empty()) {
@@ -69,12 +69,12 @@ pub fn resolve(configured: Option<&str>) -> PathBuf {
 #[cfg(any(windows, test))]
 const FFMPEG_EXE: &str = "ffmpeg.exe";
 
-/// An ffmpeg Kinema's own `PATH` does not reach, or `None` — which includes
-/// "on Kinema's `PATH` already", where the bare name works as it always has.
+/// An ffmpeg Skrin's own `PATH` does not reach, or `None` — which includes
+/// "on Skrin's `PATH` already", where the bare name works as it always has.
 ///
 /// **A program keeps the `PATH` it was started with.** winget puts its command
 /// links in `%LOCALAPPDATA%\Microsoft\WinGet\Links` and adds that folder to the
-/// *user's* `PATH` in the registry, which a running Kinema never sees (the
+/// *user's* `PATH` in the registry, which a running Skrin never sees (the
 /// same trap as docs/GOTCHAS.md, "Spawned shells inherit a stale PATH"). So,
 /// in order: the `PATH` as Windows has it now (machine, then user, as Windows
 /// joins them), winget's links folder, and winget's own package folder in
@@ -268,7 +268,7 @@ pub async fn ffmpeg_status(configured: Option<String>) -> Result<FfmpegStatus, S
     .await
 }
 
-/// The formats Kinema decodes itself and that some builds of ffmpeg leave
+/// The formats Skrin decodes itself and that some builds of ffmpeg leave
 /// out, each with the decoders that can do it. A system's own "free" build —
 /// Fedora's `ffmpeg-free` — has no HEVC or E-AC-3, and H.264 only through
 /// Cisco's OpenH264; ffmpeg picks whichever decoder it has, so any one counts.

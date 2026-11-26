@@ -19,12 +19,18 @@ const episodesSaved: number[] = [];
 const searched: string[] = [];
 let refuse = new Set<number>();
 let results: Record<string, Candidate[]> = {};
+let settings: Record<string, string> = {};
 
 vi.mock('./api', async (original) => ({
   ...(await original<typeof import('./api')>()),
-  getSetting: vi.fn(async () => null),
+  getSetting: vi.fn(async (key: string) => settings[key] ?? null),
   setSetting: vi.fn(async () => undefined),
-  listFallbackTitles: vi.fn(async () => titles),
+  // As the Rust list does: a title moved or asked this month is not listed.
+  listFallbackTitles: vi.fn(async (limit: number) =>
+    titles
+      .filter((t) => !adopted.some(([id]) => id === t.id) && !marked.includes(t.id))
+      .slice(0, limit)
+  ),
   markUpgradeChecked: vi.fn(async (id: number) => void marked.push(id)),
   adoptProvider: vi.fn(async (id: number, _provider: string, providerId: string) => {
     if (refuse.has(id)) return false;
@@ -40,7 +46,9 @@ vi.mock('./api', async (original) => ({
 
 vi.mock('./providers', async (original) => ({
   ...(await original<typeof import('./providers')>()),
-  tmdbFindByImdb: vi.fn(async (_key: string, imdb: string) => (imdb === 'tt1' ? '601' : null)),
+  tmdbFindByImdb: vi.fn(async (_key: string, imdb: string) =>
+    imdb === 'tt1' ? '601' : imdb.startsWith('tt7') ? `9${imdb.slice(3)}` : null
+  ),
   tmdbFindByTvdb: vi.fn(async (_key: string, tvdb: string) => (tvdb === '81189' ? '1396' : null)),
   tvmazeTvdbId: vi.fn(async (show: string) => (show === '169' ? '81189' : null)),
   tmdbSearch: vi.fn(async (_key: string, title: string) => {
@@ -91,6 +99,7 @@ beforeEach(() => {
   for (const list of [titles, adopted, marked, saved, episodesSaved, searched]) list.length = 0;
   refuse = new Set();
   results = {};
+  settings = {};
 });
 
 describe('upgradeFallbackTitles', () => {
@@ -145,5 +154,42 @@ describe('upgradeFallbackTitles', () => {
     expect(saved).toEqual([]);
     expect(marked).toEqual([7]);
     expect(result).toMatchObject({ films: 0, left: 1 });
+  });
+
+  /** Matched on this computer (imdbOffline.ts): by the IMDb id, in one run. */
+  function offline(id: number): FallbackTitle {
+    const imdb = `tt7${String(id).padStart(5, '0')}`;
+    return title({ id, provider: 'imdb', provider_id: imdb, imdb_id: imdb });
+  }
+
+  it('moves every title matched offline in one run when asked to, by /find', async () => {
+    for (let id = 1; id <= 45; id++) titles.push(offline(id));
+    const result = await upgradeFallbackTitles({ all: true });
+    expect(adopted).toHaveLength(45);
+    expect(adopted[44]).toEqual([45, '900045']);
+    expect(searched).toEqual([]);
+    expect(result).toMatchObject({ films: 45, left: 0, errors: [] });
+  });
+
+  it('a scan moves forty at most', async () => {
+    for (let id = 1; id <= 45; id++) titles.push(offline(id));
+    await upgradeFallbackTitles();
+    expect(adopted).toHaveLength(40);
+  });
+
+  it('a title TMDB cannot place is asked once a run and stays matched', async () => {
+    titles.push(offline(1), title({ id: 2, provider: 'imdb', imdb_id: 'tt0000002', title: 'Unknown' }));
+    const result = await upgradeFallbackTitles({ all: true });
+    expect(adopted).toEqual([[1, '900001']]);
+    expect(marked).toEqual([2]);
+    expect(result).toMatchObject({ films: 1, left: 1 });
+  });
+
+  it('nothing moves while Keep everything on this computer is on', async () => {
+    settings = { keep_on_device: '1' };
+    titles.push(offline(1));
+    const result = await upgradeFallbackTitles({ all: true });
+    expect(adopted).toEqual([]);
+    expect(result).toMatchObject({ films: 0, left: 0 });
   });
 });

@@ -11,8 +11,9 @@
  *    next to 3:2 on every frame.
  *  - **Resolution** (Auto by default): Auto only ever switches *up*, when the
  *    desktop has fewer pixels than the film and the screen can show more — a
- *    1080p desktop on a 4K TV playing a 4K film, where staying put means Kinema
- *    shrinks the film and the TV blows it back up. Match content always uses
+ *    1080p desktop on a 4K TV playing a 4K film, where staying put means Skrin
+ *    shrinks the film and the TV blows it back up. Never past the screen's own
+ *    resolution, where the system says what it is. Match content always uses
  *    the film's own resolution, for a TV or a video processor (a madVR Envy)
  *    that should do the upscaling.
  *  - **HDR** (off by default): Windows HDR on for an HDR film, back off after.
@@ -54,6 +55,8 @@ export interface Screen {
   hz: number;
   rate: number;
   hdr: 'unknown' | 'unsupported' | 'off' | 'on';
+  /** The screen's own resolution, where the system says (Windows' "Recommended"). */
+  native?: [number, number] | null;
   modes: Mode[];
 }
 
@@ -92,7 +95,13 @@ export function chooseResolution(
   // Auto: only up, and only when the film has more pixels than the desktop.
   const smaller = film.width > screen.width || film.height > screen.height;
   if (!smaller) return here;
-  const up = fitting(screen.modes, film) ?? largest(screen.modes);
+  // Never past the screen's own resolution: a larger mode than that is the
+  // graphics driver's (DSR, VSR), drawn big and shrunk to fit — the screen
+  // goes black for a picture with nothing more in it (GitHub #21).
+  const real = screen.native
+    ? screen.modes.filter((m) => m.width <= screen.native![0] && m.height <= screen.native![1])
+    : screen.modes;
+  const up = fitting(real, film) ?? largest(real);
   return up && area(up) > area(here) ? up : here;
 }
 

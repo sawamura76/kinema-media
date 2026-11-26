@@ -16,15 +16,20 @@
  * afterwards in Settings — so nothing here is a gate, and there is no way to
  * get stuck part-way through.
  *
- * A released build carries Kinema's own TMDB key (builtinKey.ts), and there
+ * A released build carries Skrin's own TMDB key (builtinKey.ts), and there
  * the key step is gone: a folder is the one thing left to ask. A build from
  * source has no key, and keeps the step, since without it movies stay
  * unidentified.
  *
- * One more step since 2026-10-02, answered in a press: where Kinema will be
+ * One more step since 2026-10-02, answered in a press: where Skrin will be
  * watched (TV mode — big text and full screen, which screen switching
  * needs), asked first so the rest is already readable from a sofa. Not
- * asked where Kinema has no window (Android): there it is always the TV.
+ * asked where Skrin has no window (Android): there it is always the TV.
+ *
+ * A quiet line under the lede since round 11 (Discussion #9): "Keep everything
+ * on this computer", a page of its own with Use it / Back (PRIVATE-MODE.md
+ * §2, wording a). Not a step: most people never press it. With it on, the
+ * TMDB key step goes, since no key would be used.
  *
  * Scan hands over to the setup pages (`SetupPages.tsx`) at once rather than
  * waiting for the scan to end: the questions that can wait for a library are
@@ -41,7 +46,8 @@ import ChoiceRow from './ChoiceRow';
 import { setUiMode, TV_MODE_KEY, UI_MODE_KEY } from './tv';
 import { useCapabilities } from '../capabilities';
 import { ALL_ARROWS, useNavGroup } from './focusGroups';
-import { useLanding } from './focusStore';
+import { navFocus, useLanding } from './focusStore';
+import { keepOnDevice, leaveDevice, useOffline } from '../net/offline';
 import {
   addLibraryRoot,
   listLibraryRoots,
@@ -61,6 +67,49 @@ import { BUILTIN_TMDB_KEY } from '../metadata/builtinKey';
 const TMDB_KEY_URL = 'https://www.themoviedb.org/settings/api';
 
 const FIRST_RUN_FOCUS_KEY = 'first-run';
+const KEEP_LINE_KEY = 'first-run-keep';
+const FIRST_RUN_STEPS_KEY = 'first-run-steps';
+const KEEP_USE_KEY = 'first-run-keep-use';
+
+/** The questions, as one group: where arriving lands, below the quiet line. */
+function StepsGroup({ children }: { children: React.ReactNode }) {
+  const { ref, focusKey } = useNavGroup({ kind: 'column' }, { focusKey: FIRST_RUN_STEPS_KEY });
+  return (
+    <FocusProvider value={focusKey}>
+      <div ref={ref}>{children}</div>
+    </FocusProvider>
+  );
+}
+
+/** Its page: what the mode does and what still downloads (sizes measured, round 11 P2a). */
+function KeepPage({ on, onUse, onBack }: { on: boolean; onUse: () => void; onBack: () => void }) {
+  useEffect(() => {
+    navFocus(KEEP_USE_KEY);
+  }, []);
+  return (
+    <section className="first-run-step first-run-keep-page">
+      <h2>Keep everything on this computer</h2>
+      <p>
+        Skrin will not look up your films and shows online: no posters, plot, cast or trailers
+        from the internet.
+      </p>
+      <p>
+        Names are matched here, against a list of films and shows IMDb publishes for everyone
+        (about 240 MB to download, 76 MB kept on this computer, downloaded again once a month;
+        nothing about your library is sent).
+      </p>
+      <p>You can switch this off any time in Settings, Privacy.</p>
+      <FocusGroup kind="row" className="settings-row">
+        <FocusButton focusKey={KEEP_USE_KEY} className="btn-primary" onSelect={onUse}>
+          {on ? 'Stop using it' : 'Use it'}
+        </FocusButton>
+        <FocusButton className="btn-secondary" onSelect={onBack}>
+          Back
+        </FocusButton>
+      </FocusGroup>
+    </section>
+  );
+}
 
 type Seat = 'tv' | 'desk' | 'handheld' | '';
 
@@ -77,11 +126,11 @@ export default function FirstRun({ onScan, onSkip }: Props) {
   // A page of its own (NAV-MAP, agreed 2026-10-11): Up from the first
   // question is nothing, not the top bar, and Right with nothing beside it is
   // nothing, not "Add TV folder" a section higher.
+  // Arriving lands on the first question, not on the quiet line above it.
   const { ref, focusKey } = useNavGroup(
     { kind: 'column', hold: ALL_ARROWS },
     { focusKey: FIRST_RUN_FOCUS_KEY }
   );
-  useLanding(FIRST_RUN_FOCUS_KEY);
 
   const [roots, setRoots] = useState<LibraryRoot[]>([]);
   const [tmdbKey, setTmdbKey] = useState('');
@@ -90,6 +139,24 @@ export default function FirstRun({ onScan, onSkip }: Props) {
   const [seat, setSeat] = useState<Seat>('');
   const scan = useScanStatus();
   const can = useCapabilities();
+  const offline = useOffline() === true;
+  const [keepPage, setKeepPage] = useState(false);
+  useLanding(keepPage ? FIRST_RUN_FOCUS_KEY : FIRST_RUN_STEPS_KEY);
+  const closeKeepPage = useCallback(() => {
+    setKeepPage(false);
+    // Back on the line it came from, once it is drawn again.
+    setTimeout(() => navFocus(KEEP_LINE_KEY), 0);
+  }, []);
+  const chooseKeep = useCallback(async () => {
+    setError(null);
+    try {
+      if (offline) await leaveDevice();
+      else await keepOnDevice();
+    } catch (e) {
+      setError(userError(e));
+    }
+    closeKeepPage();
+  }, [offline, closeKeepPage]);
   // Only a window can be at a desk (tv.ts); without one there is no question.
   const askSeat = can?.windowed !== false;
 
@@ -188,9 +255,9 @@ export default function FirstRun({ onScan, onSkip }: Props) {
   return (
     <FocusProvider value={focusKey}>
       <div className="first-run" ref={ref}>
-        <h1>Welcome to Kinema</h1>
+        <h1>Welcome to Skrin</h1>
         <p className="first-run-lede">
-          A few questions, then Kinema does the rest: posters, descriptions and all. Every answer
+          A few questions, then Skrin does the rest: posters, descriptions and all. Every answer
           can be changed later in Settings.
         </p>
 
@@ -198,6 +265,18 @@ export default function FirstRun({ onScan, onSkip }: Props) {
           <FocusButton className="btn-secondary" focusKey="first-run-skip" onSelect={onSkip}>Skip setup</FocusButton>
           <span className="muted">Go straight to music. Add movies or shows later in Settings.</span>
         </FocusGroup>
+        {/* A quiet line, not a step: before any folder, and gone once one is added. */}
+        {!hasRoots && !keepPage && (
+          <FocusGroup kind="row" className="settings-row first-run-keep">
+            <FocusButton
+              focusKey={KEEP_LINE_KEY}
+              className="btn-link"
+              onSelect={() => setKeepPage(true)}
+            >
+              {offline ? 'Keep everything on this computer: on' : 'Keep everything on this computer'}
+            </FocusButton>
+          </FocusGroup>
+        )}
 
         {error && (
           <div className="settings-error" onClick={() => setError(null)}>
@@ -205,6 +284,10 @@ export default function FirstRun({ onScan, onSkip }: Props) {
           </div>
         )}
 
+        {keepPage ? (
+          <KeepPage on={offline} onUse={() => void chooseKeep()} onBack={closeKeepPage} />
+        ) : (
+        <StepsGroup>
         {askSeat && (
           <section className="first-run-step">
             <h2>
@@ -219,7 +302,7 @@ export default function FirstRun({ onScan, onSkip }: Props) {
               ]}
               value={seat}
               onChange={chooseSeat}
-              note="On a TV, Kinema fills the screen with bigger text, made for a remote. At a desk it is a window like any other program."
+              note="On a TV, Skrin fills the screen with bigger text, made for a remote. At a desk it is a window like any other program."
             />
           </section>
         )}
@@ -282,7 +365,7 @@ export default function FirstRun({ onScan, onSkip }: Props) {
           )}
         </section>
 
-        {ASK_FOR_KEY && (
+        {ASK_FOR_KEY && !offline && (
           <section className="first-run-step">
             <h2>
               <span className="first-run-num">{folderStep + 1}</span> Posters and descriptions{' '}
@@ -345,6 +428,8 @@ export default function FirstRun({ onScan, onSkip }: Props) {
             </span>
           </FocusGroup>
         </section>
+        </StepsGroup>
+        )}
       </div>
     </FocusProvider>
   );

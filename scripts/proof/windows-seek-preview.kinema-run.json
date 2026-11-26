@@ -1,0 +1,12 @@
+{
+  "note": "kinema_run steps for a film already playing (any film long enough; silent: setVolume 0 first). Hover events are injected inside the page, never the PC's mouse. Sample the process memory with PowerShell before and after: (Get-Process skrin).PrivateMemorySize64 -- flat while hovering, far lower after leaving the player.",
+  "steps": [
+    {"call": "setVolume", "args": [0]},
+    {"read": "(()=>{const w=document.querySelector('input.player-seek');const r=w.getBoundingClientRect();window.__hover=(f)=>w.dispatchEvent(new MouseEvent('mousemove',{bubbles:true,clientX:r.left+r.width*f,clientY:r.top+r.height/2}));window.__pv=()=>{const p=document.querySelector('.seek-preview');const i=p?.querySelector('img');return p?{at:p.getAttribute('data-at'),w:i?.naturalWidth,time:p.querySelector('.seek-preview-time')?.textContent}:null};window.__t0=performance.now();window.__hover(0.5);return 'ok'})()"},
+    {"until": "window.__pv() && window.__pv().w>0", "timeoutMs": 20000, "label": "first picture"},
+    {"expect": "window.__pv().w===320", "label": "320 px wide"},
+    {"read": "(async()=>{const out=[];for(const f of [0.2,0.8,0.35,0.65,0.1,0.9]){const t=performance.now();window.__hover(f);for(let i=0;i<100;i++){await new Promise(r=>setTimeout(r,100));const p=window.__pv();if(p&&p.w>0){out.push([f,Math.round(performance.now()-t),p.time]);break}}}return out})()", "label": "six hovers: picture each time"},
+    {"keys": ["Escape"]},
+    {"keys": ["Escape"]}
+  ]
+}

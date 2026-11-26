@@ -4,10 +4,10 @@
  * setup page, Home's ffmpeg notice and Settings — so a press in one is seen
  * in the others, and a second press anywhere cannot start a second install.
  *
- * Kinema downloads nothing itself: the press asks Windows' own package
+ * Skrin downloads nothing itself: the press asks Windows' own package
  * manager, winget, to install Gyan's ffmpeg build (ffmpeg_install.rs). The
  * words beside the button say exactly that before anyone presses it, because
- * pressing it is the person agreeing ("Kinema never lies").
+ * pressing it is the person agreeing ("Skrin never lies").
  *
  * After a successful install the three stages that need ffmpeg run at once
  * in the background (pipeline.ts `runFfmpegPasses`), rather than at the next
@@ -27,9 +27,9 @@ import { userError } from './errors';
 
 /** What will happen, said before the press. The size is Gyan's Essentials zip (9.0.1: 111 MB). */
 export const FFMPEG_INSTALL_WORDS =
-  'Kinema can install it for you with Windows’ own app installer (winget): the Windows build ' +
+  'Skrin can install it for you with Windows’ own app installer (winget): the Windows build ' +
   'from gyan.dev that ffmpeg’s own site points to, a download of about 110 MB. It stays ' +
-  'installed if Kinema is ever removed, as other programs may use it.';
+  'installed if Skrin is ever removed, as other programs may use it.';
 
 export const FFMPEG_DOWNLOAD_URL = 'https://ffmpeg.org/download.html';
 
@@ -39,7 +39,7 @@ export interface FfmpegInstallState {
   line: string | null;
   /** How the last install ended; null before one. */
   report: FfmpegInstallReport | null;
-  /** Kinema refused or could not ask (a film playing, one already running). */
+  /** Skrin refused or could not ask (a film playing, one already running). */
   error: string | null;
 }
 
@@ -61,7 +61,7 @@ export function useFfmpegInstall(): FfmpegInstallState {
   );
 }
 
-/** Whether the install ended with an ffmpeg Kinema can run. */
+/** Whether the install ended with an ffmpeg Skrin can run. */
 export function ffmpegInstalled(report: FfmpegInstallReport | null): boolean {
   return (
     report !== null &&

@@ -2,7 +2,7 @@
 // The Kinema MCP: lets Claude Code drive and read the real app, a step at a
 // time, instead of writing a whole self-test plan and reading its report.
 //
-// It starts kinema.exe as a self-test (KINEMA_SELFTEST, an `interactive`
+// It starts skrin.exe as a self-test (KINEMA_SELFTEST, an `interactive`
 // plan), so the app works on a copy of the library, never talks to SIMKL or
 // Trakt, sits on the second screen on top and is muted. It reaches the page
 // through WebView2's own debugging port, which only this launcher opens
@@ -133,11 +133,11 @@ async function waitForHooks(timeoutMs) {
  */
 function newestExe() {
   const builds = [
-    join(root, 'src-tauri', 'target', 'release', 'kinema.exe'),
-    join(root, 'src-tauri', 'target', 'fast', 'release', 'kinema.exe'),
+    join(root, 'src-tauri', 'target', 'release', 'skrin.exe'),
+    join(root, 'src-tauri', 'target', 'fast', 'release', 'skrin.exe'),
   ].filter((p) => existsSync(p));
   builds.sort((a, b) => statSync(b).mtimeMs - statSync(a).mtimeMs);
-  return builds[0] ?? join(root, 'src-tauri', 'target', 'release', 'kinema.exe');
+  return builds[0] ?? join(root, 'src-tauri', 'target', 'release', 'skrin.exe');
 }
 
 async function start({ fresh = false, exe, env = {} } = {}) {
@@ -532,7 +532,7 @@ const TOOLS = [
           type: ['string', 'boolean'],
           description: 'attach: the adb serial (true for the only device); logs and SQL are then read from the device.',
         },
-        exe: { type: 'string', description: 'Another kinema.exe to run.' },
+        exe: { type: 'string', description: 'Another skrin.exe to run.' },
         env: {
           type: 'object',
           additionalProperties: { type: 'string' },

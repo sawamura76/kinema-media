@@ -122,7 +122,7 @@ pub trait SmbTransportRead: Send {
 
         // Content - final response.
         let mut data = vec![0; header.stream_protocol_length as usize];
-        // Kinema: the header is read, so the message has begun — a poll
+        // Skrin: the header is read, so the message has begun — a poll
         // timeout before its first byte of content is waited through, not
         // passed up, or the header would be lost (see TcpTransport's
         // `receive_exact`, which passes one up only when nothing was read).

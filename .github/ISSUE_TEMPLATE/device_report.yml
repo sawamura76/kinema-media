@@ -1,23 +1,23 @@
-name: I tried Kinema on my device
+name: I tried Skrin on my device
 description: Tell us what worked and what did not, even if nothing is broken
 labels: [device-report]
 body:
   - type: markdown
     attributes:
       value: |
-        Kinema is tested on a small number of setups, and is built to fall back
+        Skrin is tested on a small number of setups, and is built to fall back
         safely where it cannot be tested. **A report that says "it works" is as
         useful as one that says "it does not"** — it is how the list of what has
         been tried grows. Android TV boxes and phones, other TVs and receivers,
         other Linux desktops and very large libraries are the most wanted.
 
-        If something is broken, the [bug report](https://github.com/Basswaves/kinema/issues/new?template=bug_report.yml)
+        If something is broken, the [bug report](https://github.com/basswaves/skrin/issues/new?template=bug_report.yml)
         form asks for the logs and is the better place.
 
   - type: dropdown
     id: platform
     attributes:
-      label: Which Kinema
+      label: Which Skrin
       options:
         - Windows 11
         - Linux
@@ -28,7 +28,7 @@ body:
   - type: input
     id: version
     attributes:
-      label: Kinema version
+      label: Skrin version
       description: From the release you downloaded.
     validations:
       required: true

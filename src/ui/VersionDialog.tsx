@@ -1,11 +1,11 @@
 /**
  * The Version list on a title page (versions.ts): each file of the film or
- * episode in Kinema's words, the one Play means marked. Choosing one makes it
+ * episode in Skrin's words, the one Play means marked. Choosing one makes it
  * Play's, remembered for the title.
  *
  * A menu like Play something: the ring starts on the version Play means and
  * never leaves it, Back closes it and the ring goes back to the Version
- * button — a dialog on Kinema's engine does both by itself (focusStore.ts).
+ * button — a dialog on Skrin's engine does both by itself (focusStore.ts).
  */
 import { useEffect } from 'react';
 import { useFocusGroup } from './focusGroups';

@@ -369,7 +369,10 @@ pub async fn music_preview_cover(app: tauri::AppHandle, path: String) -> Result<
         let cover = read_cover(Path::new(&path))?;
         let cache = dir.join("artwork");
         fs::create_dir_all(&cache).map_err(|e| e.to_string())?;
-        let preview = cache.join("music-tag-cover-preview.jpg");
+        use std::hash::{Hash, Hasher};
+        let mut hash = std::collections::hash_map::DefaultHasher::new();
+        cover.data().hash(&mut hash);
+        let preview = cache.join(format!("music-tag-cover-preview-{:016x}.jpg", hash.finish()));
         fs::write(&preview, cover.data()).map_err(|e| e.to_string())?;
         Ok(preview.to_string_lossy().into_owned())
     })

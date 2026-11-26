@@ -3,7 +3,7 @@
  *
  * Equipment, not taste: a receiver that decodes Atmos, or a TV that works on
  * the picture, adds its own delay, and the sound and the lips drift apart by
- * the same amount on every film. Nothing Kinema can read says by how much, so
+ * the same amount on every film. Nothing Skrin can read says by how much, so
  * it is asked — in steps of 10 ms, from the player (keys, remote, mouse) and
  * from Settings — and kept **per device**, by the same endpoint id the
  * per-device policies use (`devicePolicy.ts`): headphones on the desk and the

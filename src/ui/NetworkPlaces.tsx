@@ -1,8 +1,8 @@
 /**
- * The network in Kinema's own folder browser (`FolderBrowser.tsx`), where
- * Kinema opens network shares itself (capability `network_shares`, Android).
+ * The network in Skrin's own folder browser (`FolderBrowser.tsx`), where
+ * Skrin opens network shares itself (capability `network_shares`, Android).
  *
- * First the servers: those Kinema keeps a sign-in for, then those that
+ * First the servers: those Skrin keeps a sign-in for, then those that
  * announce themselves on the network (most NAS boxes do), and Type an address
  * for the rest — most Windows PCs never announce themselves; a typed one is
  * checked before anything more is asked. A server with no login asks for a
@@ -131,7 +131,7 @@ function Servers({ onStep }: { onStep: (next: NetStep) => void }) {
       </ul>
       <p className="muted folder-note">
         A network drive is your NAS, or a computer that shares a folder with your films. It needs
-        that shared folder, and you need its user name and password — Kinema cannot connect as a
+        that shared folder, and you need its user name and password — Skrin cannot connect as a
         guest yet.
       </p>
       {found === null ? (
@@ -268,7 +268,7 @@ function SignIn({ server, onStep }: { server: Server; onStep: (next: NetStep) =>
       </FocusButton>
       <p className="muted">
         Your user name and password on {server.name} — the ones you sign in to that NAS or
-        computer with. Kinema cannot connect as a guest yet. It keeps them locked on this device,
+        computer with. Skrin cannot connect as a guest yet. It keeps them locked on this device,
         and only reads from the drive.
       </p>
     </div>

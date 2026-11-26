@@ -65,7 +65,7 @@ export const openLogFolder = () => invoke<void>('open_log_folder');
  */
 export async function shareLog(): Promise<void> {
   const { dir } = await logPaths();
-  await invoke<void>('plugin:storage|share', { path: `${dir}/app.log`, title: 'Kinema log' });
+  await invoke<void>('plugin:storage|share', { path: `${dir}/app.log`, title: 'Skrin log' });
 }
 
 /** Show the folder of automatic safety copies of the library in Explorer. */
@@ -82,7 +82,7 @@ export interface BackupCopy {
 
 export const listBackups = () => invoke<BackupCopy[]>('list_backups');
 
-/** Close Kinema and put this copy back as it starts again. */
+/** Close Skrin and put this copy back as it starts again. */
 export const restoreBackup = (name: string) => invoke<void>('restore_backup', { name });
 
 
@@ -171,6 +171,10 @@ export const listTitlesNeedingDetail = () =>
 /** Titles whose TMDB data is older than TMDB lets it be kept, oldest first. */
 export const listStaleTitles = (limit: number) =>
   invoke<TrailerTarget[]>('list_stale_titles', { limit });
+
+/** TMDB titles fetched in another language than `language`, by id, after `after`. */
+export const listTitlesInOtherLanguage = (language: string, after: number, limit: number) =>
+  invoke<TrailerTarget[]>('list_titles_in_other_language', { language, after, limit });
 
 /** A title matched through Wikidata, OMDb or TVmaze, and what it can be found on TMDB by. */
 export interface FallbackTitle {

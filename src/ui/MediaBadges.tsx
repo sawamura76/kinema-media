@@ -109,7 +109,7 @@ export function BadgeRows({ rows, heading }: { rows: BadgeRow[]; heading?: strin
           else on this page hints that they exist. */}
       {sayNoFfmpeg && (
         <p className="media-badges-note">
-          The picture and sound details appear here once Kinema can find ffmpeg. Settings, under
+          The picture and sound details appear here once Skrin can find ffmpeg. Settings, under
           Skipping intros, says how.
         </p>
       )}

@@ -84,7 +84,7 @@ export default function SetupPages({ onClose }: Props) {
         body: (
           <>
             <p className="muted">
-              Optional: Kinema can add what you finish to a watch history online, on SIMKL or
+              Optional: Skrin can add what you finish to a watch history online, on SIMKL or
               Trakt. Each works without the other.
             </p>
             <AccountSection service="simkl" />
@@ -98,7 +98,7 @@ export default function SetupPages({ onClose }: Props) {
         body: (
           <>
             <p className="muted">
-              For a film that does not come with the subtitles you want, Kinema can look online.
+              For a film that does not come with the subtitles you want, Skrin can look online.
               It works without an account (5 downloads a day); a free account allows 20 a day.
             </p>
             <OpenSubtitlesSection />

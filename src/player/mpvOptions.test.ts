@@ -48,3 +48,24 @@ describe('the log', () => {
     expect(Object.keys(BASE_MPV_OPTIONS).slice(0, 2)).toEqual(['log-file', 'msg-level']);
   });
 });
+
+describe('BASE_MPV_OPTIONS: nothing is fetched that a file only points to', () => {
+  it('does not follow playlists, EDL or CUE inside a file', () => {
+    expect(BASE_MPV_OPTIONS['access-references']).toBe('no');
+  });
+
+  it('never hands an address to yt-dlp', () => {
+    expect(BASE_MPV_OPTIONS.ytdl).toBe('no');
+  });
+});
+
+describe('BASE_MPV_OPTIONS: the volume', () => {
+  it('keeps mpv’s own volume to its default range: the boost is a filter', () => {
+    expect(BASE_MPV_OPTIONS['volume-max']).toBeUndefined();
+  });
+
+  it('leaves the sound path alone: no filter, no passthrough change', () => {
+    expect(BASE_MPV_OPTIONS.af).toBeUndefined();
+    expect(BASE_MPV_OPTIONS['audio-spdif']).toBeUndefined();
+  });
+});

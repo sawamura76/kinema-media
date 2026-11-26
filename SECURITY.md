@@ -1,6 +1,6 @@
 # Security policy
 
-## What Kinema's attack surface actually is
+## What Skrin's attack surface actually is
 
 Worth stating up front, because it is unusually small:
 
@@ -9,7 +9,7 @@ Worth stating up front, because it is unusually small:
   what you watch — unless you connect SIMKL or Trakt yourself, in Settings →
   Keep track of what I watch. Then the films and episodes you finish, and when, are sent to that
   account (`src-tauri/src/simkl.rs`, `src-tauri/src/trakt.rs`), and nothing
-  else is; for Trakt, Kinema also reads which films and episodes the account
+  else is; for Trakt, Skrin also reads which films and episodes the account
   has already watched, once, so as not to send them twice. Disconnecting ends
   it and asks the service to end the sign-in.
 - **Outbound requests only, to seven services for metadata** — TMDB, TVmaze,
@@ -26,24 +26,24 @@ Worth stating up front, because it is unusually small:
   SIMKL, Trakt and OpenSubtitles.
 - **One password is kept, if you give it: OpenSubtitles'.** OpenSubtitles
   has no way to approve an app from a phone, and its sign-in lasts a day, so
-  to sign in again Kinema keeps the password — on Windows encrypted with
+  to sign in again Skrin keeps the password — on Windows encrypted with
   DPAPI to your Windows user, so only you on that PC can read it back, even
-  from Kinema's safety copies. On Linux it is kept as it is, in Kinema's
-  database, as Kodi and Jellyfin keep theirs; Kinema's data folder is made
+  from Skrin's safety copies. On Linux it is kept as it is, in Skrin's
+  database, as Kodi and Jellyfin keep theirs; Skrin's data folder is made
   readable by your account only. It is sent only to OpenSubtitles
   (`src-tauri/src/opensubtitles.rs`). Without an account, nothing is kept.
 - **Your API keys stay local.** TMDB and OMDb keys you enter are stored in
   the SQLite database in your app data folder, and sent only to the service they
   belong to. So are SIMKL's and Trakt's sign-ins, when you connect them: the
   service's own tokens, never your password, which you type only on the
-  service's page. Released builds carry keys of Kinema's own — for TMDB, and
+  service's page. Released builds carry keys of Skrin's own — for TMDB, and
   the SIMKL and Trakt app IDs with Trakt's client secret — added at build time
   from repository secrets; none is committed. They are not secret from anyone
   holding the app — any key a program sends can be read out of it — and none
   gives access to anyone's account: that needs the person's own approval.
 - **Media files are read, never modified** — with one explicit exception you
   have to press: NFO export writes `.nfo` sidecars beside your videos.
-- **On Linux, Kinema also talks to the desktop it runs on** — over D-Bus and
+- **On Linux, Skrin also talks to the desktop it runs on** — over D-Bus and
   Wayland, on the same machine only — to read and switch the screen's mode
   (GNOME, Cinnamon, KDE Plasma's `kscreen-doctor`, the wlroots protocol), to
   borrow the receiver's sound device for a film, and to ask logind for sleep
@@ -63,7 +63,7 @@ reads the first and last 64 KiB of a video to match subtitles to it).
 Please **do not open a public issue** for anything exploitable.
 
 Use GitHub's [private vulnerability
-reporting](https://github.com/Basswaves/kinema/security/advisories/new) on this
+reporting](https://github.com/basswaves/skrin/security/advisories/new) on this
 repository. That opens a channel visible only to the maintainer.
 
 Include what you would put in a bug report — what you did, what happened, and
@@ -83,13 +83,13 @@ The latest release, and `master`. There are no backports.
 
 The Android version (since 0.10.0, an early version) is a file you install by
 hand, not from an app store, so Android asks once to allow installs from where
-you got it. It is signed with Kinema's own key; the certificate's SHA-256 is in
+you got it. It is signed with Skrin's own key; the certificate's SHA-256 is in
 the README, and a different one is not from this project. It asks for the
 network, and for read access to video files; on Android 11 and later it also
 asks for "All files access", which only lets it read subtitle files that sit
 beside a film (films play without it). It never writes to your media, does not
 run in the background and accepts no connections. Keys, sign-ins and the
-database live in the app's private storage, readable by Kinema alone unless the
+database live in the app's private storage, readable by Skrin alone unless the
 device is rooted. The same limits as on the desktop apply to what it sends and
 where (see above). Report a problem in it the same way.
 

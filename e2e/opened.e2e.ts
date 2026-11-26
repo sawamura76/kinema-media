@@ -1,6 +1,6 @@
 /**
  * Videos opened from outside the app (opened.rs, LOCAL-MEDIA.md phase 1): a
- * file Kinema was started for, one a second Kinema passes on while this one
+ * file Skrin was started for, one a second Skrin passes on while this one
  * runs, and files dropped on the window. Keyboard only, as everywhere.
  */
 import { expect, test, type Page } from '@playwright/test';
@@ -54,7 +54,7 @@ async function backOut(page: Page, done: () => Promise<boolean>): Promise<void> 
     .toBe(true);
 }
 
-test('started for a video: the player first, and Kinema closes when Back is pressed', async ({
+test('started for a video: the player first, and Skrin closes when Back is pressed', async ({
   page,
 }) => {
   await page.addInitScript((path) => {
@@ -93,7 +93,7 @@ test('already running: a passed-on video plays over Home, resumes, and a dropped
   await page.goto('/');
   await expect(page.locator('.home')).toBeAttached();
 
-  // A second Kinema, started for a video outside the library, passes it on.
+  // A second Skrin, started for a video outside the library, passes it on.
   await page.evaluate(
     (path) => (window as unknown as { __kinemaMock: Mock }).__kinemaMock.openVideo(path),
     HOLIDAY
@@ -103,7 +103,7 @@ test('already running: a passed-on video plays over Home, resumes, and a dropped
   await expect(page.locator('.player-label')).toContainText('Holiday 2019');
   await playheadTo(page, 600);
 
-  // Back goes back to Home, as it was: Kinema was not started for this one.
+  // Back goes back to Home, as it was: Skrin was not started for this one.
   await backOut(page, async () => (await page.locator('.home').count()) > 0);
   expect(await powerActions(page)).not.toContain('close');
 

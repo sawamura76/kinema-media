@@ -2,15 +2,15 @@
  * Settings for subtitles found online, and for forced subtitles.
  *
  * - `ForcedSubtitleRows`, in Language & subtitles: whether forced subtitles show with
- *   subtitles off (on by default), and whether Kinema fetches them from
+ *   subtitles off (on by default), and whether Skrin fetches them from
  *   OpenSubtitles for a file with none (off by default) — decided 2026-09-30.
  * - `SubtitleStyleRows`, in Language & subtitles: how big subtitles are drawn
- *   and a dark box behind them, for the screen Kinema is on (subtitleStyle.ts);
+ *   and a dark box behind them, for the screen Skrin is on (subtitleStyle.ts);
  *   the player's subtitle panel has the same two.
  * - `OpenSubtitlesSection`, under them: an optional OpenSubtitles account,
  *   for 20 downloads a day instead of 5. OpenSubtitles has no phone approval,
- *   so this is the one place Kinema asks for a password; it is kept encrypted
- *   to the Windows user (opensubtitles.rs), so Kinema can sign in again when
+ *   so this is the one place Skrin asks for a password; it is kept encrypted
+ *   to the Windows user (opensubtitles.rs), so Skrin can sign in again when
  *   the day's sign-in runs out.
  */
 import { useCallback, useEffect, useState } from 'react';
@@ -202,7 +202,7 @@ export function ForcedSubtitleRows({ onError }: { onError: (message: string) => 
             setFetch(v === 'on');
             void setSetting(AUTO_FORCED_KEY, v).catch((e) => onError(userError(e)));
           }}
-          note="Kinema asks OpenSubtitles for forced subtitles as a film or episode starts, if the file has none, and shows them. A file is asked about once; what is found is kept."
+          note="Skrin asks OpenSubtitles for forced subtitles as a film or episode starts, if the file has none, and shows them. A file is asked about once; what is found is kept."
           hint="Each one found uses one of the day's OpenSubtitles downloads (5 without an account, 20 with one — see below). Most films have no forced parts, and those cost nothing."
         />
       )}
@@ -274,14 +274,14 @@ export function OpenSubtitlesSection() {
       <h2>OpenSubtitles</h2>
       <p className="settings-intro">
         Where &ldquo;Find subtitles online&rdquo; in the player looks, and forced subtitles come
-        from when Kinema is set to find them. It works without an account — 5 downloads a day —
+        from when Skrin is set to find them. It works without an account — 5 downloads a day —
         and with a free OpenSubtitles account, 20.
       </p>
       {error && <p className="settings-warn">{error}</p>}
 
       {!status.available && (
         <p className="settings-hint">
-          This copy of Kinema was built without an OpenSubtitles app key, so it cannot search.
+          This copy of Skrin was built without an OpenSubtitles app key, so it cannot search.
         </p>
       )}
 
@@ -340,14 +340,14 @@ export function OpenSubtitlesSection() {
             </FocusButton>
           </FocusGroup>
           <p className="settings-hint">
-            OpenSubtitles has no way to approve Kinema from a phone, so the password is typed
+            OpenSubtitles has no way to approve Skrin from a phone, so the password is typed
             here.{' '}
-            {/* Windows encrypts it to the user (DPAPI); elsewhere it sits in Kinema's
+            {/* Windows encrypts it to the user (DPAPI); elsewhere it sits in Skrin's
                 data folder, which only the user's account can open (util.rs →
                 keep_private). Said as it is (CLAUDE.md → OpenSubtitles). */}
             {can?.system === 'Windows' || !can
-              ? 'Kinema keeps it encrypted to your Windows user'
-              : 'Kinema keeps it in its own data folder, which only your account can open,'}{' '}
+              ? 'Skrin keeps it encrypted to your Windows user'
+              : 'Skrin keeps it in its own data folder, which only your account can open,'}{' '}
             and sends it only to OpenSubtitles, to sign in again each day.
           </p>
         </>

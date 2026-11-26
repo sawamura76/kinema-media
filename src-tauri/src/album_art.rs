@@ -222,7 +222,7 @@ async fn lookup(dir: &Path, artist: &str, album: &str) -> Result<Option<String>,
     if path.is_file() {
         return Ok(Some(path.to_string_lossy().into_owned()));
     }
-    let client = reqwest::Client::builder()
+    let client = crate::net::client(crate::net::Service::MusicMetadata)?
         .timeout(Duration::from_secs(12))
         .redirect(reqwest::redirect::Policy::none())
         .user_agent("KinemaMediaPersonal/0.15.2 (personal desktop music artwork lookup)")
@@ -321,7 +321,7 @@ async fn lookup_archive(
 }
 
 async fn archive_cover(kind: &str, id: &str, path: PathBuf) -> Result<Option<String>, String> {
-    let covers = reqwest::Client::builder()
+    let covers = crate::net::client(crate::net::Service::MusicMetadata)?
         .timeout(Duration::from_secs(15))
         .user_agent("KinemaMediaPersonal/0.15.2 (personal desktop music artwork lookup)")
         .redirect(reqwest::redirect::Policy::custom(|attempt| {

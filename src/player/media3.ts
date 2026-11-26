@@ -2,7 +2,7 @@
  * The player on Android: Media3, in Kotlin (`Media3Plugin.kt`), drawing on a
  * surface beneath this page.
  *
- * Only `engine.ts` imports this, and only for Kinema's own terms — open,
+ * Only `engine.ts` imports this, and only for Skrin's own terms — open,
  * pause, seek, stop, volume, tracks, what is playing, and the `PlaybackEvent` stream, which
  * the plugin already sends in those terms. mpv's terms (the stats panel, the
  * output check, the track internals) have no Media3 counterpart here yet.
@@ -65,7 +65,7 @@ export interface SubtitleFile {
 }
 
 /**
- * A file on a network share Kinema opens itself (`smb://…`) is read through
+ * A file on a network share Skrin opens itself (`smb://…`) is read through
  * the core (stream.rs), which hands back an address on this device for it.
  */
 const isShare = (path: string) => /^smb:/i.test(path);
@@ -108,7 +108,7 @@ export const seek = (seconds: number, relative: boolean, quick = false) =>
 export const setVolume = (level: number) => call('set_volume', { level });
 export const setMuted = (muted: boolean) => call('set_muted', { muted });
 
-/** The open file's tracks, already in Kinema's terms (FFmpeg's format names). */
+/** The open file's tracks, already in Skrin's terms (FFmpeg's format names). */
 export const tracks = () => call<{ tracks: Track[] }>('tracks').then((r) => r.tracks);
 /** Answers once Media3 has made the choice, so tracks read after it say so. */
 export const selectTrack = (kind: 'audio' | 'sub', id: number) => call('select_track', { kind, id });
@@ -119,6 +119,8 @@ export interface State {
   path: string | null;
   position: number | null;
   duration: number | null;
+  /** How far Media3 has loaded (its buffered position, seconds); absent before 0.18. */
+  buffered?: number | null;
   paused: boolean;
   ended: boolean;
   /** The film's picture, once Media3 has chosen its video track. */
@@ -134,7 +136,7 @@ export const state = () => call<State>('state');
 /** What Media3 says it is doing, for the details panel (statsMedia3.ts). */
 export interface Facts {
   video?: {
-    /** FFmpeg's name, as everywhere in Kinema. */
+    /** FFmpeg's name, as everywhere in Skrin. */
     codec: string | null;
     /** "HEVC, 3840×2160, 10-bit HDR". */
     described: string;

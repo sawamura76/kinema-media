@@ -86,7 +86,7 @@ export function decideLook(setting: LookSetting, facts: DeviceFacts): LookDecisi
   ) {
     return {
       light: true,
-      reason: `Light: while Kinema opened it drew a frame every ${Math.round(medianFrameMs)} ms on ${
+      reason: `Light: while Skrin opened it drew a frame every ${Math.round(medianFrameMs)} ms on ${
         facts.screenHz ? `a ${Math.round(facts.screenHz)} Hz screen` : `a screen that takes one every ${Math.round(screenFrameMs)} ms`
       }`,
     };
@@ -120,7 +120,7 @@ export function screenFrameInterval(times: number[], skip = 2, minIntervals = 20
  * the page is drawn unevenly: a late frame is followed by an early one, and
  * the quickest tenth then said 8 ms on a 60 Hz screen. So the system's answer
  * wins — the connected screens' refresh rates — when they agree; where they
- * differ (Kinema may be on either), the gaps decide, but never quicker than
+ * differ (Skrin may be on either), the gaps decide, but never quicker than
  * the quickest screen. Without rates, the gaps alone.
  */
 export function screenPace(

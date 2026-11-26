@@ -1,0 +1,45 @@
+import {test,expect} from '@playwright/test';
+test.beforeEach(async({page})=>{await page.addInitScript(()=>{localStorage.setItem('kinemaMockMusic','1');localStorage.setItem('kinema.music.language','en');});await page.goto('/');});
+test('handheld scale adjusts text and controls and is restored',async({page})=>{
+ await page.getByRole('button',{name:'Settings',exact:true}).click();
+ await page.getByRole('navigation',{name:'Settings sections'}).getByRole('button',{name:'Playback',exact:true}).click();
+ await page.getByRole('radiogroup',{name:'Where Kinema is used'}).getByRole('button',{name:'Handheld',exact:true}).click();
+ const scale=page.getByRole('slider',{name:'Handheld interface scale',exact:true});
+ await scale.fill('125');await expect.poll(()=>page.evaluate(()=>getComputedStyle(document.documentElement).fontSize)).toBe('25px');
+ await scale.focus();await page.keyboard.press('ArrowLeft');await expect(scale).toHaveValue('120');
+ await page.reload();await expect.poll(()=>page.evaluate(()=>getComputedStyle(document.documentElement).fontSize)).toBe('24px');
+ await page.setViewportSize({width:1280,height:720});
+ await page.locator('.top-nav').getByRole('button',{name:'Music',exact:true}).click();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ await page.screenshot({path:'work/handheld-scale-120.png'});
+});
+test('bumper events cycle primary tabs and leave an open dialog alone',async({page})=>{
+ const bump=(key:string)=>page.evaluate((key)=>window.dispatchEvent(new KeyboardEvent('keydown',{key,bubbles:true})),key);
+ await page.locator('.top-nav').getByRole('button',{name:'Home',exact:true}).click();
+ await bump('KinemaNextTab');await expect(page.locator('.top-nav .active')).toHaveAttribute('aria-label','Movies');
+ await bump('KinemaPreviousTab');await expect(page.locator('.top-nav .active')).toHaveAttribute('aria-label','Home');
+ await bump('KinemaPreviousTab');await expect(page.locator('.top-nav .active')).toHaveAttribute('aria-label','Games');
+ await page.locator('.games-empty').getByRole('button',{name:'Manage games & apps',exact:true}).click();
+ await bump('KinemaNextTab');await expect(page.getByRole('dialog',{name:'Manage games & apps',exact:true})).toBeVisible();
+ await expect(page.locator('.top-nav .active')).toHaveAttribute('aria-label','Games');
+});
+test('box art previews, crops and cancels without replacing a saved draft',async({page})=>{
+ await page.route('http://asset.localhost/**',route=>route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="900" height="600"><rect width="450" height="600" fill="red"/><rect x="450" width="450" height="600" fill="blue"/></svg>'}));
+ await page.locator('.top-nav').getByRole('button',{name:'Games',exact:true}).click();
+ await page.locator('.games-empty').getByRole('button',{name:'Manage games & apps',exact:true}).click();
+ await page.getByRole('button',{name:'Add game or app',exact:true}).click();
+ const editor=page.getByRole('dialog',{name:'Game or app shortcut',exact:true});
+ await page.evaluate(()=>localStorage.setItem('kinemaMockPick','C:/cover.png'));
+ await editor.getByRole('button',{name:'Choose cover art',exact:true}).click();
+ const cropper=page.getByRole('dialog',{name:'Preview and crop box art',exact:true});
+ await expect(cropper.getByRole('button',{name:'Use image',exact:true})).toBeEnabled();
+ await cropper.getByRole('slider',{name:'Box art horizontal position',exact:true}).fill('100');
+ await cropper.getByRole('slider',{name:'Box art zoom',exact:true}).fill('150');
+ await page.screenshot({path:'work/box-art-cropper.png'});
+ await cropper.getByRole('button',{name:'Use image',exact:true}).click();
+ await expect(editor.getByRole('img',{name:'Cover preview'})).toHaveAttribute('src',/cropped-game-cover/);
+ const applied=await page.evaluate(()=>JSON.parse(localStorage.getItem('kinemaMockBoxArtCrop')!));expect(applied.x+applied.width).toBeCloseTo(1);
+ await editor.getByRole('button',{name:'Choose cover art',exact:true}).click();await page.keyboard.press('Escape');
+ await expect(cropper).toHaveCount(0);await expect(editor).toBeVisible();
+ await expect(editor.getByRole('img',{name:'Cover preview'})).toHaveAttribute('src',/cropped-game-cover/);
+});

@@ -39,7 +39,7 @@ async function openLibrary(page: Page): Promise<void> {
 }
 
 /**
- * Home → Library → Folders: the ring on the first place. Kinema's own
+ * Home → Library → Folders: the ring on the first place. Skrin's own
  * browser is the TV layout's; at a desk the tile is "Add a folder".
  */
 async function openFolders(page: Page): Promise<void> {
@@ -173,7 +173,7 @@ test('at a desk, Add a folder opens the system window and asks the same question
   await expect(page.getByText('Added Live shows to the library and scanned it.')).toBeVisible();
   await expect(page.locator('.library-tile', { hasText: 'Live shows' })).toBeVisible();
 
-  // The TV layout has Kinema's own browser there instead.
+  // The TV layout has Skrin's own browser there instead.
   await tvMode(page);
   await expect(page.locator('.library-tile', { hasText: /^Folders/ })).toBeVisible();
   await expect(page.locator('.library-tile', { hasText: 'Add a folder' })).toHaveCount(0);

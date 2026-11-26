@@ -1,6 +1,6 @@
 # History
 
-How Kinema was built, and why each decision went the way it did — in the order
+How Skrin (called Kinema until 0.17.0) was built, and why each decision went the way it did — in the order
 it happened. It is long, and nobody needs to read it to use Kinema. It is here
 for anyone who wants to change it: nearly every choice that looks arbitrary in
 the code has its reason in here, and so do the ideas that were tried and
@@ -3584,6 +3584,24 @@ served over http(s) (Windows' `http://tauri.localhost`), which is what the page
 itself can tell, not the system's name; an error there still lands in the
 browser.
 
+**Linux gets it too (2026-11-21).** The reason Linux had to keep the browser was
+the page's address, not WebKitGTK. Tried first, with one real trailer: a page
+served from `http://127.0.0.1:<port>` holding only YouTube's embed
+(youtube-nocookie.com, `origin` and `widget_referrer` set to that address). In
+WebKitGTK 2.52 (WSL, off-screen) YouTube answered `onReady`, no error 153; the
+WSL has no video decoders, so nothing played there. On the Linux test PC
+(WebKitGTK 2.54.2, Fedora) the real trailer showed its title and poster, and
+played (state 1, current time advancing past 11 s) once started. Autoplay
+needed nothing special in the app: wry gives the webview WebKit's
+`AutoplayPolicy::Allow`; a hand-made test window without it stayed unstarted
+until a click. So `trailer_relay.rs` serves one fixed page on loopback (started
+on the first trailer, nothing else served) and the overlay shows that page in
+its frame; the page passes the overlay's messages to the embed and its news
+back, checking the video id's shape, and loads none of YouTube's script. The
+CSP's `frame-src` gained `http://127.0.0.1:*`. A page that cannot start, or any
+YouTube error, still opens the browser. Not chosen: YouTube's watch page in a
+Skrin window (breaks "official embed only", poor with a remote).
+
 ## A longer plan, seen through newcomers' eyes (2026-10-21)
 
 The plan was reviewed by imagining two people finding Kinema through a web
@@ -4511,6 +4529,435 @@ The same measuring found three faults, fixed with it:
 - **One hang opening a film** (once in 37, earlier): not seen again in about
   200 openings with stacks ready to be taken (slowest 1.3 s); cause unknown,
   nothing changed for it.
+
+## Stepping down counts only the graphics card, and comes back up (2026-11-13)
+
+D6 (2026-10-10) let the desktop player give up the cheapest part of the
+picture when frames dropped, remembered it per graphics card and never went
+back up. An outside review (A3-03) found two machines stepped down for drops
+the card did not cause, and stuck there:
+
+- **A weak processor.** On a Linux test PC, a 4K H.264 film decoded in
+  software (`hwdec-current=no`) lost frames because the processor could not
+  decode them in time; mpv's video output dropped them late
+  (`decoder-frame-drop-count` 0, `frame-drop-count` 45). D6 called it 13.8 %
+  missed and went to level 2. Every step is graphics work, so the drops went
+  on, and the next 1080p film, which had dropped nothing, played at level 3.
+- **A screen slower than the film.** On a strong card (TV PC), the screen
+  could not switch to 59.94 Hz and stayed at 30 Hz, so mpv showed every second
+  frame of a 59.94 fps film, by design: `frame-drop-count` 1786,
+  `decoder-frame-drop-count` 0, `vo-delayed-frame-count` 0. D6 called it
+  49.9 % missed and went to level 2 and then 3; the drops did not fall, and a
+  later film that dropped nothing played at level 3.
+
+The owner approved changing D6 (2026-11-13):
+
+- **Only the card's drops count** (`judgeWindow`). When the film is faster
+  than the screen (`container-fps`/`estimated-vf-fps` above `display-fps`),
+  the frames the screen cannot show come off `frame-drop-count` first and the
+  share is of the frames it could show. A window where the decoder dropped
+  frames, or where the film is decoded in software, is not counted when it
+  is behind (a clean one still says the card kept up). The first few seconds
+  after the first picture are not measured, and a window that ends paused,
+  waiting, ended or closed is thrown away.
+- **A step whose drops did not fall is put back** (`decide`): the next window
+  measured after it must miss at most three quarters of what put it down.
+  This also covers a screen rate mpv does not report.
+- **Three clean films lead one step back up** (`CLEAN_FILMS`). Both stored
+  levels the review saw were wrong. A wrong level costs picture on every film
+  until it is climbed back; trying the level above on a card that does need
+  it costs about ten seconds of dropped frames in one film's first minute.
+  Three keeps a wrong level to three films per step, and a card that really
+  needs it to one short stutter in four films. A clean film is one watched
+  through the 45 s watch with at least two windows the card was measured
+  fine in and no step taken.
+- **Settings → Advanced → Picture steps given up** shows what is given up on
+  each graphics card and has a line, *Forget the steps given up*, that
+  clears the memory and says how many cards it forgot. It is a reset, not a
+  quality choice: Kinema still picks every rendering option.
+
+The details panel still names every step in force, and now says when the
+level will be tried back and where it can be forgotten.
+
+## A refresh rate the link has room for only in fewer bits (2026-11-14)
+
+A 59.94 fps clip on the TV PC played at 30 Hz: the desktop ran 4K at 30 Hz
+in 10-bit YCbCr 4:2:2, and the old Windows call Kinema switched with refused
+4K at 59.94 Hz in that format. Windows' own Settings set the mode by letting
+the driver drop to 8-bit 4:2:0, which is all the link had room for at 4K
+60 Hz. Nothing on screen said any of it.
+
+Two ways were open: keep the colour format and show 60 fps video on a 30 Hz
+screen (every second frame never shown), or let the driver lower the format
+for the length of the film. For video made at 50 or 60 frames a second,
+motion is what was made; an 8-bit 4:2:0 link carries an 8-bit 4:2:0 source
+untouched, and HDR at 8 bits is dithered. So the switch now asks the way
+Settings does when the old call refuses (`SetDisplayConfig`, the driver free
+to change the signal), and the desktop's own format comes back with the
+desktop's mode after the film. Films at 24 fps never meet this: their modes
+fit the link in full.
+
+On the TV PC with the receiver set back to its limited 4K mode, that call was
+taken without an error, and Windows still kept 30 Hz (GTX 1070, 2026-11-14):
+how Settings gets 8-bit 4:2:0 there is not something the public call does.
+The ask stays — it costs a log line, and another driver may take it — and
+what does help is the details panel saying the refusal. The cause on that PC
+was the receiver's 4K signal setting, which is the first thing the panel
+names.
+
+Kinema says either outcome in the details panel: a mode refused ("Kinema
+asked the screen for … and Windows or the graphics driver refused it", with
+where the bandwidth usually goes missing), and a link lowered to fit ("The
+graphics driver lowered the link from … to …").
+
+## Kinema becomes Skrin (2026-11-14)
+
+Another Kinema was already in films: a funded US distribution platform at
+kinema.com, which rents films out for screenings. A name shared with a film
+business is a poor one for a film app, and the app is meant to grow beyond
+films. The name changed before the next round of features, because winget,
+code signing and the posts that introduce the app are all tied to the name.
+
+Skrin was chosen from about twenty candidates: Norwegian and Swedish for a
+small keepsake box, read as "screen" in English. Of eight SKRIN trademarks
+none is in software or media. A Windows screenshot tool under construction is
+also called Skrin, so the full name is "Skrin Media Player". The icon is a
+sleeve with a disc half out of it: something kept, taken out to play. It came
+out of four rounds of drawings, tested at 16 and 24 px, blurred, in one
+colour and in Android's launcher shapes. One finding along the way: a red mark
+on a black tile is how Netflix's own icon is built, whatever the red.
+
+What changed is every name a person sees, the program file (`skrin.exe`,
+`/usr/bin/skrin`), the packages and the downloads. What kept the old name is
+what holds a person's things: the app id `com.kinema.app` and with it the
+data folder (Android: a new id is a new app that cannot update the old one),
+the registry keys behind "Open with" (an offer Kinema made is the same offer,
+moved to the new program at its first start), the Linux menu entry's file,
+and names nobody sees (settings keys, log tags, test tools). The history in
+this file keeps the name things had at the time.
+
+A new product name is a new program to Windows' installer: its own folder,
+Apps entry and shortcuts. The Skrin setup therefore runs Kinema's uninstaller
+first as an update, which takes the program files and the Apps entry but
+never the library, then removes the shortcuts an update leaves. On Linux the
+`skrin` package declares that it replaces `kinema`, so apt and dnf swap them
+instead of installing both. Old copies find the new release because GitHub
+forwards a renamed repository's address, the API's included.
+
+## One press to update, still no automatic updates (2026-11-15)
+
+Testers asked for an update inside the app; until now the notice only opened
+the download page, and on Android and Linux that meant a browser, a file and
+an installer found by hand. "Automatic updates stay out" was kept by making
+the update one press, never a background job: Skrin still only asks GitHub
+for the latest version number at launch, and only "Update to Skrin X" in
+Settings → Advanced downloads anything.
+
+The press fetches the file of the kind the copy was installed from, so the
+system's own installer does the replacing and asks the person first: the
+Windows setup (an installed copy has the setup's `uninstall.exe` beside it;
+Skrin closes so the setup can replace it), the Linux .deb or .rpm when the
+system's package database says it owns the running program (`pkexec apt-get`
+or `pkexec dnf`, which ask for the password), the Android APK (Android's
+installer, after the one-time "install unknown apps" permission). Each is
+checked against the release's own `.sha256` before it is handed over; a
+mismatch deletes it. Anything Skrin cannot tell safely — the ZIP, a tar.gz,
+no `pkexec`, another package manager — keeps the download page, by the
+stable-base rule: fail safe. A test release can be named only on this
+machine's own loopback address (`SKRIN_UPDATE_FEED`, Android's
+`debug.skrin.update_feed`), so the proof runs an old build against a local
+copy of a release without touching GitHub.
+
+## The seek bar shows what is loaded (2026-11-15)
+
+On a network share a seek can wait for data, and nothing showed how much was
+already in hand. The seek bar now draws the part loaded ahead of the play
+head, lighter than the played part: mpv's demuxer cache on a computer
+(`demuxer-cache-duration`), Media3's buffered position on Android. It is read
+once a second while the controls show, not observed: an observed property
+only registers when mpv starts, and the band is only needed while it can be
+seen. A failed read keeps the last answer, so a local file that loads at once
+shows one steady band that moves with the film; a player that reports nothing
+draws none. The bar is drawn by hand (`::-webkit-slider-*`) for this; the
+system's own slider cannot show a second part.
+
+## Seek preview pictures (2026-11-21)
+
+The owner asked for pictures above the seek bar (2026-10-18). Chosen: a
+picture made on request where the bar points, plus filling the rest in
+while watching; a whole-library job comes later. Built on the second libmpv
+handle that already takes a Videos tile's frame (`videos.rs`), but kept open
+for the film being watched instead of opened per picture: paused, `vo=null`,
+software decoding on two threads, a keyframe seek and `screenshot-to-file`.
+Measured over a network share: ~300 ms to open, then 50–100 ms a picture at
+1080p and ~200 ms at 4K HDR — against 0.65–1 s for a fresh handle each time.
+mpv's screenshot tone-maps HDR to SDR by itself, so no filter chain of our
+own. A keyframe seek is not frame-exact, which a 320 px picture never shows.
+
+One picture per ten seconds, the nearest answering every request; newest
+request wins and older ones are answered with nothing, so a fast drag never
+queues work. Filling in runs about one picture a second at low priority and
+the page stops it at the first dropped frame, for a clean minute: a CPU
+decoder beside the film must never be the reason a film stutters (and so
+never the reason the player steps the picture down). Pictures travel to the
+page as bytes and show from a `blob:` URL — no new folder in the asset
+scope, no change to the content security policy. They live in
+`<app data>/previews/<file id>/`, with the path and size they were made from:
+a folder whose file left the library, or whose id now names another file, is
+swept at start and when a library folder is removed. A file only missing for
+now keeps them. Android makes none yet (no mpv) and Settings shows nothing
+about them there: a line about a feature a device lacks helps nobody (owner).
+Android's own previews (MediaMetadataRetriever, a size-capped cache) are
+planned for when Android work resumes.
+
+### Previews for the whole library (2026-11-21, round 10 A2)
+
+The job the owner asked to keep for its own session: Settings → Advanced →
+Seek previews → "Make previews for the whole library", off by default
+(`preview_job.rs`, setting `preview_job`). One thread, background priority,
+one file at a time, its own libmpv handle, the same pictures and folder as
+watching makes. Decisions and why:
+
+- **Yields by closing, not pausing.** `jobs::playing()` is looked at between
+  two pictures; when a film starts, the handle (and its share connection) is
+  let go, and reopened when the film ends. An idle handle beside a film would
+  still hold memory and a connection.
+- **Rests as long as the work took** after each picture (twice as long, on one
+  decoding thread, where the system reports two cores or fewer): the load is
+  a fixed share of one core whatever the picture costs, 4K HDR or DVD. What
+  the machine reports decides, never one test machine.
+- **State is the folder, not the database.** A `done` marker beside `source`
+  names the file it was made from; a restart lists the library, skips the
+  marked files, and carries on. Replacing a file or Delete in Settings
+  removes the marker with the pictures. Delete also switches the job off
+  (it would make them all again at once).
+- **A root that does not answer is skipped for the pass**: the first file that
+  cannot be opened marks its library folder, the rest wait for the next
+  start, instead of 15 s a file. (Found in the real app: a tool session
+  without the owner's Z: mapping.)
+- Starts 20 s after launch, when switched on, never twice. Nothing leaves the
+  computer. Android: gated off with the pictures themselves
+  (`capabilities.seek_previews`), on PLAN.md's Android list.
+
+### Seek previews on Android (2026-11-21, round 11 A1)
+
+The owner's rule: Android comes close to every desktop feature. Same worker
+as the desktop (`seek_preview.rs`: one request at a time, newest wins, same
+folder and steps), with `PreviewPlugin.kt` in place of the second mpv.
+
+- **A software decoder, never the hardware one, and not
+  `MediaMetadataRetriever`** (which the plan named): the retriever picks the
+  hardware decoder itself, and a box may have a single one that Android takes
+  from the app behind (GOTCHAS). `MediaExtractor` seeks to the keyframe,
+  a decoder Android lists as software-only (and that lists the file's size
+  and profile) gives one frame, and the colours are converted in Kotlin —
+  so HDR (PQ, HLG) is mapped to ordinary colours the same way on every
+  Android version, instead of whatever each version's retriever does. A
+  file no software decoder takes gets no pictures; the film is untouched.
+- **A cap** (boxes have little room): a tenth of the free space plus what
+  the pictures take, at most 256 MB, read from the system (`statvfs`), never
+  a size for one test box. Over it, other files' least recently filled
+  folders go first; a film larger than the cap alone keeps no more.
+  Computers keep no cap (unchanged).
+- **Filling in while watching** runs on Android too, guarded the same way
+  (Media3's dropped frames), and rests as long as each picture took — twice
+  on two cores or fewer — as the whole-library job does. Measured on the
+  emulator (Kit clip, 35 s windows at 24 fps): forced on past the guard,
+  13 dropped of 816 rendered; off, 8 of 824; another pair 1 vs 0 — the
+  emulator drops frames by itself, and in the real flow the guard kept
+  filling off. A box's figure needs the box.
+- **A film on a network share gets live pictures only** (read over the
+  same local link as the player); filling would take the share's bandwidth.
+  Proved on the emulator from Samba: playback went on, ≥36 s buffered.
+- **The whole-library job stays the desktop's**: under a cap it would only
+  push out the pictures of films watched (PLAN.md's Android list).
+
+Measured on the emulator: first picture 1.2 s with the file's open (~0.1–0.3 s),
+then 0.2–0.8 s at 1080p; 720p VP9 10-bit HDR first 4.5 s, then 0.8 s.
+
+## The details page's later items (2026-11-21)
+
+Round 10 B. One TMDB request per title as before (`recommendations` joins the
+`append_to_response` list; the series' `seasons` list was already in it), kept as
+`titles.certifications` (every country, `DK=15` tab-separated), `titles.similar_ids`
+and a `season_art` table (schema 41). NULL is never asked, so every TMDB title is
+fetched once more, which is also how the old titles get them.
+
+- **Age rating: the system's country, else none** (round 10 brief; it replaces
+  the US-only rule above, which was the owner's earlier choice — the owner can
+  say if they want US kept as a fallback). The country is what the system itself says
+  (`region.rs`, `system_region`; owner 2026-11-21): Windows'
+  `GetUserDefaultGeoName` (the region setting; a UN area number like 150 is no
+  country), Linux's first of LC_ALL / LC_MESSAGES / LANG that is set, its
+  territory (`nb_NO.UTF-8` → NO; `C` or `en` → none, not the next variable's).
+  Where it names none, and on Android (no command; the webview's locale always
+  has a country), the region of the first webview language only (`da-DK` → DK);
+  a first language with no region (`en`, `nb`) shows nothing and a later
+  language's country is never used (a Norwegian system listing `en-GB` second
+  is not British). Real-app check: this PC's region is Norway, and the film
+  page showed Norway's rating (not the US or Danish one).
+  All countries are stored so changing the system's region needs no refetch.
+  Nothing is shown rather than another country's rating. `titles.certification`
+  (US) is still written and read by nothing on the page.
+- **More like this** is TMDB's `recommendations`, not `similar` (similar is by
+  keyword and genre and drifts); only titles with a file that is not missing,
+  same kind, in TMDB's order, at most 20; the row is absent when there are none.
+- **Extras** are read from disk like the trailer (`extras.rs`, off the main thread,
+  shares included). Folders are Plex's names. File suffixes are only
+  `-featurette`, `-behindthescenes`, `-deleted`, `-interview` (with `-`, `.` or `_`):
+  `-scene`, `-short` and `-other` end real titles and are read as folders only, for the
+  reason the trailer gives. The scanner now leaves those suffixed files out of the
+  library as it does trailers, or each would become a junk title.
+- **Theme music** is read by the app and handed to the page as bytes
+  (`read_theme`, found again from the video's path, never a path from the page,
+  at most 25 MB) because the page may open by address only the artwork folder;
+  `media-src` gained `blob:`. Off by default (`theme_music` = on), local files only —
+  an online source (Plex and Jellyfin fetch one) was not built: it would need a host
+  in `whatLeaves.json` and the owner's word.
+- **Season pictures:** TMDB's season posters, cached like posters for seasons the
+  library holds. Episode thumbnails were already there (cached stills, shown beside
+  each episode); nothing new was needed.
+- `whatLeaves.json` unchanged: the same TMDB request and the same image host.
+
+## Subtitle timing, found automatically (2026-11-21)
+
+Round 10 D2; the design and the owner's pick (option A) are in the round's
+notes. Manual Earlier / Later stayed; beside them a button checks and fixes.
+The plan of 2026-10-18 needed ffmpeg; a measurement showed the bundled libmpv
+gives raw sound by itself (`ao=pcm`, 60 s in ~0.3 s), so it works for
+everyone with nothing to install. No learned speech model and no third-party
+aligner (alass and ffsubsync are GPL and a separate program).
+
+How: eight 40 s stretches over 10–90 % of the film (fewer for an episode,
+none under six minutes), each through a fresh second libmpv handle, as seek
+previews and Videos tiles use one. The reference is a text subtitle built
+into the film where there is one (its cue times; the video has to be decoded
+for them, so a stretch that takes over 6 s hands the rest to speech), else
+speech: voice-band energy rising above its own half-second average (taken
+from the centre channel where the track has one). A fixed threshold over the
+stretch's noise floor passed every made-up test and failed a real film —
+music and effects counted as speech (GOTCHAS). The
+chosen subtitle file's cue times are read by Skrin (SRT, VTT, ASS — times
+only). Each stretch votes, per speed, for the delay that lines the two up:
+coarse over ±90 s at 100 ms by whole lines, then 10 ms by where lines *start*
+against where speech starts — lines linger after the words by differing
+amounts, which left a plateau and a bias of a few tenths when lining up whole
+lines. Lines show a beat before the words and speech is found a little late;
+0.2 s is given back.
+
+Only the known speed pairs are tried (25/24/23.976 both ways), never a
+free-form ratio: a wrong ratio is the most damaging error there is. The
+answer stands only when at least four stretches agree within 0.3 s, they are
+60 % of those that voted and over half of all read, and the rest do not
+agree among themselves on another delay (that is a subtitle for another cut,
+said as such). A stretch abstains when its best delay does not clearly beat
+the next. Tested on 42 made-up films across all seven speeds: never a wrong
+fix, at least nine in ten found; another film's subtitle never moves.
+Under 0.3 s off is "already in time" (a real film's own subtitle measured
+0.3 s from that point in every stretch alike — how early its lines show).
+
+Measured in the real app (a 1080p WEB-DL, 5.1, 1 h 46 over the network
+share; copies of its own SRT in a scratch folder): +2.5 s late → "2.3 s
+earlier, 5 of 8 agree" in 2.2 s; made for 25 fps → "0.2 s later, slowed
+(25 → 23.976)" in 1.1 s, and at 50:00 mpv then showed the line the original
+file has at 49:59.5–50:00.7. Both differ from the original file's own
+measure by the true amount to the hundredth; the 0.2 s is that file's lead. Applied with mpv's own `sub-delay` and
+`sub-speed` (film time = cue × speed + delay), kept per file beside the
+manual amount; Reset clears both, and a step by hand ends the Undo.
+
+After an OpenSubtitles download not marked as made for this file, the check
+runs quietly and offers only when clearly off (≥ 0.3 s or a speed) — never
+moved without a yes, as chosen 2026-10-18. Android has no mpv; the button is
+hidden there and the work is on PLAN.md's Android list.
+
+## A proxy for Skrin's lookups (2026-11-21)
+
+**Why.** A privacy-minded tester (Discussion #9) pointed out that every online
+lookup carries their own address. Settings → Privacy → "Send Skrin's lookups
+through a proxy": an HTTP(S) or SOCKS5 address (a VPN's or Tor's local proxy),
+off by default.
+
+**How.** Every Rust client starts from `net::builder()` (net.rs); the page's
+`fetch` (tauri-plugin-http) is given the same address (`src/net/proxy.ts`).
+The webview has no proxy of its own on all three platforms, so a picture from
+the internet is fetched by Rust (`fetch_remote_image`) and handed over as a
+blob; with the proxy on, `Art`, Fix match and the logo cut-out never let the
+webview ask for a remote address. mpv opens no network address (local files,
+shares, 127.0.0.1 relay), so its `http-proxy` is not set. Addresses on this
+computer and the home network are left out (a proxy cannot reach a NAS).
+
+**Fail safe.** A bad address is refused when typed; one that cannot be used
+(or hand-edited) points at a dead end, so requests fail and are said to — never
+direct. "Check" asks TMDB through the typed address and says what happened.
+
+**Does not slip, except:** the YouTube trailer (an iframe in the webview) and
+winget (Windows' own settings). Both said in Settings and on the What leaves
+page.
+
+## Keep everything on this computer (2026-11-21)
+
+**Why.** The same tester (Discussion #9) wanted Skrin with nothing about their
+library leaving the computer. A proxy hides who asks, not what is asked.
+
+**What.** A quiet line on the first run and a switch at the top of Settings →
+Privacy. Names are matched against IMDb's public list of titles kept on the
+computer (the matcher: offline catalogue, round 11 P2a); every other service
+stops, the update check too (it shows the address to GitHub every start).
+IMDb's list and ratings each keep their own switch: they are files IMDb
+publishes for everyone, from the host Skrin already used, and say nothing
+about the library. The own media server stays possible (the address is the
+user's). The owner chose every recommended option (notes: PRIVATE-MODE §2).
+
+**One gate, not fourteen checks.** `net::client(Service)` is the only way to a
+Rust HTTP client (`builder()` became private, so a new caller cannot skip it),
+and the page's every request already went through `fetchPolitely`. Pictures
+already cached are shown; a remote address is never handed to the webview.
+Buttons that only reach a service (Trailer from YouTube, Find subtitles
+online, Install ffmpeg, More like this, Update) are hidden rather than left to
+fail. SIMKL and Trakt must be disconnected first: a mode that silently stopped
+them would make them think nothing more was watched.
+
+**What was fetched stays** until "Remove pictures and details fetched online"
+is pressed (asks first): it keeps names, years, ids and watch history, and
+marks every title as never fetched, so going back online fetches it again.
+Switching off moves every title matched here to TMDB by its IMDb number in one
+run (choice 4a), and removes the list, which is only for the mode.
+
+## Follow-ups from GitHub #21, #25 and #26 (2026-11-22)
+
+**Pausing no longer hands the arrows to the controls (GitHub #25).** Since
+0.4.0 a key pause put the ring on Play/Pause, so the next OK played again and
+the arrows were "already on the controls". It made Left/Right mean seek while
+playing and move-between-buttons while paused, which nobody else does:
+VLC, mpv, MPC-HC, PotPlayer, Kodi, YouTube on the web and Netflix on a TV all
+keep Left/Right as seeking when paused. OK already resumes with the ring off
+the controls (the Enter path in `usePlayerKeys.ts`), so the ring bought one
+press for reaching audio or subtitles while paused, at the price of the
+arrows changing meaning. The reporter's own proposal — VLC's model, Tab for
+the buttons and Up/Down for volume — was declined: a remote has no Tab, and a
+remote on a Windows PC sends the same arrow keys as a keyboard, so a desktop
+split would break TV mode on Windows; a key-layout setting would be a taste
+setting. Volume stays on 9/0, +/− and the wheel, as in mpv. Paused, OK plays
+before it takes a prompt (Skip intro, Resumed from): with the ring on Play
+that is what it did, and the flow test found a paused seek landing in an
+intro, where OK skipped and stayed paused.
+
+**Auto resolution stops at the screen's own (GitHub #21).** Windows' mode list
+includes a driver's virtual modes (DSR, VSR). Auto now goes no higher than
+the target's preferred mode (`DISPLAYCONFIG_DEVICE_INFO_GET_TARGET_PREFERRED_MODE`,
+what Windows labels "Recommended"); Linux desktops list no such modes and
+report none, so nothing changes there. A screen that reports a smaller
+preferred mode than it can show is not raised past it: not switching is the
+safe direction.
+
+**Movies ↔ TV for a folder (GitHub #26).** The kind is only a hint for names
+that could be either (`parse.ts`: the type guessit is given, film titles from
+folders, dated and number-named shows only in TV folders); episode numbering
+decides a series wherever it is (`match.ts`, `isSeriesFile`). Changing it reads
+again what the machine decided, by the same rule as a rename
+(`following::HAND_DECISION`): matches by hand, placements, "ignored" and titles
+kept under their own name stay; watch history is the episode's anyway (v13).
+Videos folders are left out: they are not matched at all.
 
 ## Open items
 

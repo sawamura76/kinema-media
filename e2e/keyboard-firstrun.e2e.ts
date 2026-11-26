@@ -238,7 +238,7 @@ for (const system of ['android', 'windows'] as const) {
   });
 }
 
-test('Android: a folder on a USB drive, chosen in Kinema’s own browser', async ({ page }) => {
+test('Android: a folder on a USB drive, chosen in Skrin’s own browser', async ({ page }) => {
   await page.setViewportSize({ width: 960, height: 540 });
   await page.addInitScript(() => {
     localStorage.setItem('kinemaMockSystem', 'android');
@@ -358,7 +358,7 @@ test('Android: refused, the folder browser says where to allow it', async ({ pag
   await page.goto('/');
   await expect.poll(() => focused(page)).toBe('Add movies folder');
   await press(page, 'Enter');
-  await expect(page.locator('.folder-browser')).toContainText('Apps → Kinema → Permissions');
+  await expect(page.locator('.folder-browser')).toContainText('Apps → Skrin → Permissions');
   await expect.poll(() => focused(page)).toBe('Ask again');
   await press(page, 'Escape');
   await expect(page.locator('.folder-browser')).toHaveCount(0);
@@ -395,7 +395,7 @@ test('Android: always the TV layout, never asked', async ({ page }) => {
   expect(await tv()).toBe('on');
 
   // Nothing to ask about picture and sound: the pages start at intros.
-  // (A folder first: the USB drive itself, in Kinema's own browser.)
+  // (A folder first: the USB drive itself, in Skrin's own browser.)
   await press(page, 'Enter');
   await expect.poll(() => focused(page)).toBe('USB driveUSB drive or card');
   await press(page, 'Enter');
@@ -424,7 +424,7 @@ test('Android: always the TV layout, never asked', async ({ page }) => {
   for (let i = 0; i < 6 && (await focused(page)) !== 'Playback'; i++) await press(page, 'ArrowDown');
   await press(page, 'Enter');
   await expect(page.locator('.settings-section h2').first()).toHaveText('Playback');
-  await expect(page.locator('.settings-section')).not.toContainText('Where Kinema is used');
+  await expect(page.locator('.settings-section')).not.toContainText('Where Skrin is used');
   await press(page, '?');
   await expect(page.locator('.shortcuts')).toBeVisible();
   await expect(page.locator('.shortcuts')).not.toContainText('F11');
@@ -524,6 +524,31 @@ test('a setup page whose question comes late still starts on it, unless the remo
   await expect(page.locator('.setup-page')).toContainText('ffmpeg is not installed');
   await drawn(page);
   expect(await focused(page)).toBe('Finish');
+});
+
+test('first run: a first scan with the services unreachable says the internet, not the names (A2-01)', async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('kinemaMockEmpty', '1');
+    localStorage.setItem('kinemaMockNoMatch', '1');
+    // The scanner's own words when the lookups got no connection (reach.ts).
+    localStorage.setItem('kinemaMockScanErrors', JSON.stringify(['TMDB could not be reached']));
+  });
+  await firstRunToSetupPage(page, 'windows', 'Picture and sound');
+  for (let i = 0; i < 8 && (await page.locator('.setup-pages').count()) > 0; i++) {
+    for (let j = 0; j < 4 && !/^(Next|Finish)$/.test((await focused(page)) ?? ''); j++) {
+      await press(page, 'ArrowUp');
+    }
+    await press(page, 'Enter');
+    await drawn(page);
+  }
+  await expect(page.locator('.setup-pages')).toHaveCount(0);
+
+  await expect(page.locator('.browse-notice')).toContainText('could not reach the services');
+  await expect(page.locator('.nothing-named h1')).toContainText('could not reach the internet to name');
+  await expect(page.locator('.nothing-named')).toContainText('nothing needs renaming');
+  await expect(page.locator('.nothing-named h1')).not.toContainText('could not name');
 });
 
 test('first run: a folder whose files all go unnamed ends on what was found, never Welcome again', async ({

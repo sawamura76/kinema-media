@@ -7,7 +7,7 @@
 # Windows: with Microsoft's C runtime built in (crt-static). The plugin's own
 # DLL needs VCRUNTIME140.dll, which a fresh Windows may not have; without it
 # the player cannot start at all ("Failed to load libmpv-wrapper", error 126),
-# as a clean Windows Sandbox showed (2026-10-17). kinema.exe has its runtime
+# as a clean Windows Sandbox showed (2026-10-17). skrin.exe has its runtime
 # built in already (Tauri does that).
 #
 # From source, not downloaded: Kinema ships no third-party binary it did not

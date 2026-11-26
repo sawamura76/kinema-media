@@ -1,5 +1,5 @@
 /**
- * Kinema's own focus engine (round 7, notes FOCUS-REWORK.md): one store that
+ * Skrin's own focus engine (round 7, notes FOCUS-REWORK.md): one store that
  * says which control holds the ring, the live tree of areas the screens
  * declare, and the keys, pointer and scrolling around it. Where an arrow goes
  * is focusModel.ts, a pure function of that tree; how the page scrolls is
@@ -422,6 +422,37 @@ const ARROWS: Record<string, Arrow> = {
   ArrowRight: 'right',
 };
 
+/** The wheel moved the page since the last key (A9-02). */
+let wheeled = false;
+
+/** True when no part of the control is inside the window's height. */
+function offScreen(node: HTMLElement): boolean {
+  const r = node.getBoundingClientRect();
+  return r.bottom <= 0 || r.top >= window.innerHeight;
+}
+
+/**
+ * The control on screen nearest the middle of the window: where the first key
+ * after the wheel starts from, since the wheel took the page away from the ring.
+ */
+function nearestOnScreen(): string | null {
+  const middle = window.innerHeight / 2;
+  let best: string | null = null;
+  let bestDistance = Infinity;
+  for (const [key, entry] of entries) {
+    const node = entry.node;
+    if (!node || entry.area || entry.disabled || !node.isConnected || !allowed(key)) continue;
+    const r = node.getBoundingClientRect();
+    if (r.width === 0 || r.height === 0 || r.top < 0 || r.bottom > window.innerHeight) continue;
+    const distance = Math.abs((r.top + r.bottom) / 2 - middle);
+    if (distance < bestDistance) {
+      best = key;
+      bestDistance = distance;
+    }
+  }
+  return best;
+}
+
 function onKeyDown(event: KeyboardEvent): void {
   // A control keeping a key to itself stops its propagation (a card's OK
   // held, a text box's Left), and the press never gets here.
@@ -441,6 +472,19 @@ function onKeyDown(event: KeyboardEvent): void {
     return;
   }
   const at = focused as string;
+  // The wheel took the page away from the ring: the first arrow goes on from
+  // what is on screen, not back to where the ring was.
+  const afterWheel = wheeled;
+  wheeled = false;
+  if (arrow && afterWheel) {
+    const ringNode = entries.get(at)?.node;
+    const near = ringNode && offScreen(ringNode) ? nearestOnScreen() : null;
+    if (near) {
+      event.preventDefault();
+      setFocused(near, 'key');
+      return;
+    }
+  }
   if (arrow) {
     // Also keeps the browser from scrolling the page by itself.
     event.preventDefault();
@@ -506,6 +550,34 @@ let installed = false;
 function install(): void {
   if (installed) return;
   installed = true;
+  // A mouse's side "Back" button and Alt+Left are the same Back as Escape: Skrin
+  // keeps its own screen stack, so the web view's history has nothing behind it.
+  // Sent on as `BrowserBack`, which every screen already answers.
+  const sendBack = () => {
+    const target: EventTarget = document.activeElement ?? document.body;
+    target.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'BrowserBack', bubbles: true, cancelable: true })
+    );
+  };
+  window.addEventListener(
+    'mouseup',
+    (e) => {
+      if (e.button !== 3) return;
+      e.preventDefault();
+      sendBack();
+    },
+    true
+  );
+  window.addEventListener(
+    'keydown',
+    (e) => {
+      if (e.key !== 'ArrowLeft' || !e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      sendBack();
+    },
+    true
+  );
   window.addEventListener('keydown', () => lastInput('key'), { capture: true, passive: true });
   window.addEventListener('pointerdown', () => lastInput('pointer'), { capture: true, passive: true });
   // Bubble phase on `window`: a control that keeps a key to itself (a card's
@@ -515,6 +587,7 @@ function install(): void {
   for (const type of ['pointerdown', 'wheel']) {
     window.addEventListener(type, countInput, { capture: true, passive: true });
   }
+  window.addEventListener('wheel', () => { wheeled = true; }, { capture: true, passive: true });
   // A pointer that really moved, not a page scrolled under a still one: some
   // engines send a move after every scroll.
   window.addEventListener(

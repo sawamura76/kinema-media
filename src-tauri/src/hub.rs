@@ -209,6 +209,38 @@ pub fn game_shortcuts(db: tauri::State<Db>) -> Result<Vec<GameShortcut>, String>
         .map_err(|e| e.to_string())
 }
 
+#[derive(Clone, Copy, Deserialize)]
+pub struct ArtCrop { pub x:f64, pub y:f64, pub width:f64, pub height:f64 }
+fn cropped_artwork(bytes:&[u8], crop:ArtCrop)->Result<Vec<u8>,String> {
+    if ![crop.x,crop.y,crop.width,crop.height].iter().all(|v|v.is_finite()) || crop.x<0.0 || crop.y<0.0 || crop.width<=0.0 || crop.height<=0.0 || crop.x+crop.width>1.000001 || crop.y+crop.height>1.000001 {
+        return Err("Choose a crop inside the image.".into());
+    }
+    // Input is the bounded 1200px JPEG returned by read_cover, never unbounded source pixels.
+    let image=image::load_from_memory(bytes).map_err(|e|e.to_string())?;
+    let (w,h)=(image.width(),image.height());
+    let x=((crop.x*w as f64).floor() as u32).min(w-1);
+    let y=((crop.y*h as f64).floor() as u32).min(h-1);
+    let cw=((crop.width*w as f64).round() as u32).max(1).min(w-x);
+    let ch=((crop.height*h as f64).round() as u32).max(1).min(h-y);
+    let mut out=std::io::Cursor::new(Vec::new());
+    image.crop_imm(x,y,cw,ch).write_to(&mut out,image::ImageFormat::Jpeg).map_err(|e|e.to_string())?;
+    Ok(out.into_inner())
+}
+#[tauri::command]
+pub async fn game_crop_artwork(app:tauri::AppHandle,path:String,crop:ArtCrop)->Result<String,String> {
+    let dir=crate::data_dir(&app)?;
+    crate::jobs::off_main(move || {
+        let cover=crate::music_tags::read_cover(Path::new(&path))?;
+        let bytes=cropped_artwork(cover.data(),crop)?;
+        use std::hash::{Hash,Hasher};
+        let mut hash=std::collections::hash_map::DefaultHasher::new();bytes.hash(&mut hash);
+        let cache=dir.join("artwork");std::fs::create_dir_all(&cache).map_err(|e|e.to_string())?;
+        let dest=cache.join(format!("game-crop-{:016x}.jpg",hash.finish()));
+        if !dest.exists(){std::fs::write(&dest,bytes).map_err(|e|e.to_string())?;}
+        Ok(dest.to_string_lossy().into_owned())
+    }).await
+}
+
 #[tauri::command]
 pub async fn game_save(app: tauri::AppHandle, shortcut: GameShortcut) -> Result<i64, String> {
     let dir = crate::data_dir(&app)?;
@@ -319,6 +351,19 @@ pub async fn game_launch(app: tauri::AppHandle, id: i64) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn crop_keeps_selected_pixels_and_rejects_outside_or_nonfinite_frames() {
+        let mut image=image::RgbImage::new(100,80);
+        for (x,_,p) in image.enumerate_pixels_mut(){*p=if x<50{image::Rgb([255,0,0])}else{image::Rgb([0,0,255])};}
+        let mut source=std::io::Cursor::new(Vec::new());
+        image::DynamicImage::ImageRgb8(image).write_to(&mut source,image::ImageFormat::Png).unwrap();
+        let crop=ArtCrop{x:0.5,y:0.0,width:0.5,height:1.0};
+        let result=image::load_from_memory(&cropped_artwork(source.get_ref(),crop).unwrap()).unwrap().to_rgb8();
+        assert_eq!(result.dimensions(),(50,80));
+        assert!(result.get_pixel(25,40)[2]>200);
+        assert!(cropped_artwork(source.get_ref(),ArtCrop{x:f64::NAN,..crop}).is_err());
+        assert!(cropped_artwork(source.get_ref(),ArtCrop{width:0.8,..crop}).is_err());
+    }
     fn game(target: &str) -> GameShortcut {
         GameShortcut { id: None, title: "Test".into(), target:target.into(), arguments:Vec::new(),working_directory:String::new(),artwork:None,platform:String::new(),kind:"game".into() }
     }

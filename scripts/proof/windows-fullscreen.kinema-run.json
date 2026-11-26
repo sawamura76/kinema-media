@@ -1,0 +1,13 @@
+{
+  "about": "F twice mid-film (GitHub #24): the film must never pause while the window goes full screen and back, with default settings. Replace {FILM} with a path of a film in the library copy. Paste `steps` into one kinema_run after `kinema_app start fresh` (muted, silent). Pass: result paused 0, fs [false,true,false].",
+  "steps": [
+    {"call": "play", "args": [{"path": "{FILM}", "fileId": null, "titleId": null, "label": "proof"}]},
+    {"wait": 8000},
+    {"mpv": ["pause", "mute", "time-pos"]},
+    {"read": "(() => { const inv = window.__TAURI_INTERNALS__.invoke; window.__s = {n:0, paused:0, run:true, fs:[]}; const t = async () => { while (window.__s.run) { const [r, f] = await Promise.all([window.__kinemaSelfTest.probe(['pause']), inv('plugin:window|is_fullscreen', {label:'main'})]); window.__s.n++; if (r.pause === 'yes') window.__s.paused++; const l = window.__s.fs; if (l[l.length-1] !== f) l.push(f); } }; t(); return 'sampling'; })()", "label": "start sampler"},
+    {"wait": 500},
+    {"keys": ["f"], "waitMs": 3000},
+    {"keys": ["f"], "waitMs": 3000},
+    {"expect": "(() => { window.__s.run = false; return window.__s.paused === 0 && window.__s.n > 200 && JSON.stringify(window.__s.fs) === '[false,true,false]'; })()", "label": "never paused through full screen and back"}
+  ]
+}

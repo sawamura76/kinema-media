@@ -77,6 +77,12 @@ export const SETTINGS_INDEX: SettingEntry[] = [
   },
   {
     section: 'playback',
+    label: 'Theme music',
+    about: 'theme song tune show film page title music plays soft theme.mp3',
+    values: ['Off', 'On'],
+  },
+  {
+    section: 'playback',
     label: 'Still watching?',
     about: 'autoplay next episode binge stop ask sleep fell asleep',
     values: ['Off', 'On'],
@@ -86,6 +92,7 @@ export const SETTINGS_INDEX: SettingEntry[] = [
     label: 'Frame timing',
     about: 'stutter smooth video sync judder',
     values: ['Match the sound', 'Match the screen'],
+    when: (can) => can.engine !== 'media3',
   },
   {
     section: 'playback',
@@ -152,7 +159,7 @@ export const SETTINGS_INDEX: SettingEntry[] = [
   {
     section: 'picture',
     label: 'Your equipment',
-    about: 'TV receiver screens sound what Kinema found',
+    about: 'TV receiver screens sound what Skrin found',
     when: (can) => can.equipment_detection,
   },
 
@@ -163,6 +170,11 @@ export const SETTINGS_INDEX: SettingEntry[] = [
     about: 'spoken language dub original sound track',
   },
   { section: 'subtitles', label: 'Subtitles', about: 'captions language text' },
+  {
+    section: 'subtitles',
+    label: 'Film and show details',
+    about: 'details language translation titles descriptions plot episode names TMDB',
+  },
   {
     section: 'subtitles',
     label: 'Forced subtitles',
@@ -297,11 +309,37 @@ export const SETTINGS_INDEX: SettingEntry[] = [
   // Privacy
   {
     section: 'privacy',
+    label: 'Keep everything on this computer',
+    about:
+      'offline private mode no internet no lookups nothing sent local only IMDb list of titles match names here',
+    values: ['On', 'Off'],
+  },
+  {
+    section: 'privacy',
+    label: 'Remove pictures and details fetched online',
+    find: 'Keep everything on this computer',
+    about: 'delete posters plots cast downloaded internet privacy',
+  },
+  {
+    section: 'privacy',
+    label: 'Send Skrin’s lookups through a proxy',
+    find: 'Proxy',
+    about: 'proxy VPN Tor SOCKS5 HTTP address hide IP private',
+    values: ['On', 'Off'],
+  },
+  {
+    section: 'privacy',
     label: 'What leaves your computer',
     about: 'privacy data sent services internet hosts',
   },
 
   // Advanced
+  {
+    section: 'advanced',
+    label: 'Version',
+    find: 'Look for new versions',
+    about: 'about which version number release build what version am I running Skrin',
+  },
   {
     section: 'advanced',
     label: 'Look for new versions',
@@ -318,6 +356,12 @@ export const SETTINGS_INDEX: SettingEntry[] = [
     section: 'advanced',
     label: 'Sharing with other media apps',
     about: 'nfo Kodi MediaElch tinyMediaManager write',
+  },
+  {
+    section: 'advanced',
+    label: 'Picture steps given up',
+    about: 'step down dropped frames graphics card reset forget full picture',
+    when: (can) => can.engine === 'mpv',
   },
   {
     section: 'advanced',

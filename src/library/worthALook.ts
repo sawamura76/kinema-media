@@ -120,16 +120,16 @@ export function whyWords(raw: string, linkedTo: string): string {
   try {
     why = JSON.parse(raw) as Why;
   } catch {
-    return 'Kinema reads this file differently since an update.';
+    return 'Skrin reads this file differently since an update.';
   }
   switch (why.kind) {
     case 'title': {
       if (!why.now) {
-        return `Read again, Kinema finds no title in the file's name; it was read as “${why.was}”.`;
+        return `Read again, Skrin finds no title in the file's name; it was read as “${why.was}”.`;
       }
       const added = addedWords(why.was, why.now);
       if (added) {
-        return `The file's own name says ${added}, which Kinema did not read before. It is linked to “${linkedTo}”.`;
+        return `The file's own name says ${added}, which Skrin did not read before. It is linked to “${linkedTo}”.`;
       }
       return `Read again, the name says “${why.now}”, not “${why.was}”. It is linked to “${linkedTo}”.`;
     }
@@ -144,7 +144,7 @@ export function whyWords(raw: string, linkedTo: string): string {
         ? 'Read again, the name looks like an episode of a series, not a film.'
         : 'Read again, the name looks like a film, not an episode of a series.';
     case 'tie':
-      return `More than one title has this name and the file gives no year. Kinema chose the best known, “${linkedTo}”, which is not always the one meant.`;
+      return `More than one title has this name and the file gives no year. Skrin chose the best known, “${linkedTo}”, which is not always the one meant.`;
   }
 }
 
@@ -205,7 +205,7 @@ export function runWorthALook(
         const batch = await worthALookNext(BATCH);
         if (batch.length === 0) break;
         const fresh = await parse(batch, roots);
-        // The parser stopped part way (Kinema left the screen): what was not
+        // The parser stopped part way (Skrin left the screen): what was not
         // read stays on the list for next time.
         const byId = new Map(fresh.map((p) => [p.id, p]));
         const done: number[] = [];

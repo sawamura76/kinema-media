@@ -206,6 +206,162 @@ describe('TMDB age rating and studios', () => {
   });
 });
 
+describe('TMDB details language', () => {
+  const film = {
+    id: 603,
+    title: 'The English Title',
+    original_title: 'The English Title',
+    original_language: 'en',
+    release_date: '1999-03-31',
+    overview: 'The English description.',
+    genres: [{ name: 'Action' }],
+    vote_average: 8,
+    poster_path: '/en.jpg',
+    backdrop_path: null,
+    images: {
+      posters: [
+        { file_path: '/pl-low.jpg', iso_639_1: 'pl', vote_average: 3 },
+        { file_path: '/pl-high.jpg', iso_639_1: 'pl', vote_average: 6 },
+        { file_path: '/en.jpg', iso_639_1: 'en', vote_average: 9 },
+      ],
+      logos: [
+        { file_path: '/logo-en.png', iso_639_1: 'en', vote_average: 9 },
+        { file_path: '/logo-pl.png', iso_639_1: 'pl', vote_average: 1 },
+      ],
+    },
+  };
+
+  const fetchTitle = async (body: unknown, language: string) => {
+    responses = [{ status: 200, body }];
+    const result = tmdbGetTitle('key', '603', 'movie', language);
+    await vi.runAllTimersAsync();
+    return result;
+  };
+
+  /** English asks exactly what it asked before the setting existed. */
+  it('asks in English as before when English is chosen', async () => {
+    const title = await fetchTitle(film, 'en');
+    const params = new URL(calls[0].url).searchParams;
+    expect(params.get('language')).toBeNull();
+    expect(params.get('include_image_language')).toBe('en,null');
+    expect(params.get('append_to_response')).toBe(
+      'external_ids,videos,images,credits,release_dates,recommendations'
+    );
+    expect(title).toMatchObject({
+      title: 'The English Title',
+      english_title: 'The English Title',
+      overview: 'The English description.',
+      poster_url: 'https://image.tmdb.org/t/p/original/en.jpg',
+      logo_url: 'https://image.tmdb.org/t/p/original/logo-en.png',
+      details_language: 'en',
+    });
+  });
+
+  /**
+   * Another language rides on the same one request: the translations and
+   * that language's pictures. The request stays English, so every field has
+   * an English answer to fall back on and genres stay in the menus' language.
+   */
+  it('takes the translation alongside the English, in one request', async () => {
+    const title = await fetchTitle(
+      {
+        ...film,
+        translations: {
+          translations: [
+            { iso_639_1: 'pl', iso_3166_1: 'PL', data: { title: 'Polski tytuł', overview: 'Polski opis.' } },
+          ],
+        },
+      },
+      'pl-PL'
+    );
+    expect(calls).toHaveLength(1);
+    const params = new URL(calls[0].url).searchParams;
+    expect(params.get('language')).toBeNull();
+    expect(params.get('include_image_language')).toBe('pl,en,null');
+    expect(params.get('append_to_response')?.split(',')).toContain('translations');
+    expect(title).toMatchObject({
+      title: 'Polski tytuł',
+      english_title: 'The English Title',
+      overview: 'Polski opis.',
+      genres: JSON.stringify(['Action']),
+      poster_url: 'https://image.tmdb.org/t/p/original/pl-high.jpg',
+      logo_url: 'https://image.tmdb.org/t/p/original/logo-pl.png',
+      details_language: 'pl-PL',
+    });
+  });
+
+  /** TMDB answers a missing translation with nothing; each field falls back on its own. */
+  it('keeps the English for what the translation lacks', async () => {
+    const title = await fetchTitle(
+      {
+        ...film,
+        images: { posters: [{ file_path: '/en.jpg', iso_639_1: 'en' }] },
+        translations: {
+          translations: [{ iso_639_1: 'pl', iso_3166_1: 'PL', data: { title: 'Polski tytuł', overview: '' } }],
+        },
+      },
+      'pl-PL'
+    );
+    expect(title.title).toBe('Polski tytuł');
+    expect(title.overview).toBe('The English description.');
+    // No Polish poster: TMDB's English one stays.
+    expect(title.poster_url).toBe('https://image.tmdb.org/t/p/original/en.jpg');
+
+    const none = await fetchTitle({ ...film, translations: { translations: [] } }, 'es-ES');
+    expect(none).toMatchObject({ title: 'The English Title', overview: 'The English description.' });
+  });
+
+  /**
+   * Episodes in another language: asked for again in it, and laid over the
+   * English — an empty description or TMDB's made-up "Odcinek 2" keeps the
+   * English, a real name or description replaces it.
+   */
+  it('lays translated episodes over the English ones', async () => {
+    const ep = (n: number, name: string, overview: string) => ({
+      season_number: 1,
+      episode_number: n,
+      name,
+      overview,
+      air_date: null,
+      runtime: 25,
+      still_path: null,
+    });
+    responses = [
+      { status: 200, body: { seasons: [{ season_number: 1 }] } },
+      {
+        status: 200,
+        body: { 'season/1': { episodes: [ep(1, 'Pilot', 'The start.'), ep(2, 'The Return', 'Back again.')] } },
+      },
+      {
+        status: 200,
+        body: { 'season/1': { episodes: [ep(1, 'Początek', ''), ep(2, 'Odcinek 2', 'Znowu.')] } },
+      },
+    ];
+    const result = tmdbGetEpisodes('key', '105', 'pl-PL');
+    await vi.runAllTimersAsync();
+    const episodes = await result;
+
+    expect(calls).toHaveLength(3);
+    expect(new URL(calls[1].url).searchParams.get('language')).toBeNull();
+    expect(new URL(calls[2].url).searchParams.get('language')).toBe('pl-PL');
+    expect(episodes.map((e) => [e.name, e.overview])).toEqual([
+      ['Początek', 'The start.'],
+      ['The Return', 'Znowu.'],
+    ]);
+  });
+
+  it('asks for episodes once in English', async () => {
+    responses = [
+      { status: 200, body: { seasons: [{ season_number: 1 }] } },
+      { status: 200, body: { 'season/1': { episodes: [] } } },
+    ];
+    const result = tmdbGetEpisodes('key', '105', 'en');
+    await vi.runAllTimersAsync();
+    await result;
+    expect(calls).toHaveLength(2);
+  });
+});
+
 describe('OMDb Rotten Tomatoes score', () => {
   const ask = async (status: number, body: unknown) => {
     responses = [{ status, body }];
@@ -243,6 +399,12 @@ describe('OMDb Rotten Tomatoes score', () => {
   it('says none when OMDb has none, as for most series', async () => {
     expect(await ask(200, { Response: 'True', Ratings: [] })).toBeNull();
     expect(await ask(200, { Response: 'False', Error: 'Incorrect IMDb ID.' })).toBeNull();
+  });
+
+  it('does not turn an unreadable answer into "no score" (A6-07)', async () => {
+    const said = await ask(200, null);
+    expect(said).toBeInstanceOf(Error);
+    expect((said as Error).message).toBe('OMDb sent an answer Skrin could not read');
   });
 
   it('stops the pass on a wrong key or a spent allowance', async () => {

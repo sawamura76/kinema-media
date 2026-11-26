@@ -12,6 +12,9 @@ const none: About = {
   next_air_date: null,
   next_air_season: null,
   next_air_episode: null,
+  certifications: null,
+  similar: [],
+  season_posters: [],
 };
 
 describe('the credits line', () => {

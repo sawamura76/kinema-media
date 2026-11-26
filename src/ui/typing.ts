@@ -7,7 +7,7 @@
  * keyboard on screen the moment a field takes typing (capability
  * `screen_keyboard`, Android), that keyboard came up on mere arrival: moving
  * down past a field opened it over the page, and in Search it sat on top of
- * Kinema's own letters (owner, 2026-10-04). There, a field takes typing with
+ * Skrin's own letters (owner, 2026-10-04). There, a field takes typing with
  * `inputmode="none"` — a plugged-in keyboard still types, nothing appears —
  * and OK on the field opens the system's keyboard, as TV apps do.
  *

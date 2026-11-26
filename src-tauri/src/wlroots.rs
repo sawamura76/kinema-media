@@ -16,10 +16,10 @@
 //! own IPC — `output <name> hdr on|off`, state in `get_outputs` — which is
 //! used when Sway reports it. Hyprland switches HDR by itself for an HDR
 //! video in full screen (`cm_auto_hdr`) and does not report it here, so
-//! Kinema leaves HDR to it there (`hdr_unreported`).
+//! Skrin leaves HDR to it there (`hdr_unreported`).
 //!
 //! Each call opens its own connection and runs on its own thread with a time
-//! limit: a desktop that never answers must not hold up Kinema's start.
+//! limit: a desktop that never answers must not hold up Skrin's start.
 
 use std::collections::HashMap;
 use std::sync::mpsc;

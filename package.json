@@ -1,15 +1,17 @@
 {
   "name": "kinema",
-  "version": "0.15.2",
+  "version": "0.22.0",
   "description": "A local, serverless media library for movies, TV shows and music. Tauri 2 + React 19 + libmpv.",
   "license": "MIT",
   "author": "Basswaves",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Basswaves/kinema.git"
+    "url": "https://github.com/sawamura76/kinema-media.git"
   },
-  "homepage": "https://github.com/Basswaves/kinema",
-  "bugs": "https://github.com/Basswaves/kinema/issues",
+  "homepage": "https://github.com/sawamura76/kinema-media",
+  "bugs": {
+    "url": "https://github.com/sawamura76/kinema-media/issues"
+  },
   "engines": {
     "node": ">=20"
   },

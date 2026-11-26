@@ -10,7 +10,7 @@
 # pictures, its artwork folder) in <plan folder>/data first. A copy of a
 # Windows library works — its artwork paths are rewritten at start.
 #
-# exe defaults to $KINEMA_EXE, else src-tauri/target/release/kinema, which needs
+# exe defaults to $KINEMA_EXE, else src-tauri/target/release/skrin, which needs
 # libmpv-wrapper.so beside it or in lib/ beside it (built from its source:
 # CONTRIBUTING, "Checking Linux from Windows").
 #
@@ -22,7 +22,7 @@ set -euo pipefail
 
 plan="$(realpath "$1")"
 root="$(cd "$(dirname "$0")/.." && pwd)"
-exe="${2:-${KINEMA_EXE:-$root/src-tauri/target/release/kinema}}"
+exe="${2:-${KINEMA_EXE:-$root/src-tauri/target/release/skrin}}"
 shots="${3:-6,14,24}"
 dir="$(dirname "$plan")"
 
@@ -47,7 +47,7 @@ if [ "${GDK_BACKEND:-}" = x11 ] && command -v xdotool > /dev/null; then
     kill -0 "$pid" 2> /dev/null || break
     # Tauri's window and some that are never shown share the title; only a
     # mapped one can be read, and the others fail quietly.
-    for wid in $(xdotool search --pid "$pid" --name '^Kinema' 2> /dev/null); do
+    for wid in $(xdotool search --pid "$pid" --name '^Skrin' 2> /dev/null); do
       xwd -id "$wid" -silent 2> /dev/null | convert xwd:- "$dir/shot-${t}s.png" 2> /dev/null && break
     done
   done

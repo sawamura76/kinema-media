@@ -133,7 +133,7 @@ impl TcpTransport {
         e.into()
     }
 
-    /// Kinema's second change to this crate. The blocking receiver reads with
+    /// Skrin's second change to this crate. The blocking receiver reads with
     /// a short timeout so it can notice being stopped, and `read_exact` loses
     /// whatever it had read when that timeout falls in the middle of a
     /// message — the next read then starts inside the message ("bad magic"),
@@ -200,7 +200,7 @@ impl TcpTransport {
     #[inline]
     async fn do_connect(&mut self, _server_name: &str, server_address: SocketAddr) -> Result<()> {
         let socket = self.connect_timeout(&server_address).await?;
-        // Kinema's one change to this crate: each SMB request is small and
+        // Skrin's one change to this crate: each SMB request is small and
         // waits for its answer, so Nagle's algorithm held every one back for
         // a delayed acknowledgement (~40 ms) — 22 MB/s and a slow folder
         // listing even on one machine; 368 MB/s with it off.

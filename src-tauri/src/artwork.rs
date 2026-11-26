@@ -130,7 +130,17 @@ fn all_urls(conn: &rusqlite::Connection) -> rusqlite::Result<Vec<(String, Kind)>
          UNION ALL
          SELECT logo_url,     4 FROM titles   WHERE logo_url     IS NOT NULL AND logo_url     <> ''
          UNION ALL
-         SELECT still_url,    3 FROM episodes WHERE still_url    IS NOT NULL AND still_url    <> ''
+         SELECT still_url,    3 FROM episodes e WHERE still_url   IS NOT NULL AND still_url    <> ''
+            AND EXISTS (SELECT 1 FROM media_files m
+                         WHERE m.title_id = e.title_id AND m.missing = 0
+                           AND m.parsed_season = e.season
+                           AND e.episode BETWEEN m.parsed_episode
+                                             AND COALESCE(m.parsed_episode_last, m.parsed_episode))
+         UNION ALL
+         SELECT poster_url,   1 FROM season_art s WHERE poster_url <> ''
+            AND EXISTS (SELECT 1 FROM media_files m
+                         WHERE m.title_id = s.title_id AND m.missing = 0
+                           AND m.parsed_season = s.season)
          UNION ALL
          SELECT profile_url,  0 FROM people   WHERE profile_url  IS NOT NULL AND profile_url  <> ''
          UNION ALL
@@ -509,7 +519,7 @@ pub async fn cache_artwork(app: tauri::AppHandle) -> Result<CacheResult, String>
         return Ok(result);
     }
 
-    let client = tauri_plugin_http::reqwest::Client::new();
+    let client = crate::net::client(crate::net::Service::Tmdb)?.build().map_err(to_string_err)?;
     let window = std::thread::available_parallelism().map_or(2, |n| n.get());
     let slots = Arc::new(Semaphore::new(window_for(window)));
     let (finished, mut outcomes) = mpsc::unbounded_channel::<Option<Stored>>();
@@ -782,12 +792,17 @@ mod tests {
                                   poster_url TEXT, backdrop_url TEXT, logo_url TEXT);
              CREATE TABLE local_art (title_id INTEGER, kind TEXT);
              CREATE TABLE poster_choice (kind TEXT, provider TEXT, provider_id TEXT, url TEXT);
-             CREATE TABLE episodes (still_url TEXT);
+             CREATE TABLE episodes (title_id INTEGER, season INTEGER, episode INTEGER, still_url TEXT);
+             CREATE TABLE media_files (title_id INTEGER, missing INTEGER, parsed_season INTEGER,
+                                       parsed_episode INTEGER, parsed_episode_last INTEGER);
+             CREATE TABLE season_art (title_id INTEGER, season INTEGER, poster_url TEXT);
              CREATE TABLE people (profile_url TEXT);
              CREATE TABLE studios (logo_url TEXT);
              INSERT INTO titles (poster_url, backdrop_url, logo_url)
                   VALUES ('p', 'b', 'l'), ('p', 'b', NULL), ('both', 'both', '');
-             INSERT INTO episodes VALUES ('s'), ('s');
+             INSERT INTO media_files VALUES (1, 0, 1, 1, 2), (1, 1, 1, 4, NULL);
+             INSERT INTO episodes VALUES (1, 1, 1, 's'), (1, 1, 2, 's'), (1, 1, 3, 'not-owned'),
+                                         (1, 1, 4, 'gone');
              INSERT INTO people VALUES ('f');
              INSERT INTO studios VALUES ('st');",
         )

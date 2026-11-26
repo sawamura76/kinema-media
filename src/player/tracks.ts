@@ -1,6 +1,6 @@
 /**
  * Saying a track in words, and finding one by language. The tracks themselves
- * are read and chosen through the engine (engine.ts), in Kinema's terms.
+ * are read and chosen through the engine (engine.ts), in Skrin's terms.
  */
 import type { Track } from './engine';
 import { canonicalLang, languageName, sameLanguage } from './language';
@@ -152,7 +152,7 @@ function languageFromName(word: string): string | null {
  * `Film.no.forced.srt`, `Film.English.srt`, `Film.pt-BR.srt` — or null.
  * Only the last tag set off by dots counts, once the flags (`forced`, `sdh`)
  * are passed: a word further in is the film's title, not a language. Never
- * guessed from anything else (Kinema never lies).
+ * guessed from anything else (Skrin never lies).
  */
 export function languageFromFileName(name: string): string | null {
   for (const part of name.split('.').slice(1, -1).reverse()) {

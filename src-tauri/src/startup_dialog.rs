@@ -1,10 +1,10 @@
-//! The few things Kinema must say before its window exists: a restore's
+//! The few things Skrin must say before its window exists: a restore's
 //! outcome, a library that will not open, a start that failed.
 //!
 //! They are said on the main thread, inside `setup`, and wait for an answer. On
 //! Linux the dialog plugin cannot do that: its dialog is drawn by the GTK loop
 //! that this very thread runs, which is blocked waiting for it, so nothing ever
-//! appears and Kinema hangs with no window (seen under a headless X server,
+//! appears and Skrin hangs with no window (seen under a headless X server,
 //! 2026-11). There a GTK dialog is run directly; `run` turns the loop itself.
 //! Elsewhere the plugin's own dialog waits in its own loop.
 
@@ -27,6 +27,23 @@ static SHOWN: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new
 #[cfg_attr(target_os = "windows", allow(dead_code))]
 pub fn any_shown() -> bool {
     SHOWN.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+/// Where the page is parked while a start that cannot go on is explained.
+const HELD_PAGE: &str = "about:blank";
+
+/// Park the page on a blank one. For a start that is about to end: the
+/// library is not open, nothing is managed, and a page that loaded while the
+/// dialog's loop ran would call commands that panic for want of state.
+pub fn hold_page(app: &tauri::AppHandle) {
+    use tauri::Manager;
+    if let Some(window) = app.get_webview_window("main") {
+        if let Ok(url) = HELD_PAGE.parse() {
+            if let Err(e) = window.navigate(url) {
+                crate::log!("window: could not hold the page: {e}");
+            }
+        }
+    }
 }
 
 /// Say something, and wait until it has been read.
@@ -84,7 +101,7 @@ fn gtk_dialog(title: &str, message: &str, kind: Kind, ok: &str, cancel: Option<&
         gtk::ButtonsType::None,
         title,
     );
-    dialog.set_title("Kinema");
+    dialog.set_title("Skrin");
     dialog.set_secondary_text(Some(message));
     if let Some(cancel) = cancel {
         dialog.add_button(cancel, gtk::ResponseType::Reject);
@@ -98,4 +115,12 @@ fn gtk_dialog(title: &str, message: &str, kind: Kind, ok: &str, cancel: Option<&
         gtk::main_iteration();
     }
     answer == gtk::ResponseType::Accept
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn the_held_page_is_a_url() {
+        assert!(super::HELD_PAGE.parse::<tauri::Url>().is_ok());
+    }
 }

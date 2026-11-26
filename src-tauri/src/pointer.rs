@@ -1,4 +1,4 @@
-//! The mouse on mpv's own window, given back to Kinema's page.
+//! The mouse on mpv's own window, given back to Skrin's page.
 //!
 //! Where mpv plays in a window of its own (capabilities `own_window`: Linux),
 //! the player's page is hidden behind it and reaches the screen as a picture

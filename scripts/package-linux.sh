@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Build Kinema for Linux and package it three ways, into dist-linux/:
-#   kinema-linux-<arch>.deb       Debian, Ubuntu and their relatives
-#   kinema-linux-<arch>.rpm       Fedora and its relatives
-#   kinema-linux-<arch>.tar.gz
+#   skrin-linux-<arch>.deb       Debian, Ubuntu and their relatives
+#   skrin-linux-<arch>.rpm       Fedora and its relatives
+#   skrin-linux-<arch>.tar.gz
 # No version in the names, so the website can link to the latest release
 # directly (release.yml); the packages themselves still carry it.
 #                                     a folder to unpack and run, like the
@@ -29,20 +29,23 @@ case "$(uname -m)" in
 esac
 
 bash scripts/build-mpv-wrapper.sh
+# Tauri leaves earlier bundles in place, and a package named for another
+# version or name (Kinema's, before 0.17.0) would be copied below as well.
+rm -rf src-tauri/target/release/bundle/deb src-tauri/target/release/bundle/rpm
 npm run tauri build -- --bundles deb,rpm
 
 out="$root/dist-linux"
 rm -rf "$out"; mkdir -p "$out"
 bundle="$root/src-tauri/target/release/bundle"
-cp "$bundle"/deb/*.deb "$out/kinema-linux-${deb_arch}.deb"
-cp "$bundle"/rpm/*.rpm "$out/kinema-linux-${rpm_arch}.rpm"
+cp "$bundle"/deb/*.deb "$out/skrin-linux-${deb_arch}.deb"
+cp "$bundle"/rpm/*.rpm "$out/skrin-linux-${rpm_arch}.rpm"
 
 # The folder: the program, the wrapper in lib/ beside it (where the plugin
 # looks first), and what a person needs to read.
-folder="kinema-linux-${rpm_arch}"
+folder="skrin-linux-${rpm_arch}"
 stage="$(mktemp -d)/$folder"
 mkdir -p "$stage/lib"
-cp src-tauri/target/release/kinema "$stage/kinema"
+cp src-tauri/target/release/skrin "$stage/skrin"
 cp src-tauri/lib/libmpv-wrapper.so "$stage/lib/"
 cp LICENSE NOTICE.md "$stage/"
 cat > "$stage/README.txt" <<'TXT'

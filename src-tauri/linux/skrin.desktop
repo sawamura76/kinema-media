@@ -7,6 +7,7 @@ Exec={{exec}} %F
 StartupWMClass={{exec}}
 Icon={{icon}}
 Name={{name}}
+Keywords=Kinema;video;player;films;series;
 Terminal=false
 Type=Application
 MimeType=video/x-matroska;video/webm;video/mp4;video/x-m4v;video/quicktime;video/x-msvideo;video/x-ms-wmv;video/x-flv;video/mpeg;video/mp2t;video/x-ogm+ogg;video/3gpp;application/vnd.rn-realmedia;application/x-cd-image;

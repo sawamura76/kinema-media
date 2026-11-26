@@ -7,7 +7,7 @@
  * Two pieces rather than one block, because Home's notices keep their words
  * and their buttons in separate columns.
  *
- * Where Kinema cannot install it (not Windows), or winget turned out to be
+ * Where Skrin cannot install it (not Windows), or winget turned out to be
  * missing, the button is the link to ffmpeg's download page, as it always
  * was — under the same focus key, so a remote's focus stays where it was.
  *
@@ -19,6 +19,7 @@ import FocusButton from './FocusButton';
 import FocusGroup from './FocusGroup';
 import { openLink } from './links';
 import { useCapabilities } from '../capabilities';
+import { useOffline } from '../net/offline';
 import { ffmpegLacks } from '../library/api';
 import { ffmpegLacksWords } from './ffmpegNotice';
 import {
@@ -37,12 +38,15 @@ interface ButtonProps {
 export function FfmpegInstallButton({ focusKey, className = 'btn-primary' }: ButtonProps) {
   const can = useCapabilities();
   const install = useFfmpegInstall();
+  // In Keep everything on this computer, winget is not asked: the page to
+  // download it by hand opens in the browser instead.
+  const offline = useOffline() !== false;
   const noWinget = install.report?.outcome === 'no_winget';
-  if (!can?.installs_ffmpeg || noWinget) {
+  if (!can?.installs_ffmpeg || noWinget || offline) {
     return (
       <FocusButton
         focusKey={focusKey}
-        className={noWinget ? className : 'btn-secondary'}
+        className={noWinget || offline ? className : 'btn-secondary'}
         onSelect={() => void openLink(FFMPEG_DOWNLOAD_URL)}
       >
         Open the ffmpeg download page ↗
@@ -85,22 +89,22 @@ export function FfmpegInstallStatus() {
   if (ffmpegInstalled(report)) {
     return (
       <p className="settings-ok" role="status">
-        ffmpeg is installed. Kinema is reading your files with it in the background.
+        ffmpeg is installed. Skrin is reading your files with it in the background.
       </p>
     );
   }
   if (report.outcome === 'no_winget') {
     return (
       <p className="settings-warn" role="status">
-        Windows’ app installer (winget) is not on this computer, so Kinema cannot install ffmpeg
-        for you. Its download page has it for Windows; Kinema finds it once it is installed.
+        Windows’ app installer (winget) is not on this computer, so Skrin cannot install ffmpeg
+        for you. Its download page has it for Windows; Skrin finds it once it is installed.
       </p>
     );
   }
   return (
     <div className="ffmpeg-install-failed" role="status">
       <p className="settings-warn">
-        Could not install ffmpeg. {report.reason ?? ''} The details are in Kinema&rsquo;s log.
+        Could not install ffmpeg. {report.reason ?? ''} The details are in Skrin&rsquo;s log.
       </p>
       {report.tail.length > 0 && (
         <pre className="ffmpeg-install-tail">{report.tail.slice(-4).join('\n')}</pre>

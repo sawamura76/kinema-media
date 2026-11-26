@@ -4,7 +4,7 @@
  * Where the system has a folder picker of its own (Windows, Linux) that is
  * what opens. Where it has none — Android, whose TV boxes often lack one, and
  * whose picker would answer in its document system rather than with a folder
- * Kinema can read by path — Kinema shows the folders itself
+ * Skrin can read by path — Skrin shows the folders itself
  * (`FolderBrowser.tsx`): the drives Android has mounted, a USB drive or the
  * device's own storage, then the folders inside, chosen with a remote.
  *
@@ -22,7 +22,7 @@ export interface Place {
   name: string;
   /** A USB drive or a card, rather than the device's own storage. */
   removable: boolean;
-  /** For a share Kinema opens itself (`smb://…`): the server it is on. */
+  /** For a share Skrin opens itself (`smb://…`): the server it is on. */
   server?: Server;
 }
 
@@ -47,7 +47,7 @@ export const folderPlaces = (): Promise<DesktopPlace[]> => invoke<DesktopPlace[]
 /**
  * The separator a path is written with: a Windows path's backslash, else `/`
  * (Linux, Android, `smb://`). Kept, so a file's path is the one the library
- * stored and Kinema knows it as that library file.
+ * stored and Skrin knows it as that library file.
  */
 export function separatorOf(path: string): '\\' | '/' {
   return /^[A-Za-z]:/.test(path) || path.startsWith('\\\\') ? '\\' : '/';
@@ -91,7 +91,7 @@ export function rootHolding<R extends { path: string }>(roots: R[], path: string
 }
 
 /**
- * What Kinema may read (StoragePlugin.kt). `read` covers the films;
+ * What Skrin may read (StoragePlugin.kt). `read` covers the films;
  * `allFiles` the subtitles and .nfo files beside them, from Android 11 —
  * `off` where the device can grant it, `unavailable` where it cannot, and
  * `not-needed` where `read` already covers every file.
@@ -125,13 +125,17 @@ function emit(): void {
 }
 
 /**
- * A folder, or null if none was chosen. Kinema's own browser only where the
+ * A folder, or null if none was chosen. Skrin's own browser only where the
  * system answers that it has no picker: a system that gave no answer keeps
  * the picker every desktop has always had.
  */
 export async function chooseFolder(what: string): Promise<string | null> {
   if (capabilitiesNow()?.folder_picker !== false) {
-    const selected = await open({ directory: true, multiple: false });
+    const selected = await open({
+      directory: true,
+      multiple: false,
+      title: what === 'the library' ? 'Choose your folder' : `Choose your ${what} folder`,
+    });
     return typeof selected === 'string' ? selected : null;
   }
   // A second request while one is open replaces it, answering the first
@@ -161,18 +165,18 @@ export function useFolderRequest(): FolderRequest | null {
   );
 }
 
-/** A network server Kinema keeps a sign-in for (share_logins.rs). */
+/** A network server Skrin keeps a sign-in for (share_logins.rs). */
 export interface ShareLogin {
   server: string;
   user: string;
 }
 
 /**
- * Signs in to a network server Kinema opens itself (`nas`, or `nas:4450` off
+ * Signs in to a network server Skrin opens itself (`nas`, or `nas:4450` off
  * SMB's own port) and keeps the sign-in if the server accepts it — locked
  * with the device's key store. Rejects with words for people when it does
  * not. `kept` is false where the sign-in could not be
- * locked, and lasts until Kinema closes.
+ * locked, and lasts until Skrin closes.
  */
 export const saveShareLogin = (server: string, user: string, password: string) =>
   invoke<{ kept: boolean }>('save_share_login', { server, user, password });
@@ -183,7 +187,7 @@ export const shareLogins = () => invoke<ShareLogin[]>('share_logins');
 /** A file server that announced itself on the network (NetworkPlugin.kt). */
 export interface Server {
   name: string;
-  /** Its address, which is what Kinema connects to. */
+  /** Its address, which is what Skrin connects to. */
   host: string;
 }
 

@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Kinema Media</title>
     <!--
-      A system whose web engine is too old cannot read Kinema's scripts: a black
+      A system whose web engine is too old cannot read Skrin's scripts: a black
       screen for good, with no log. This says so instead. Keep it in the oldest
       syntax there is (var, function, no arrows or template strings), because it is
       the one thing that must run there. No timer: a slow start must never show it.
@@ -58,39 +58,39 @@
           line(
             box,
             'h1',
-            android ? 'Kinema needs a newer Android System WebView' : 'Kinema needs a newer web engine',
+            android ? 'Skrin needs a newer Android System WebView' : 'Skrin needs a newer web engine',
             'font-size:28px;line-height:1.25;font-weight:bold;'
           );
           if (android) {
             line(
               box,
               'p',
-              'This device has a version too old to run Kinema. Your files and your library are untouched.',
+              'This device has a version too old to run Skrin. Your files and your library are untouched.',
               ''
             );
             line(
               box,
               'p',
-              'To update it: open Google Play on this device, search for Android System WebView, and choose Update. Then open Kinema again.',
+              'To update it: open Google Play on this device, search for Android System WebView, and choose Update. Then open Skrin again.',
               ''
             );
             line(
               box,
               'p',
-              'If Google Play does not list it, look in Settings under Apps, among the system apps, and install any system update the device offers. A device with no update for it cannot run Kinema.',
+              'If Google Play does not list it, look in Settings under Apps, among the system apps, and install any system update the device offers. A device with no update for it cannot run Skrin.',
               ''
             );
           } else {
             line(
               box,
               'p',
-              'This computer has a version too old to run Kinema. Your files and your library are untouched.',
+              'This computer has a version too old to run Skrin. Your files and your library are untouched.',
               ''
             );
             line(
               box,
               'p',
-              'On Windows, update the Microsoft Edge WebView2 Runtime. On Linux, update your system, which brings a newer WebKitGTK. Then open Kinema again.',
+              'On Windows, update the Microsoft Edge WebView2 Runtime. On Linux, update your system, which brings a newer WebKitGTK. Then open Skrin again.',
               ''
             );
           }
@@ -108,7 +108,7 @@
           var name = error && error.name;
           var words = String(message || (error && error.message) || name || 'unknown');
           var syntax = name === 'SyntaxError' || /SyntaxError/.test(words);
-          // Kinema's scripts run as one: one that cannot be read means none ran.
+          // Skrin's scripts run as one: one that cannot be read means none ran.
           // Once they run, a SyntaxError can be bad data, and any error can be a
           // plain fault, which this must not blame on the system.
           if ((syntax && !window.__kinemaRan) || lacksSomething()) show(words);

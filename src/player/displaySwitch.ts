@@ -41,8 +41,9 @@ import {
   videoFacts,
 } from './engine';
 import { DISPLAY_MATCH_KEY, matchOn, switchSettings } from './systemOutput';
+import { readPictureVerdict } from './decodeCheck';
 
-/** Android's way (`systemOutput.ts`) rather than Kinema's own. */
+/** Android's way (`systemOutput.ts`) rather than Skrin's own. */
 const bySystem = () => capabilitiesNow()?.system_output === true;
 
 export const SWITCH_REFRESH_KEY = 'display_switch_refresh';
@@ -178,7 +179,7 @@ export async function mayswitch(): Promise<boolean> {
 /**
  * The screen mpv's picture is on, where the picture is mpv's own window
  * (Linux): mpv's `display-names`, "HDMI-1". Null where the picture is in
- * Kinema's window, whose screen the backend finds itself.
+ * Skrin's window, whose screen the backend finds itself.
  */
 async function pictureScreen(): Promise<string | null> {
   if (!capabilitiesNow()?.mpv_video.own_window) return null;
@@ -186,30 +187,86 @@ async function pictureScreen(): Promise<string | null> {
   return names?.split(',')[0]?.trim() || null;
 }
 
-/** The film as mpv decodes it. Waits for the first frame's parameters. */
-export async function filmNow(): Promise<Film | null> {
-  if (bySystem()) return poll(videoFacts, (v) => v.width > 0 && v.height > 0, PARAMS_WAIT_MS);
-  const gamma = await poll(
-    () => mpvGet('video-params/gamma', 'string') as Promise<string | null>,
-    (v) => v.length > 0,
-    PARAMS_WAIT_MS
-  );
-  if (gamma === null) return null;
+/**
+ * How often, while waiting for the first frame, mpv is asked whether a
+ * picture can come at all (decodeCheck.ts): a dozen reads each time, so not
+ * at every poll.
+ */
+const VERDICT_EVERY_MS = 500;
+
+/**
+ * Why `filmNow` found no film: no picture will come for this file — it has
+ * none, or this system cannot decode it — or none came in time.
+ */
+export type NoFilm = 'no-picture' | 'timeout';
+
+/**
+ * The film as mpv decodes it. Waits for the first frame's parameters — but
+ * not for a picture that cannot come (review A3-05, A3-01): a file with no
+ * video track, or one this system cannot decode, used to hold its sound
+ * paused for the whole wait. `path` is the file being waited for; without it
+ * only the wait ends it.
+ */
+export async function filmNow(path?: string): Promise<Film | NoFilm> {
+  if (bySystem()) {
+    const facts = await poll(videoFacts, (v) => v.width > 0 && v.height > 0, PARAMS_WAIT_MS);
+    return facts ?? 'timeout';
+  }
+  let gamma: string | null;
+  const until = Date.now() + PARAMS_WAIT_MS;
+  let askedAt = 0;
+  for (;;) {
+    gamma = ((await mpvGet('video-params/gamma', 'string').catch(() => null)) as string | null) || null;
+    if (gamma) break;
+    if (path && Date.now() - askedAt >= VERDICT_EVERY_MS) {
+      askedAt = Date.now();
+      const verdict = await readPictureVerdict(path).catch(() => null);
+      if (verdict?.state === 'none') return 'no-picture';
+    }
+    if (Date.now() > until) return 'timeout';
+    await sleep(150);
+  }
   const [width, height, fps] = await Promise.all([
     mpvGet('video-params/w', 'int64').catch(() => null) as Promise<number | null>,
     mpvGet('video-params/h', 'int64').catch(() => null) as Promise<number | null>,
     mpvGet('container-fps', 'double').catch(() => null) as Promise<number | null>,
   ]);
-  if (!width || !height) return null;
+  if (!width || !height) return 'timeout';
   return { width, height, fps: fps || null, hdr: gamma === 'pq' || gamma === 'hlg' };
 }
+
+/** The screen's link as the system reports it: "10-bit YCbCr 4:2:2", or null. */
+type LinkOf = { link_bits?: number | null; link_encoding?: string | null };
+const linkName = (s: LinkOf): string | null =>
+  s.link_bits ? `${s.link_bits}-bit${s.link_encoding ? ` ${s.link_encoding}` : ''}` : null;
+
+/**
+ * What the last switch for the film on screen asked for and what it got, for
+ * the details panel (outputCheck.ts): a mode the driver refused, or one it
+ * could make only by lowering the link's colour format, is said there rather
+ * than only in app.log. Null when nothing was asked of the screen.
+ */
+export interface SwitchOutcome {
+  asked: { width: number; height: number; rate: number };
+  /** The screen after, or null when the switch failed outright. */
+  got: { width: number; height: number; rate: number } | null;
+  error: string | null;
+  linkBefore: string | null;
+  linkAfter: string | null;
+}
+let outcome: SwitchOutcome | null = null;
+export const switchOutcome = (): SwitchOutcome | null => outcome;
 
 /**
  * Switch the screen for this film if the settings and the screen call for it.
  * Returns whether anything changed; the caller re-applies the colour-space
  * hint when it did, since HDR may now be on.
  */
-export async function switchForFilm(film: Film, onSwitching?: () => void): Promise<boolean> {
+export async function switchForFilm(
+  film: Film,
+  onSwitching?: () => void | Promise<void>
+): Promise<boolean> {
+  outcome = null;
   if (bySystem()) return switchBySystem(film, onSwitching);
   if (!(await isPictureFullscreen().catch(() => false))) return false;
   const name = await pictureScreen();
@@ -217,19 +274,34 @@ export async function switchForFilm(film: Film, onSwitching?: () => void): Promi
   const settings = await switchSettingsHere(screen);
   const target = chooseTarget(screen, film, settings);
   if (!target) return false;
-  onSwitching?.();
+  await onSwitching?.();
   console.log(
     `display: ${film.width}×${film.height} @ ${film.fps ? formatRate(film.fps) : '?'} fps${
       film.hdr ? ' HDR' : ''
     } → ${target.width}×${target.height}@${formatRate(target.rate)}${target.hdr ? ' + HDR on' : ''}`
   );
-  const after = await invoke<Screen & { exact_rate: number }>('switch_screen', {
-    width: target.width,
-    height: target.height,
-    hz: target.hz,
-    hdr: target.hdr,
-    screen: name,
-  });
+  const asked = { width: target.width, height: target.height, rate: target.rate };
+  const linkBefore = linkName(screen as Screen & LinkOf);
+  let after: Screen & LinkOf & { exact_rate: number };
+  try {
+    after = await invoke<Screen & LinkOf & { exact_rate: number }>('switch_screen', {
+      width: target.width,
+      height: target.height,
+      hz: target.hz,
+      hdr: target.hdr,
+      screen: name,
+    });
+  } catch (e) {
+    outcome = { asked, got: null, error: String(e), linkBefore, linkAfter: null };
+    throw e;
+  }
+  outcome = {
+    asked,
+    got: { width: after.width, height: after.height, rate: after.rate },
+    error: null,
+    linkBefore,
+    linkAfter: linkName(after),
+  };
   // mpv does not notice the change: its window is a child of ours, and it kept
   // reporting 59.972 Hz for a monitor switched to 23.976 (selftest, 2026-09-25).
   // Its display-timed frame pacing and the stats panel's cadence both depend
@@ -243,12 +315,15 @@ export async function switchForFilm(film: Film, onSwitching?: () => void): Promi
 }
 
 /** The same, on a system whose app is the whole screen (Android). */
-async function switchBySystem(film: Film, onSwitching?: () => void): Promise<boolean> {
+async function switchBySystem(
+  film: Film,
+  onSwitching?: () => void | Promise<void>
+): Promise<boolean> {
   if (!matchOn(await getSetting(DISPLAY_MATCH_KEY))) return false;
   const screen = await systemScreen();
   const target = chooseTarget(screen, film, switchSettings(true));
   if (!target) return false;
-  onSwitching?.();
+  await onSwitching?.();
   console.log(
     `display: ${film.width}×${film.height} @ ${film.fps ? formatRate(film.fps) : '?'} fps → ${
       target.width
@@ -262,6 +337,7 @@ async function switchBySystem(film: Film, onSwitching?: () => void): Promise<boo
 
 /** Put the screen back as it was before the first switch. */
 export async function restoreScreen(): Promise<void> {
+  outcome = null;
   if (bySystem()) {
     await restoreScreenMode().catch((e) => console.warn('display: restore failed', e));
     return;

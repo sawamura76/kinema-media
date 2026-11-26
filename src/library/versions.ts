@@ -1,7 +1,7 @@
 /**
  * Versions: the same film or episode in more than one file (owner,
  * 2026-10-24: one title with versions). versions.rs lists the files and keeps
- * the choice; this names each version in Kinema's own words and decides which
+ * the choice; this names each version in Skrin's own words and decides which
  * one Play means.
  *
  * Which one: the version picked last time for the title; the first time, the
@@ -97,7 +97,7 @@ function hdrWord(facts: FileFacts | null): string | null {
 const CODEC_WORDS: Record<string, string> = { hevc: 'HEVC', h264: 'AVC', av1: 'AV1', vp9: 'VP9' };
 
 /**
- * Names each file in Kinema's words, from the badges' facts: resolution, HDR
+ * Names each file in Skrin's words, from the badges' facts: resolution, HDR
  * and edition; where two would read the same, the video codec, then the
  * source, then the file's name are added; then the size.
  */
@@ -113,7 +113,7 @@ export function nameVersions(files: FileRead[]): Version[] {
     base.push(...(release?.editions ?? []));
     const codec = video ? (CODEC_WORDS[video.codec] ?? video.codec.toUpperCase()) : null;
     const source = release ? sourceLabel(release) : null;
-    // Last, the file's own name: what tells two apart when nothing Kinema
+    // Last, the file's own name: what tells two apart when nothing Skrin
     // reads does (an edition guessit does not know, two alike encodes).
     const name = file.path.split(/[\\/]/).pop()?.replace(/\.[^.]+$/, '') ?? null;
     return { base, extra: [codec, source, name] };
@@ -150,7 +150,12 @@ export function bestFit(versions: Version[], screen: ScreenCan | null): Version 
     // mode list a few pixels short should not count against a file.
     const fits = !screen || (v.width <= screen.width * 1.05 && v.height <= screen.height * 1.05);
     const hdrShown = !v.hdr || screen?.hdr !== false;
+    // Pictures far smaller than the screen (a sample, a thumbnail copy) come
+    // after any copy that is a real picture for it, however it fits: scaling
+    // 4K down is fine, a 180p clip blown up is not (A8-05).
+    const real = !screen || v.width * v.height >= screen.width * screen.height * 0.1 ? 1 : 0;
     return [
+      real,
       (fits ? 1 : 0) + (hdrShown ? 1 : 0),
       screen?.hdr === true && v.hdr ? 1 : 0,
       v.width * v.height,

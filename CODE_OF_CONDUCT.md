@@ -29,14 +29,14 @@ project happens.
 - Demanding free support, or a fix, on any timescale. This is one person's hobby
   project, given away.
 - Reopening a settled decision by repetition rather than by argument.
-- Piracy talk. Kinema plays files you already have; where they came from is not
+- Piracy talk. Skrin plays files you already have; where they came from is not
   a topic for this repository, and issues about acquiring media will be closed.
 
 ## Enforcement
 
 Report anything that needs attention by opening an issue, or privately via
 GitHub's [private vulnerability
-reporting](https://github.com/Basswaves/kinema/security/advisories/new) if it
+reporting](https://github.com/basswaves/skrin/security/advisories/new) if it
 should not be public.
 
 The maintainer will act as they see fit, up to and including blocking accounts.

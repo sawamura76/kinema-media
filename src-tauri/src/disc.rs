@@ -13,7 +13,7 @@
 //!    Where the clip's CLPI is still beside it, the languages are read here.
 //!  * An encrypted disc (AACS, BD+) does not open, and the reason is only in
 //!    mpv's log: `[e][bd] AACS encryption detected but cannot find libaacs.`
-//!    Kinema cannot decrypt a disc and does not try; it says what mpv said.
+//!    Skrin cannot decrypt a disc and does not try; it says what mpv said.
 //!
 //! Desktop only: Android's player has no Blu-ray support, so there a disc
 //! folder stays out of the library as before (`scanner.rs`).
@@ -249,16 +249,26 @@ fn mpv_log(app: &tauri::AppHandle) -> Result<PathBuf, String> {
 }
 
 /// Asked by the player as it opens a file: a few stat calls, no reading of
-/// the video. Files on a share Kinema opens itself (`smb://`) are never discs:
+/// the video. Files on a share Skrin opens itself (`smb://`) are never discs:
 /// mpv's Blu-ray support reads only what the system can open.
+///
+/// Off the window's thread, and given up on after `files::LOOK_WAIT`: on a
+/// share that has gone silent each of those stat calls waits until Windows
+/// gives up, about three minutes, and the window froze with it (A5-01).
 #[tauri::command]
-pub fn disc_source(app: tauri::AppHandle, path: String) -> DiscSource {
-    source_of(&path, || {
-        mpv_log(&app)
-            .ok()
-            .and_then(|log| std::fs::metadata(log).ok())
-            .map_or(0, |m| m.len())
+pub async fn disc_source(app: tauri::AppHandle, path: String) -> Result<DiscSource, String> {
+    let log = mpv_log(&app).ok();
+    crate::jobs::off_main(move || {
+        let film = PathBuf::from(&path);
+        crate::files::within(&film, crate::files::LOOK_WAIT, move || {
+            source_of(&path, || log.as_ref().and_then(|l| std::fs::metadata(l).ok()).map_or(0, |m| m.len()))
+        })
+        .ok_or_else(|| {
+            crate::log!("disc: the drive of the film being opened did not answer in {} s", crate::files::LOOK_WAIT.as_secs());
+            crate::files::NOT_ANSWERING.to_string()
+        })
     })
+    .await
 }
 
 fn source_of(path: &str, log_length: impl Fn() -> u64) -> DiscSource {

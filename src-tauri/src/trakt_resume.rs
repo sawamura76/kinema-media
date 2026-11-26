@@ -14,11 +14,11 @@
 //!
 //! - There is no separate pause call any more. `POST /scrobble/stop` with a
 //!   progress between 1 % and 79 % "will be treated as a pause" and saved;
-//!   **at 80 % or more it is scrobbled — a play in the history**. Kinema sends
+//!   **at 80 % or more it is scrobbled — a play in the history**. Skrin sends
 //!   its own finished items through `/sync/history` (`trakt.rs`), and Trakt
 //!   keeps every play it is sent, so a stop at 80 % or more is never sent
 //!   ([`STOP_BELOW`]): it would put a second play in the history.
-//! - Below 1 % Trakt answers 422 and ignores it; Kinema keeps nothing under
+//! - Below 1 % Trakt answers 422 and ignores it; Skrin keeps nothing under
 //!   30 seconds anyway (`playback.rs`).
 //! - `GET /sync/playback` lists every paused item with its `progress` (a
 //!   percentage), `paused_at` and an `id`; Trakt keeps them for six months.
@@ -64,7 +64,7 @@ const STOP_FROM: f64 = 1.0;
 const MIN_RESUME_SECS: f64 = 30.0;
 /// A resume point from a percentage starts this much earlier.
 const RESUME_EARLY_SECS: f64 = 5.0;
-/// Two positions this close are the same point: Kinema's own pause read back.
+/// Two positions this close are the same point: Skrin's own pause read back.
 /// Or this share of the file, should Trakt keep fewer decimals than were sent.
 const SAME_POINT_SECS: f64 = 10.0;
 const SAME_POINT_SHARE: f64 = 0.006;
@@ -100,7 +100,7 @@ async fn playback_list(client_id: &str, access: &str) -> Result<Vec<Value>, Stri
 
 // ---- reading: Trakt's resume points onto this library's files ---------------
 
-/// One of Trakt's resume points, as far as Kinema uses it.
+/// One of Trakt's resume points, as far as Skrin uses it.
 #[derive(Debug, Clone, PartialEq)]
 struct Paused {
     id: Option<i64>,
@@ -122,7 +122,7 @@ fn read_paused(item: &Value) -> Option<Paused> {
         "episode" => false,
         _ => return None,
     };
-    // An episode is named by its show's ids and its number, as Kinema names it.
+    // An episode is named by its show's ids and its number, as Skrin names it.
     let ids = if film { &item["movie"]["ids"] } else { &item["show"]["ids"] };
     let imdb = ids["imdb"].as_str().map(str::trim).filter(|s| !s.is_empty()).map(String::from);
     let tmdb = ids["tmdb"].as_i64().map(|n| n.to_string());
@@ -194,7 +194,7 @@ fn apply(conn: &Connection, items: &[Value]) -> rusqlite::Result<usize> {
         if copies.iter().any(|c| c.updated_at.is_some_and(|at| at >= p.paused_at)) {
             continue;
         }
-        // Kinema's own pause, read back: a copy that knows its length is
+        // Skrin's own pause, read back: a copy that knows its length is
         // already there.
         let own = copies.iter().any(|c| match (c.duration, c.position) {
             (Some(d), Some(at)) => (at - p.fraction * d).abs() < SAME_POINT_SECS.max(d * SAME_POINT_SHARE),

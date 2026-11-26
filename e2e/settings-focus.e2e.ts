@@ -151,3 +151,62 @@ test('Bring it in is reached by keys with empty fields, and says which field to 
   await press(page, 'Enter');
   await expect(page.locator('.settings-warn')).toHaveText('Fill in the API key first.');
 });
+
+test('in a small window the chosen section stays fully in view in the list (A10-07)', async ({ page }) => {
+  await page.setViewportSize({ width: 854, height: 480 });
+  await settings(page);
+  const inView = () =>
+    page.evaluate(() => {
+      const b = document.querySelector('.settings-nav button.active')!.getBoundingClientRect();
+      return { top: Math.round(b.top), bottom: Math.round(b.bottom), height: window.innerHeight };
+    });
+  const names = (await page.locator('.settings-nav button').allTextContents()).map((n) => n.trim());
+  // The last sections, chosen by keys (Enter on the entry).
+  for (const name of [names[names.length - 2], names[names.length - 1]]) {
+    await page.locator('.settings-nav button', { hasText: name }).first().focus();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('.settings-nav button.active')).toContainText(name);
+    await settled(page);
+    const r = await inView();
+    expect(r.top, `${name} top`).toBeGreaterThanOrEqual(0);
+    expect(r.bottom, `${name} bottom`).toBeLessThanOrEqual(r.height);
+    // And with the page at its top, where the list is not stuck yet: CI's
+    // WebKit got there by timing, so it is set here outright.
+    await page.evaluate(() => {
+      // The page scrolls in a box of its own, not the window.
+      let box = document.querySelector('.settings-nav')!.parentElement;
+      while (box && !(box.scrollHeight > box.clientHeight && /auto|scroll/.test(getComputedStyle(box).overflowY)))
+        box = box.parentElement;
+      (box ?? document.scrollingElement!).scrollTop = 0;
+    });
+    await settled(page);
+    const top = await inView();
+    expect(top.bottom, `${name} bottom, page at its top`).toBeLessThanOrEqual(top.height);
+  }
+  // By mouse: the first, then the last again.
+  await page.locator('.settings-nav button').first().click();
+  await settled(page);
+  await page.locator('.settings-nav button', { hasText: names[names.length - 1] }).first().click();
+  await settled(page);
+  const r = await inView();
+  expect(r.bottom).toBeLessThanOrEqual(r.height);
+});
+
+test('a TV folder becomes Movies and back by keys, beside Remove (GitHub #26)', async ({ page }) => {
+  await settings(page);
+  await onSection(page, 'Library');
+  await press(page, 'ArrowRight');
+  // The folder rows are above Add: Up until the ring is on the change button.
+  for (let i = 0; i < 8 && (await focused(page)) !== 'Make it Movies'; i++) await press(page, 'ArrowUp');
+  expect(await focused(page)).toBe('Make it Movies');
+  // Remove is beside it in the same row.
+  await press(page, 'ArrowRight');
+  expect(await focused(page)).toBe('Remove');
+  await press(page, 'ArrowLeft');
+  await press(page, 'Enter');
+  await expect(page.locator('.settings-roots .root-kind').first()).toHaveText('Movies');
+  await expect(page.locator('.settings-note')).toContainText('Now a Movies folder');
+  await expect.poll(() => focused(page)).toBe('Make it TV');
+  await press(page, 'Enter');
+  await expect(page.locator('.settings-roots .root-kind').first()).toHaveText('TV');
+});

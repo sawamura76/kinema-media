@@ -3,7 +3,7 @@
  * Back, Reload, Save as, Print — is a browser's, and Reload restarts the
  * whole interface, mid-film included. So it is off everywhere except in text
  * fields, which keep their Cut, Copy and Paste; marked text gets a small
- * Kinema menu with Copy; anywhere else right-click does nothing.
+ * Skrin menu with Copy; anywhere else right-click does nothing.
  *
  * Which text can be marked at all is App.css's (`user-select`): the title
  * page, Settings, the details panel and Needs attention's file names.
@@ -81,7 +81,7 @@ function onKeyDown(event: KeyboardEvent): void {
 
 function copyMarked(): void {
   const text = window.getSelection()?.toString() ?? '';
-  // execCommand copies the selection on every webview Kinema runs in, with no
+  // execCommand copies the selection on every webview Skrin runs in, with no
   // permission asked; the async API is the fallback where it is refused.
   let copied: boolean;
   try {

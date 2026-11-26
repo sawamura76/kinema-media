@@ -25,7 +25,7 @@ const UNREACHABLE = /^root unavailable, skipped: (.+)$/;
 const UNREAD = /^could not read: (.+) :: (.*)$/s;
 const EMPTIED = /^folder now empty: (\d+) :: (.+)$/;
 const GONE = /^videos gone: (\d+) :: (.+)$/;
-const UNREAD_NOTE = 'Nothing in it was hidden. Kinema tries again at the next scan.';
+const UNREAD_NOTE = 'Nothing in it was hidden. Skrin tries again at the next scan.';
 const EMPTIED_NOTE =
   'They stay in your library. If a disk belongs there, connect it. If you emptied it yourself, delete the folder.';
 const GONE_NOTE =
@@ -47,9 +47,9 @@ const BUSY_LINE = 'Wikipedia was busy, so some films wait to be matched until th
  * app.log (Browse's "startup scan problems").
  */
 const BACKGROUND: [RegExp, string][] = [
-  [/^reading files: /, 'Kinema could not read the details of some files this time'],
-  [/^intro detection: /, 'Kinema could not look for intros this time'],
-  [/^measuring pictures: /, 'Kinema could not measure the pictures’ shape this time'],
+  [/^reading files: /, 'Skrin could not read the details of some files this time'],
+  [/^intro detection: /, 'Skrin could not look for intros this time'],
+  [/^measuring pictures: /, 'Skrin could not measure the pictures’ shape this time'],
 ];
 const BACKGROUND_NOTE = 'Your library is fine; it tries again on the next scan.';
 
@@ -60,6 +60,17 @@ export interface ScanTrouble {
   note: string | null;
   /** Only background stages failed: said once on Home, not on every tab. */
   homeOnly?: true;
+  /** The lookups failed for want of a connection: Home says so, not that the names are wrong. */
+  offline?: true;
+}
+
+/**
+ * Whether the scan's errors say the services could not be reached (reach.ts,
+ * match.ts): a first scan with no internet names nothing, and the page must
+ * blame the connection, not the file names (A2-01).
+ */
+export function lookupsUnreachable(errors: string[]): boolean {
+  return errors.some((e) => /could not be reached|did not answer in time/.test(e));
 }
 
 /**

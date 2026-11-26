@@ -1,6 +1,6 @@
-//! Kinema in a Linux desktop's app menu and in "Open with" for videos, for the
+//! Skrin in a Linux desktop's app menu and in "Open with" for videos, for the
 //! folder unpacked from the .tar.gz (LOCAL-MEDIA.md phase 1). The .deb and
-//! .rpm do this themselves: their `.desktop` file (`linux/kinema.desktop`,
+//! .rpm do this themselves: their `.desktop` file (`linux/skrin.desktop`,
 //! named in `tauri.linux.conf.json`) lists the same video types.
 //!
 //! Standards only (XDG): a desktop entry in `$XDG_DATA_HOME/applications`
@@ -19,9 +19,9 @@
 
 use std::path::{Path, PathBuf};
 
-/// The video types Kinema opens, for `MimeType=`: the same extensions the
+/// The video types Skrin opens, for `MimeType=`: the same extensions the
 /// library scans for (`scanner.rs`), by their shared-mime-info names. The
-/// packages' list in `linux/kinema.desktop` is checked against this one.
+/// packages' list in `linux/skrin.desktop` is checked against this one.
 pub const MIME_TYPES: &[&str] = &[
     "video/x-matroska",
     "video/webm",
@@ -39,6 +39,9 @@ pub const MIME_TYPES: &[&str] = &[
     "application/x-cd-image",
 ];
 
+/// The entry's file, and the icon's, keep the name the app had until 0.17.0
+/// (Kinema): a folder copy added then is found and rewritten in place
+/// (`refresh`), and nobody sees either name.
 const FILE: &str = "kinema.desktop";
 /// Marks an entry as written by this button, so Remove never takes a
 /// package's or the user's own.
@@ -70,14 +73,15 @@ fn entry(exe: &str) -> String {
     format!(
         "[Desktop Entry]\n\
          Type=Application\n\
-         Name=Kinema\n\
+         Name=Skrin\n\
          Comment=A local, serverless media library for movies and TV shows\n\
          Exec={} %F\n\
          Icon=kinema\n\
          Terminal=false\n\
          Categories=AudioVideo;Video;Player;\n\
+         Keywords=Kinema;video;player;films;series;\n\
          MimeType={};\n\
-         StartupWMClass=kinema\n\
+         StartupWMClass=skrin\n\
          {MARK}\n",
         exec_arg(exe),
         MIME_TYPES.join(";")
@@ -100,7 +104,7 @@ fn icon_path(data: &Path) -> PathBuf {
     data.join("icons/hicolor/128x128/apps/kinema.png")
 }
 
-/// Kinema installed by a package (`/usr/bin/kinema`): the package's own entry
+/// Skrin installed by a package (`/usr/bin/skrin`): the package's own entry
 /// already does all this, so the button is not offered. A folder unpacked
 /// under `/usr/local` or `/opt` is not a package.
 pub fn packaged() -> bool {
@@ -109,7 +113,7 @@ pub fn packaged() -> bool {
 
 fn exe() -> Result<String, String> {
     let exe = std::env::current_exe().map_err(|e| e.to_string())?;
-    exe.into_os_string().into_string().map_err(|_| "Kinema's folder has a name the desktop cannot read.".into())
+    exe.into_os_string().into_string().map_err(|_| "Skrin's folder has a name the desktop cannot read.".into())
 }
 
 /// This button's entry, if there is one.
@@ -129,7 +133,7 @@ pub fn add() -> Result<(), String> {
 fn write(data: &Path, exe: &str) -> Result<(), String> {
     let path = entry_path(data);
     if path.exists() && ours(data).is_none() {
-        return Err(format!("{} is not Kinema's own; it was left as it is.", path.display()));
+        return Err(format!("{} is not Skrin's own; it was left as it is.", path.display()));
     }
     let icon = icon_path(data);
     for p in [&path, &icon] {
@@ -158,7 +162,7 @@ pub fn remove() -> Result<(), String> {
     Ok(())
 }
 
-/// The entry names another place for Kinema: the folder was moved.
+/// The entry names another place for Skrin: the folder was moved.
 fn stale(data: &Path, exe: &str) -> bool {
     ours(data).is_some_and(|text| !text.contains(&format!("Exec={} %F", exec_arg(exe))))
 }
@@ -168,7 +172,7 @@ pub fn refresh() {
     let (Some(data), Ok(exe)) = (data_home(), exe()) else { return };
     if stale(&data, &exe) {
         match write(&data, &exe) {
-            Ok(()) => crate::log!("app menu: Kinema has moved; the entry now names {exe}"),
+            Ok(()) => crate::log!("app menu: Skrin has moved; the entry now names {exe}"),
             Err(e) => crate::log!("app menu: could not update the entry: {e}"),
         }
     }
@@ -189,7 +193,7 @@ mod tests {
 
     #[test]
     fn exec_is_quoted_as_the_spec_says() {
-        assert_eq!(exec_arg("/home/a/Kinema/kinema"), "\"/home/a/Kinema/kinema\"");
+        assert_eq!(exec_arg("/home/a/Skrin/kinema"), "\"/home/a/Skrin/kinema\"");
         assert_eq!(exec_arg("/a b/100%/$x"), "\"/a b/100%%/\\\\$x\"");
         assert_eq!(exec_arg("/a\\b"), "\"/a\\\\\\\\b\"");
     }
@@ -218,7 +222,7 @@ mod tests {
     /// every extension the library scans has one of them.
     #[test]
     fn the_packages_name_the_same_video_types() {
-        let template = include_str!("../linux/kinema.desktop");
+        let template = include_str!("../linux/skrin.desktop");
         assert!(template.contains(&format!("
 MimeType={};
 ", MIME_TYPES.join(";"))));

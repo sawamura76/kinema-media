@@ -1,5 +1,5 @@
 /**
- * What this build of Kinema can do on the system it runs on, asked of Rust
+ * What this build of Skrin can do on the system it runs on, asked of Rust
  * once (`capabilities.rs`).
  *
  * Show or hide things by these answers, never by the system's name: "can this
@@ -23,22 +23,22 @@ export interface Capabilities {
   /** Sound can go straight to the receiver (Settings → Picture & sound). */
   audio_direct: boolean;
   display_switching: boolean;
-  /** Kinema runs in a window, so a desk is possible. Where it is not
+  /** Skrin runs in a window, so a desk is possible. Where it is not
    * (Android), the layout is always the TV's and nobody is asked (tv.ts). */
   windowed: boolean;
-  /** The system has a folder picker; where not, Kinema shows the folders
+  /** The system has a folder picker; where not, Skrin shows the folders
    * itself (library/folders.ts). */
   folder_picker: boolean;
   /** The system turns HDR on and passes sound through by itself (Android):
-   * Kinema only matches the screen, with one switch (player/systemOutput.ts). */
+   * Skrin only matches the screen, with one switch (player/systemOutput.ts). */
   system_output: boolean;
-  /** Kinema can run programs the user installed (ffmpeg, ffprobe, Skiptro).
+  /** Skrin can run programs the user installed (ffmpeg, ffprobe, Skiptro).
    * Where it cannot (Android), nothing offers them or says they are missing. */
   runs_programs: boolean;
   /** ffmpeg can be installed with one press through the system's package
    * manager (Windows' winget, ui/FfmpegInstall.tsx); elsewhere a link. */
   installs_ffmpeg: boolean;
-  /** Kinema can offer itself to the system as a video player, for the user to
+  /** Skrin can offer itself to the system as a video player, for the user to
    * choose in its own settings (Windows' Default apps, default_player.rs). */
   offers_player: boolean;
   /** The system puts its own keyboard on screen when a field takes typing
@@ -48,7 +48,7 @@ export interface Capabilities {
   opens_folders: boolean;
   /** The system can hand a file to another app (Android's share sheet). */
   shares_files: boolean;
-  /** Kinema opens network shares itself, as the system does not (Android):
+  /** Skrin opens network shares itself, as the system does not (Android):
    * the folder browser offers the network (library/folders.ts). */
   network_shares: boolean;
   /** The system has its own Back button the page never sees as a key
@@ -57,6 +57,9 @@ export interface Capabilities {
   /** Handed a video's id, the system opens it in an app of its own (Android's
    * YouTube app): a trailer goes there first (ui/trailer.ts). */
   video_apps: boolean;
+  /** Pictures above the seek bar are made here (player/seekPreview.ts): a
+   * second mpv on a computer, a software decoder on Android. */
+  seek_previews: boolean;
   /** The computer's memory in bytes; 0 when it could not be read. The mpv
    * read-ahead is sized from it (player/mpvOptions.ts `cacheOptions`). */
   memory_bytes: number;

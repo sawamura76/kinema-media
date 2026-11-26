@@ -101,7 +101,7 @@ fn pairs(new: &[Row], gone: &[Row]) -> Vec<(usize, usize)> {
 /// "ignored", a season or number placed by hand, a title kept under its own
 /// name. Those survive a rename as they are.
 pub(crate) const HAND_DECISION: &str = "(m.match_hold = 1 OR m.match_status = 'ignored'
-     OR m.placed_from IS NOT NULL OR m.match_reason LIKE 'manual:%'
+     OR m.placed_from IS NOT NULL OR IFNULL(m.match_reason, '') LIKE 'manual:%'
      OR EXISTS (SELECT 1 FROM titles t WHERE t.id = m.title_id AND t.provider = 'local'))";
 
 /// Pair the files `added` in this scan with missing rows, and move each pair

@@ -12,7 +12,11 @@
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
         tools:ignore="ScopedStorage" />
 
-    <!-- So Kinema can tell whether this device has an All files access screen
+    <!-- The update button (UpdatePlugin.kt): hands a downloaded, checked APK
+         to Android's own installer, where the user confirms. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
+    <!-- So Skrin can tell whether this device has an All files access screen
          before offering it (Android 11's package visibility). -->
     <queries>
         <intent>
@@ -34,6 +38,7 @@
         android:icon="@mipmap/ic_launcher"
         android:banner="@drawable/banner"
         android:label="@string/app_name"
+        android:allowBackup="false"
         android:requestLegacyExternalStorage="true"
         android:theme="@style/Theme.kinema"
         android:largeHeap="true"

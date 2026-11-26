@@ -1,17 +1,17 @@
 /**
  * "Two things need ffmpeg": the notice on Home, and the line on a title's page.
  *
- * ffmpeg is a program Kinema does not include (it ships nothing and downloads
+ * ffmpeg is a program Skrin does not include (it ships nothing and downloads
  * nothing itself) — on Windows a press asks winget to install it
  * (FfmpegInstall.tsx) — and two of its best features quietly depend on it:
- * the picture and sound details on a title's page, and Kinema's own intro and
+ * the picture and sound details on a title's page, and Skrin's own intro and
  * credits detection. Without it both are simply absent, and nothing anywhere
  * says why. Settings has always said so, but only to someone who went looking.
  *
  * Like the equipment notice it is one quiet line in the flow of Home, and "OK"
  * is for good: someone who does not want the extras is not asked again.
  *
- * Where Kinema cannot run programs at all (Android, `runs_programs`), ffmpeg
+ * Where Skrin cannot run programs at all (Android, `runs_programs`), ffmpeg
  * is never missing: there is nothing anyone could install, so nothing says so.
  */
 import { useEffect, useState } from 'react';
@@ -43,7 +43,7 @@ export async function readFfmpegNotice(): Promise<boolean> {
 /**
  * For a title's page: whether to say why its picture and sound details are
  * missing. Asked each time a page opens (one quick `-version`), so installing
- * ffmpeg takes effect without restarting Kinema.
+ * ffmpeg takes effect without restarting Skrin.
  */
 export function useFfmpegMissing(): boolean {
   const [missing, setMissing] = useState(false);
@@ -77,7 +77,7 @@ function list(words: string[]): string {
 
 /**
  * What an ffmpeg that runs but cannot decode some formats costs, in words
- * (`ffmpeg_lacks`, ffmpeg.rs) — or null when it lacks nothing Kinema uses.
+ * (`ffmpeg_lacks`, ffmpeg.rs) — or null when it lacks nothing Skrin uses.
  *
  * Each consequence is what the code does with such a file: the picture
  * measurement and the black-frame search decode video (aspect.rs, ffmpeg.rs
@@ -107,7 +107,9 @@ export function ffmpegLacksWords(lacks: string[]): string | null {
   ];
   return (
     `This ffmpeg cannot decode ${formats.join(' or ')} — some systems’ own builds leave them ` +
-    `out, Fedora’s ffmpeg-free among them. So ${costs.join('; and ')}. Everything else ` +
-    `works. A full build of ffmpeg has them (on Fedora, from RPM Fusion).`
+    `out, Fedora’s ffmpeg-free among them. So ${costs.join('; and ')}. Where the player ` +
+    `uses the system’s own codec libraries too (on Linux), the same gaps can leave a film ` +
+    `with no picture or no sound; the player says so when they do. A full build ` +
+    `of ffmpeg has them (on Fedora, from RPM Fusion).`
   );
 }

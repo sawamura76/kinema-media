@@ -11,12 +11,12 @@
 //!   verify the item + watched_at to ensure it's unique, it is up to your app
 //!   to verify this and not send duplicate plays." SIMKL ignores a repeat; Trakt
 //!   would show a rewatch. So the history sent at connect is only what Trakt
-//!   does not already have — Kinema asks for the account's watched films and
+//!   does not already have — Skrin asks for the account's watched films and
 //!   episodes first, and sends the difference. That is done by the sender, not
 //!   at the moment of connecting, so being offline then only delays it.
 //! - **Refresh tokens are single-use.** Each refresh returns a new refresh
 //!   token and ends the old one, so the new pair is stored before anything
-//!   else happens. A refresh refused because another Kinema on the same library
+//!   else happens. A refresh refused because another Skrin on the same library
 //!   refreshed first is recognised by the stored token having changed.
 //! - **The device sign-in needs the app's client secret**, by Trakt's
 //!   documentation. A desktop program cannot keep a secret; like the TMDB key,
@@ -32,10 +32,14 @@
 use crate::library::Db;
 use crate::settings::setting;
 use crate::tracking::{
-    self, clear, http, qr_svg, read_tokens, save_tokens, store, user_agent, DeviceCode, PollOutcome,
+    self, clear, qr_svg, read_tokens, save_tokens, store, user_agent, DeviceCode, PollOutcome,
     Sent, Status, Tokens, Waiting, TRAKT,
 };
 use crate::util::{now_secs, to_string_err};
+
+fn http() -> Option<tauri_plugin_http::reqwest::Client> {
+    tracking::http(crate::net::Service::Trakt)
+}
 use rusqlite::Connection;
 use serde_json::{json, Value};
 use std::collections::HashSet;
@@ -44,7 +48,7 @@ use std::sync::Mutex;
 use std::time::{Duration, Instant};
 use tauri::Manager;
 
-/// Kinema's Trakt app, set when a release is built (repository secrets, like
+/// Skrin's Trakt app, set when a release is built (repository secrets, like
 /// the TMDB key). A build without them has no Trakt unless an app is entered
 /// by hand under Developer tools ([`CLIENT_ID_KEY`], [`CLIENT_SECRET_KEY`]).
 const BUILTIN_CLIENT_ID: Option<&str> = option_env!("KINEMA_TRAKT_CLIENT_ID");
@@ -131,7 +135,7 @@ pub(crate) async fn delete(client_id: &str, path: &str, access: &str) -> Result<
     Ok(response.status().as_u16())
 }
 
-/// The app's id and a usable access token, when Kinema may talk to Trakt now:
+/// The app's id and a usable access token, when Skrin may talk to Trakt now:
 /// not a self-test, connected, and the sign-in still good.
 pub(crate) async fn signed_in(app: &tauri::AppHandle) -> Result<Option<(String, String)>, String> {
     if !tracking::allowed() {
@@ -248,7 +252,7 @@ async fn usable_access(
         },
         Ok((400 | 401, body)) => {
             let conn = db.0.lock().map_err(to_string_err)?;
-            // Another Kinema on this library may have refreshed first, which
+            // Another Skrin on this library may have refreshed first, which
             // ends the token this one used. Then the stored pair is newer.
             match read_tokens(&conn, TRAKT) {
                 Some(stored) if stored.refresh != tokens.refresh => Ok(Some(stored.access)),
@@ -317,7 +321,7 @@ fn films_watched(movies: &[Value]) -> HashSet<String> {
 }
 
 /// Add one show's watched episodes, from its `/shows/:id/progress/watched`
-/// answer, under the ids *Kinema* has for the show — the ones `has` will look
+/// answer, under the ids *Skrin* has for the show — the ones `has` will look
 /// them up by.
 ///
 /// Per show, because Trakt's `/sync/watched/shows` no longer lists seasons and
@@ -435,7 +439,7 @@ async fn send_all(app: &tauri::AppHandle) -> Result<(), String> {
         let body = history_body(&batch);
         let mut outcome = classify(post(&keys.0, "/sync/history", Some(&access), &body).await);
 
-        // A 401: see whether another Kinema on this library already refreshed,
+        // A 401: see whether another Skrin on this library already refreshed,
         // and refresh only if not.
         if matches!(outcome, Sent::Unauthorised) {
             let stored = {
@@ -461,11 +465,11 @@ async fn send_all(app: &tauri::AppHandle) -> Result<(), String> {
     }
 }
 
-/// The history sent once at connect: everything finished in Kinema that the
+/// The history sent once at connect: everything finished in Skrin that the
 /// account does not already have. Trakt would count a repeat as a second play.
 ///
 /// Films: every page of the account's watched films. Episodes: one question per
-/// show Kinema has episodes of — its watched progress — since nothing else
+/// show Skrin has episodes of — its watched progress — since nothing else
 /// Trakt answers says which show's episodes were watched. If any of it cannot
 /// be read, nothing is queued and it is tried again at the next send — sending
 /// the history blind is the one way to put duplicates into someone's Trakt.
@@ -482,7 +486,7 @@ async fn queue_missing_history(app: &tauri::AppHandle, client_id: &str, access: 
     let mut seen = films_watched(&films);
     let films_on_trakt = films.len();
 
-    // Each show once, by the ids Kinema has for it.
+    // Each show once, by the ids Skrin has for it.
     let mut shows: Vec<(Option<String>, Option<String>)> = Vec::new();
     for f in history.iter().filter(|f| f.kind != "movie") {
         let key = (f.imdb_id.clone(), f.tmdb_id.clone());
@@ -519,7 +523,7 @@ async fn queue_missing_history(app: &tauri::AppHandle, client_id: &str, access: 
     clear(&conn, HISTORY_DUE_KEY)?;
     crate::log!(
         "trakt: the account has {films_on_trakt} film(s) watched, and {} show(s) were checked; \
-         {queued} item(s) from Kinema it does not have were queued",
+         {queued} item(s) from Skrin it does not have were queued",
         shows.len()
     );
     Ok(())
@@ -600,18 +604,18 @@ pub async fn trakt_start_connect(app: tauri::AppHandle) -> Result<DeviceCode, St
     let (client_id, secret) = {
         let db = app.state::<Db>();
         let conn = db.0.lock().map_err(to_string_err)?;
-        self::app(&conn).ok_or("This copy of Kinema has no Trakt app.")?
+        self::app(&conn).ok_or("This copy of Skrin has no Trakt app.")?
     };
     let (status, body) = post(&client_id, "/oauth/device/code", None, &json!({ "client_id": client_id }))
         .await
         .map_err(|e| format!("Trakt could not be reached: {e}"))?;
     if status == 401 || status == 403 {
         crate::log!("trakt: Trakt does not accept this app ({status}): {body}");
-        return Err("Trakt does not recognise this copy of Kinema's app.".into());
+        return Err("Trakt does not recognise this copy of Skrin's app.".into());
     }
     let Some((device_code, shown, interval)) = parse_device(&body) else {
         crate::log!("trakt: unexpected answer to the sign-in request ({status}): {body}");
-        return Err("Trakt gave an answer Kinema does not understand.".into());
+        return Err("Trakt gave an answer Skrin does not understand.".into());
     };
     let now = Instant::now();
     *app.state::<TraktState>().0.lock().map_err(to_string_err)? = Some(Pending {
@@ -793,7 +797,7 @@ mod tests {
         assert!(has(&seen, &finished("movie", Some("tt0000001"), None, None, None)));
         assert!(has(&seen, &finished("series", None, Some("105"), Some(1), Some(2))));
         assert!(has(&seen, &finished("series", Some("tt0000002"), None, Some(1), Some(1))));
-        // Aired but not watched on Trakt: Kinema's watch goes.
+        // Aired but not watched on Trakt: Skrin's watch goes.
         assert!(!has(&seen, &finished("series", None, Some("105"), Some(1), Some(3))));
         assert!(!has(&seen, &finished("series", None, Some("105"), Some(2), Some(1))));
         assert!(!has(&seen, &finished("movie", None, Some("12"), None, None)));

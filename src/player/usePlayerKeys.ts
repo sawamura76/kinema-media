@@ -1,6 +1,6 @@
 /**
  * The player's keys: a keyboard, a remote's buttons, and keys pressed on
- * mpv's own window (passed on by usePlaybackEngine). Arrows seek until Up or
+ * mpv's own window (passed on by usePlaybackEngine). Arrows seek, playing or paused, until Up or
  * Down hands them to the controls; Back steps out one layer at a time; OK
  * takes whatever is on offer. The spatial system has its own handler, and
  * exactly one of the two acts on any press (docs/GOTCHAS.md).
@@ -22,6 +22,7 @@ const TRANSPORT_SKIP_SECS = 30;
 
 export function usePlayerKeys({
   togglePauseByKey,
+  paused,
   toggleFullscreen,
   backOut,
   exit,
@@ -54,6 +55,8 @@ export function usePlayerKeys({
 }: {
   /** Space, OK with nothing on offer, and the remote's play/pause. */
   togglePauseByKey: () => Promise<void>;
+  /** Paused, OK plays again before it takes any prompt (GitHub #25). */
+  paused: boolean;
   toggleFullscreen: () => Promise<void>;
   /** The last rung of the Back ladder (useScreen). */
   backOut: () => Promise<void>;
@@ -185,7 +188,7 @@ export function usePlayerKeys({
           break;
         case 'MediaPause':
           e.preventDefault();
-          void setPaused(true).then(enterOsdFocus);
+          void setPaused(true).then(showOsd);
           break;
         // Stop means leave the player, the same way out as Back takes from
         // the top of its ladder — including out of fullscreen.
@@ -243,7 +246,12 @@ export function usePlayerKeys({
         case 'Enter':
           if (osdFocus) break;
           e.preventDefault();
-          if (resumedFrom !== null) {
+          // Paused, OK plays: pausing used to put the ring on Play, so this is
+          // what OK did then, and a prompt still showing is not what someone
+          // who paused is answering (GitHub #25).
+          if (paused) {
+            void togglePauseByKey();
+          } else if (resumedFrom !== null) {
             startOver();
           } else if (skipPrompt) {
             void performSkip();
@@ -261,6 +269,7 @@ export function usePlayerKeys({
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [
     togglePauseByKey,
+    paused,
     toggleFullscreen,
     backOut,
     exit,

@@ -28,6 +28,19 @@ import { spawn, execSync } from 'node:child_process';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createServer } from 'node:net';
+import { cpus, homedir } from 'node:os';
+
+/** A port nothing listens on, so two verify runs (two worktrees) never share a dev server. */
+const freePort = () =>
+  new Promise((resolve, reject) => {
+    const s = createServer();
+    s.once('error', reject);
+    s.listen(0, () => {
+      const { port } = s.address();
+      s.close(() => resolve(port));
+    });
+  });
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const logDir = join(root, '.verify');
@@ -117,10 +130,39 @@ if (groups.has('build')) {
   lanes.push([{ name: 'vite build', cmd: 'npx vite build --logLevel warn' }]);
 }
 if (groups.has('rust')) {
-  lanes.push([
+  const lane = [
     { name: 'cargo test', cmd: `${cargo} test ${manifest} -q` },
     { name: 'clippy', cmd: `${cargo} clippy ${manifest} -q --all-targets -- -D warnings` },
-  ]);
+  ];
+  // CI's "Rust lints for Android": code only Android compiles (and, the other
+  // way round, desktop-only modules that are dead code there) is held to the
+  // same rule. Needs the Android target and the NDK, which only the Linux side
+  // (WSL, scripts/android-bench.sh's ~/Android) has; elsewhere it is said, not
+  // silently left out. Three times in round 10 a desktop-only module broke it.
+  const androidNdk = join(process.env.ANDROID_HOME ?? join(homedir(), 'Android'), 'ndk', '28.2.13676358');
+  const androidBin = join(process.env.NDK_HOME ?? androidNdk, 'toolchains', 'llvm', 'prebuilt', 'linux-x86_64', 'bin');
+  let haveTarget = false;
+  if (!win) {
+    try {
+      haveTarget = execSync('rustup target list --installed', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
+        .includes('aarch64-linux-android');
+    } catch {}
+  }
+  if (haveTarget && existsSync(androidBin)) {
+    lane.push({
+      name: 'clippy android',
+      cmd: `${cargo} clippy ${manifest} -q --target aarch64-linux-android --all-targets -- -D warnings`,
+      env: {
+        CC_aarch64_linux_android: join(androidBin, 'aarch64-linux-android24-clang'),
+        AR_aarch64_linux_android: join(androidBin, 'llvm-ar'),
+      },
+    });
+  } else {
+    console.log(
+      'SKIP  clippy android: needs the aarch64-linux-android target and the NDK (Linux/WSL); CI runs it. Run it with: scripts/wsl.ps1 "npm run verify -- rust"'
+    );
+  }
+  lanes.push(lane);
 }
 if (groups.has('ui')) {
   lanes.push([{ name: 'playwright', cmd: `npx playwright test ${pwProjects} --reporter=dot` }]);
@@ -134,6 +176,20 @@ if (groups.has('nav')) {
   lanes.push([{ name: 'test:nav', cmd: `npx playwright test -c playwright.nav.config.ts ${pwProjects}` }]);
 }
 
+// Playwright's dev server: its own free port per run. When the keyboard flows
+// and the navigation walk run side by side, each takes half the cores (two
+// pools of one-per-core starved each other and the cargo lane: timeouts that
+// pass alone, see GOTCHAS "e2e under load").
+const both = groups.has('ui') && groups.has('nav');
+const pwWorkers = both ? { KINEMA_E2E_WORKERS: String(Math.max(2, Math.floor(cpus().length / 2))) } : {};
+for (const lane of lanes)
+  for (const step of lane) {
+    if (step.name === 'playwright')
+      step.env = { ...pwWorkers, KINEMA_E2E_PORT: String(await freePort()) };
+    if (step.name === 'test:nav')
+      step.env = { ...pwWorkers, KINEMA_E2E_NAV_PORT: String(await freePort()) };
+  }
+
 const TAIL = 40;
 const results = [];
 
@@ -143,7 +199,7 @@ function runStep(step) {
     const child = spawn(step.cmd, {
       cwd: root,
       shell: true,
-      env: { ...process.env, FORCE_COLOR: '0', CI: process.env.CI ?? '' },
+      env: { ...process.env, FORCE_COLOR: '0', CI: process.env.CI ?? '', ...(step.env ?? {}) },
     });
     let out = '';
     child.stdout.on('data', (d) => (out += d));

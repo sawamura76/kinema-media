@@ -1,5 +1,5 @@
 /**
- * A YouTube trailer in Kinema (TrailerOverlay.tsx, trailer.ts): YouTube's
+ * A YouTube trailer in Skrin (TrailerOverlay.tsx, trailer.ts): YouTube's
  * embed in the overlay, driven by keys alone — OK pauses, the arrows seek,
  * Down reaches the buttons, Back closes and the ring goes home — and any error
  * YouTube reports sends the trailer to the browser instead.
@@ -7,6 +7,7 @@
  * IFrame API's messages as YouTube's player does and keeps what it was told.
  */
 import { expect, test, type Frame, type Page } from '@playwright/test';
+import { readFileSync } from 'node:fs';
 import { focused, press } from './kb';
 
 const KEY = 'M7lc1UVf-VE';
@@ -137,3 +138,53 @@ for (const code of [150, 153]) {
     await expect(page.locator('.detail h1')).toHaveText('Example Film');
   });
 }
+
+// Linux: the page comes from `tauri://`, so the embed sits behind the small page
+// the core serves on this computer (trailer_relay.rs, the real page is read from
+// its source here). The overlay talks to that page, which passes messages on.
+test.describe('behind the core’s own page (Linux)', () => {
+  const RELAY = 'http://127.0.0.1:47124/';
+  const relayPage = (): string => {
+    const rust = readFileSync('src-tauri/src/trailer_relay.rs', 'utf8');
+    const m = rust.match(/const PAGE: &str = r#"([\s\S]*?)"#;/);
+    if (!m) throw new Error('trailer_relay.rs: no PAGE');
+    return m[1];
+  };
+
+  async function openLinux(page: Page, error: number | null): Promise<void> {
+    await page.route(`${RELAY}**`, (route) => route.fulfill({ contentType: 'text/html', body: relayPage() }));
+    await page.addInitScript(() => localStorage.setItem('kinemaMockPageScheme', 'tauri:'));
+    await open(page, error);
+  }
+
+  test('plays, answers the remote, and Back closes it', async ({ page }) => {
+    await openLinux(page, null);
+    await expect(page.locator('.trailer iframe')).toHaveAttribute('src', `${RELAY}?k=${KEY}`);
+    await expect(page.locator('.trailer-screen')).toHaveClass(/focused/);
+    await expect
+      .poll(() => page.frames().some((f) => f.url().startsWith('https://www.youtube-nocookie.com/embed/')))
+      .toBe(true);
+    await page.evaluate(() => new Promise((r) => setTimeout(r, 300)));
+    await press(page, 'Enter');
+    await expect(page.locator('.trailer-keys')).toContainText('Paused');
+    await press(page, 'Enter');
+    await expect.poll(() => told(page)).toEqual(['pauseVideo', 'playVideo']);
+    await press(page, 'Escape');
+    await expect(page.locator('.trailer')).toHaveCount(0);
+    expect(await opened(page)).toEqual([]);
+  });
+
+  test('YouTube’s error 153 still sends the trailer to the browser', async ({ page }) => {
+    await openLinux(page, 153);
+    await expect(page.locator('.trailer')).toHaveCount(0);
+    await expect.poll(() => opened(page)).toEqual([WATCH]);
+  });
+
+  test('a page that cannot start sends the trailer to the browser', async ({ page }) => {
+    await page.route(`${RELAY}**`, (route) => route.abort());
+    await page.addInitScript(() => localStorage.setItem('kinemaMockPageScheme', 'tauri:'));
+    await open(page, null);
+    await expect.poll(() => opened(page), { timeout: 15000 }).toEqual([WATCH]);
+    await expect(page.locator('.trailer')).toHaveCount(0);
+  });
+});

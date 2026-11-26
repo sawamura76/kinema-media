@@ -1,5 +1,6 @@
 mod analyse;
 mod applog;
+mod fetched_online;
 mod aspect;
 mod collections;
 mod audio_reserve;
@@ -12,6 +13,7 @@ mod default_player;
 pub use default_player::uninstall_cleanup;
 mod detect;
 mod disc;
+mod file_state;
 mod display;
 mod engine;
 #[cfg(target_os = "windows")]
@@ -22,6 +24,7 @@ mod ffmpeg_install;
 mod files;
 mod history;
 mod imdb;
+mod imdb_titles;
 mod introdb;
 mod introdb_app;
 mod jobs;
@@ -54,6 +57,7 @@ mod local_art;
 mod netshare;
 mod nfo;
 mod overlay;
+mod home_top;
 mod page_life;
 mod people;
 mod placing;
@@ -71,10 +75,15 @@ mod power;
 mod probe;
 mod procstats;
 mod scanner;
+mod preview_job;
+mod seek_preview;
+mod sub_timing;
 mod selftest;
 mod startup_dialog;
+mod net;
 mod reach;
 mod report;
+mod secrets;
 mod settings;
 mod share_logins;
 mod simkl;
@@ -86,7 +95,10 @@ mod subtitle_files;
 mod tracking;
 mod trakt;
 mod trakt_resume;
+mod extras;
+mod region;
 mod trailer;
+mod trailer_relay;
 mod updates;
 mod util;
 mod videos;
@@ -120,7 +132,7 @@ fn open_library(app: &tauri::AppHandle) -> Result<(), String> {
     // The library database lives in app data, never next to the media —
     // network shares stay read-only as far as this app is concerned.
     let dir = data_dir(app)
-        .map_err(|e| format!("Kinema could not work out where to keep its library.\n\n{e}"))?;
+        .map_err(|e| format!("Skrin could not work out where to keep its library.\n\n{e}"))?;
 
     if selftest::plan_path().is_some() {
         let real = app
@@ -141,7 +153,7 @@ fn open_library(app: &tauri::AppHandle) -> Result<(), String> {
 
     std::fs::create_dir_all(&dir).map_err(|e| {
         format!(
-            "Kinema could not create its data folder.\n\n{}\n\n{e}",
+            "Skrin could not create its data folder.\n\n{}\n\n{e}",
             dir.display()
         )
     })?;
@@ -161,7 +173,7 @@ fn open_library(app: &tauri::AppHandle) -> Result<(), String> {
     }
 
     // Before anything opens the library: a restore asked for in Settings is
-    // carried out here, as Kinema starts again. Its outcome is said in a dialog,
+    // carried out here, as Skrin starts again. Its outcome is said in a dialog,
     // since the webview does not exist yet and a restore nobody hears about is
     // one nobody can tell from one that did nothing.
     if selftest::plan_path().is_none() {
@@ -170,7 +182,7 @@ fn open_library(app: &tauri::AppHandle) -> Result<(), String> {
                 log!("backup: restored the copy made at {}", done.made_at);
                 startup_dialog::tell(
                     app,
-                    "Kinema",
+                    "Skrin",
                     "Your library was put back from the safety copy you chose.",
                     startup_dialog::Kind::Info,
                 );
@@ -194,6 +206,10 @@ fn open_library(app: &tauri::AppHandle) -> Result<(), String> {
         Ok(conn) => conn,
         Err(e) => open_from_a_safety_copy(app, &dir, &path, e)?,
     };
+    // The library's own files now exist (-wal, -shm): the same again, for them.
+    if let Err(e) = util::keep_private(&dir) {
+        log!("could not make the library files private to this account: {e}");
+    }
     // A library brought from another system (a restored safety copy).
     match artwork::use_this_systems_separator(&primary) {
         Ok(0) => {}
@@ -218,12 +234,14 @@ fn open_library(app: &tauri::AppHandle) -> Result<(), String> {
     // for why it exists at all.
     let scanner = db::open_secondary(&path).map_err(|e| {
         format!(
-            "Kinema opened its library but could not open a second connection \
+            "Skrin opened its library but could not open a second connection \
              for scanning.\n\n{}\n\n{e}",
             path.display()
         )
     })?;
 
+    // Before anything can ask the internet for something.
+    net::reload(&primary);
     app.manage(Db(Mutex::new(primary)));
     app.manage(ScanDb(Mutex::new(scanner)));
     app.manage(jobs::Jobs::default());
@@ -251,11 +269,11 @@ fn open_from_a_safety_copy(
 
     let put_back = startup_dialog::ask(
         app,
-        "Kinema could not open its library",
+        "Skrin could not open its library",
         &said,
         startup_dialog::Kind::Warning,
         "Put it back",
-        Some("Close Kinema"),
+        Some("Close Skrin"),
     );
     if !put_back {
         log!("library: the safety copy was declined; closing");
@@ -265,7 +283,7 @@ fn open_from_a_safety_copy(
     log!("library: put back {}", copy.name);
     let conn = db::open(path).map_err(|e| {
         format!(
-            "Kinema put back the safety copy from {}, and could not open that either. The \
+            "Skrin put back the safety copy from {}, and could not open that either. The \
              library as it was is kept among the safety copies.\n\n{}\n\n{e}",
             backup::date_of(&copy),
             path.display()
@@ -273,7 +291,7 @@ fn open_from_a_safety_copy(
     })?;
     startup_dialog::tell(
         app,
-        "Kinema",
+        "Skrin",
         &format!("Your library was put back from the safety copy from {}.", backup::date_of(&copy)),
         startup_dialog::Kind::Info,
     );
@@ -297,45 +315,51 @@ pub fn run() {
 
     #[cfg_attr(mobile, allow(unused_mut))]
     let mut builder = tauri::Builder::default();
-    // One Kinema at a time. Two would each switch the display and take the
+    // One Skrin at a time. Two would each switch the display and take the
     // sound device, and the second player would either fail or fight the
     // first for the screen. Starting it again brings the running one forward.
     //
     // Not in a development build, or it would refuse to start beside the
     // release build in use, and not under a self-test, which works on its own
-    // copy of the library and must be able to run while Kinema is open. Both
+    // copy of the library and must be able to run while Skrin is open. Both
     // are decided here rather than in the plugin because it registers itself
     // for the whole process. It has to come before the other plugins.
     //
-    // A desktop matter: Android keeps one Kinema by itself (the activity's
+    // A desktop matter: Android keeps one Skrin by itself (the activity's
     // `singleTask`), and the plugin has no mobile side.
     #[cfg(desktop)]
     if !cfg!(debug_assertions) && selftest::plan_path().is_none() {
         builder = builder.plugin(tauri_plugin_single_instance::init(|app, args, cwd| {
-            log!("a second Kinema was started; bringing this one forward");
+            log!("a second Skrin was started; bringing this one forward");
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.unminimize();
                 let _ = window.show();
                 let _ = window.set_focus();
             }
             // Started for a video (opened.rs): this one plays it instead.
-            let args = args.into_iter().map(std::ffi::OsString::from);
-            if let Some(path) = opened::from_args(args, std::path::Path::new(&cwd)) {
-                log!("opened: {} passed on by a second Kinema", path.display());
-                use tauri::Emitter;
-                let _ = app.emit(
-                    opened::EVENT,
-                    opened::Opened {
-                        path: path.to_string_lossy().into_owned(),
-                        launched: false,
-                        started_ms: opened::started_ms(),
-                    },
-                );
-            }
+            // Looked at off the window's thread: this runs on it, and the
+            // second Skrin waits until it returns (A5-02); a file on a share
+            // that has gone silent would hold both (A5-01).
+            let app = app.clone();
+            let args: Vec<std::ffi::OsString> = args.into_iter().map(Into::into).collect();
+            std::thread::spawn(move || {
+                if let Some(path) = opened::from_args(args, std::path::Path::new(&cwd)) {
+                    log!("opened: {} passed on by a second Skrin", path.display());
+                    use tauri::Emitter;
+                    let _ = app.emit(
+                        opened::EVENT,
+                        opened::Opened {
+                            path: path.to_string_lossy().into_owned(),
+                            launched: false,
+                            started_ms: opened::started_ms(),
+                        },
+                    );
+                }
+            });
         }));
     }
 
-    share_logins::register(places::register(engine::register(builder)))
+    seek_preview::register(updates::register(share_logins::register(places::register(engine::register(builder)))))
         .manage(mini_window::Floating::default())
         .on_window_event(mini_window::on_event)
         .plugin(tauri_plugin_opener::init())
@@ -352,9 +376,14 @@ pub fn run() {
                 // with no window, no message and nothing in either log — an app
                 // that "just doesn't start". A dialog is the only surface left
                 // this early, since the webview does not exist yet.
+                // The library is not open, so none of its state is managed. The
+                // dialog turns the same loop that runs the page, and a page
+                // asking for it would panic every command (A5-02): hold it
+                // on a blank page until we exit.
+                startup_dialog::hold_page(app.handle());
                 startup_dialog::tell(
                     app.handle(),
-                    "Kinema could not start",
+                    "Skrin could not start",
                     &message,
                     startup_dialog::Kind::Error,
                 );
@@ -363,7 +392,7 @@ pub fn run() {
                 // only add an invisible second failure.
                 std::process::exit(1);
             }
-            // A video Kinema was started for (opened.rs), for the page to
+            // A video Skrin was started for (opened.rs), for the page to
             // take. Read before the page asks, which is after this returns.
             let cwd = std::env::current_dir().unwrap_or_default();
             let at_launch = opened::from_args(std::env::args_os(), &cwd);
@@ -394,11 +423,15 @@ pub fn run() {
                     log!("window: no window to start again after a start-up dialog");
                 });
             }
-            // An offer to Windows naming a folder Kinema has moved from.
+            // An offer to Windows naming a folder Skrin has moved from.
             default_player::refresh();
+            // Seek preview pictures of files that left the library while Skrin was closed.
+            seek_preview::sweep_soon(app.handle());
+            // The whole-library preview job, if the owner switched it on.
+            preview_job::kick(app.handle());
 
             // Network sign-ins kept from before, unlocked for the shares
-            // Kinema opens itself.
+            // Skrin opens itself.
             share_logins::load(app.handle());
 
             // What this machine is connected to: checked, saved beside what
@@ -451,6 +484,7 @@ pub fn run() {
             hub::visualization_media,
             hub::game_shortcuts,
             hub::game_save,
+            hub::game_crop_artwork,
             hub::game_remove,
             hub::game_launch,
             music::music_library,
@@ -465,9 +499,12 @@ pub fn run() {
             music_tags::music_save_tags,
             music_tags::music_preview_cover,
             updates::latest_release,
+            updates::install_update,
+            updates::restart_after_update,
             engine::mpv_started,
             engine::mpv_give_back,
             page_life::page_recovery,
+            home_top::home_top,
             capabilities::capabilities,
             places::list_folders,
             places::folder_places,
@@ -493,8 +530,10 @@ pub fn run() {
             library::check_library_root_move,
             library::move_library_root,
             library::remove_library_root,
+            library::set_library_root_kind,
             library::list_library_roots,
             library::scan_library,
+            library::refresh_query_statistics,
             library::list_unparsed,
             library::list_media_files,
             library::save_parse_results,
@@ -506,6 +545,11 @@ pub fn run() {
             settings::log_paths,
             settings::open_log_folder,
             reach::check_reach,
+            net::proxy_current,
+            net::offline_current,
+            net::proxy_normalise,
+            net::check_proxy,
+            net::fetch_remote_image,
             report::make_report,
             report::show_report,
             tracking::link_qr,
@@ -563,6 +607,7 @@ pub fn run() {
             metadata::reset_matches,
             metadata::list_titles_needing_detail,
             metadata::list_stale_titles,
+            metadata::list_titles_in_other_language,
             metadata::list_fallback_titles,
             metadata::mark_upgrade_checked,
             metadata::adopt_provider,
@@ -619,6 +664,14 @@ pub fn run() {
             videos::list_videos,
             videos::list_all_videos,
             videos::video_frame,
+            seek_preview::seek_preview,
+            seek_preview::seek_preview_fill,
+            seek_preview::seek_preview_close,
+            seek_preview::seek_preview_usage,
+            seek_preview::delete_seek_previews,
+            preview_job::preview_job_status,
+            preview_job::preview_job_set,
+            sub_timing::sub_timing_check,
             videos::get_video_prefs,
             videos::set_video_prefs,
             videos::dismiss_continue_video,
@@ -633,7 +686,15 @@ pub fn run() {
             probe::probe_library,
             disc::disc_source,
             disc::disc_failure,
+            file_state::file_state,
             imdb::refresh_imdb_ratings,
+            imdb_titles::refresh_imdb_titles,
+            imdb_titles::imdb_titles_status,
+            imdb_titles::imdb_titles_search,
+            imdb_titles::imdb_titles_get,
+            imdb_titles::imdb_file_minutes,
+            imdb_titles::imdb_titles_remove,
+            fetched_online::remove_fetched_online,
             omdb::list_titles_needing_scores,
             omdb::save_omdb_scores,
             probe::file_facts,
@@ -650,6 +711,10 @@ pub fn run() {
             display::restore_screen,
             display::player_window,
             trailer::find_local_trailer,
+            trailer_relay::trailer_page_address,
+            extras::list_extras,
+            extras::read_theme,
+            region::system_region,
             nfo::read_nfo,
             nfo::read_show_nfo,
             nfo::write_nfo,
@@ -662,12 +727,31 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while running tauri application")
         .run(|app, event| {
-            // Windows does not end a child with its parent: without this a
-            // Skiptro started by the scan goes on scanning after the window
-            // has closed, where nobody can see it or stop it.
+            // Quitting never waits long on a drive that has gone silent (A5-01).
+            if let tauri::RunEvent::ExitRequested { .. } = event {
+                engine::arm_exit_limit(app);
+            }
+            // The close button: the mpv plugin holds the window open while it
+            // shuts mpv down, and that waits on a dead drive for good, so
+            // ExitRequested never comes (Linux test PC, sshfs stopped). Start
+            // the limit at the close itself.
+            if let tauri::RunEvent::WindowEvent {
+                label,
+                event: tauri::WindowEvent::CloseRequested { .. },
+                ..
+            } = &event
+            {
+                if label == "main" {
+                    engine::arm_exit_limit(app);
+                }
+            }
             if let tauri::RunEvent::Exit = event {
+                engine::arm_exit_limit(app);
                 // The player before the process ends (engine.rs says why).
                 engine::shut_down(app);
+                // Windows does not end a child with its parent: without this a
+                // Skiptro started by the scan goes on scanning after the window
+                // has closed, where nobody can see it or stop it.
                 app.state::<jobs::Jobs>().stop_detection();
                 // The screen goes back to the desktop's own mode however the
                 // app is closed; a crash is caught at the next launch instead.

@@ -34,7 +34,7 @@ describe('decideLook', () => {
     const slow = decideLook('auto', { cores: 4, memoryGb: 4, medianFrameMs: 33.3, screenFrameMs: 16.7 });
     expect(slow.light).toBe(true);
     expect(slow.reason).toBe(
-      'Light: while Kinema opened it drew a frame every 33 ms on a screen that takes one every 17 ms'
+      'Light: while Skrin opened it drew a frame every 33 ms on a screen that takes one every 17 ms'
     );
     // A 24 Hz or 30 Hz screen keeping its own pace is not a weak device.
     expect(decideLook('auto', { cores: 4, medianFrameMs: 41.7, screenFrameMs: 41.7 }).light).toBe(false);
@@ -120,7 +120,7 @@ describe('screenPace', () => {
   it('the reason names the rate the system reported', () => {
     const d = decideLook('auto', { cores: 4, medianFrameMs: 27, screenFrameMs: 1000 / 60, screenHz: 60 });
     expect(d.light).toBe(true);
-    expect(d.reason).toBe('Light: while Kinema opened it drew a frame every 27 ms on a 60 Hz screen');
+    expect(d.reason).toBe('Light: while Skrin opened it drew a frame every 27 ms on a 60 Hz screen');
     expect(decideLook('auto', { cores: 4, medianFrameMs: 17, screenFrameMs: 1000 / 60, screenHz: 60 }).light).toBe(false);
   });
 });

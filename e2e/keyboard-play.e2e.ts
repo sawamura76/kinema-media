@@ -151,7 +151,7 @@ for (const [label, errors, notice] of [
   [
     'a folder that could not be read is named beside the system’s words',
     ['could not read: /media/films/Locked :: Permission denied (os error 13)'],
-    'Could not read /media/films/Locked (Permission denied (os error 13)). Nothing in it was hidden. Kinema tries again at the next scan.',
+    'Could not read /media/films/Locked (Permission denied (os error 13)). Nothing in it was hidden. Skrin tries again at the next scan.',
   ],
   // Matching went wrong, not a folder: nothing about one being away.
   [

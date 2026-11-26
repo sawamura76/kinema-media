@@ -91,7 +91,7 @@ export default function PosterDialog({ titleId, name, onChosen, onClose }: Props
         >
           <h2>Poster</h2>
           <p className="muted">
-            The picture {name} shows everywhere in Kinema. Kept when its details are fetched again.
+            The picture {name} shows everywhere in Skrin. Kept when its details are fetched again.
           </p>
           {(found === null || found.asking) && <p className="muted">Asking TMDB for its posters…</p>}
           {found?.note && <p className="muted">{found.note}</p>}

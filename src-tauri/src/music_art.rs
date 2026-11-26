@@ -247,7 +247,7 @@ pub(super) async fn lookup_cancellable(
     if cancel.is_some_and(|c| c.load(std::sync::atomic::Ordering::Acquire)) {
         return Err("Artwork search cancelled".into());
     }
-    let client = reqwest::Client::builder()
+    let client = crate::net::client(crate::net::Service::MusicMetadata)?
         .timeout(Duration::from_secs(12))
         .redirect(reqwest::redirect::Policy::none())
         .user_agent("Kinema-Music/0.15.2 personal artist artwork")

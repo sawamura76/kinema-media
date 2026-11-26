@@ -30,6 +30,11 @@ function score(title: Title, needle: string): { rank: number; why: string | null
   if (wordStart(name, needle)) return { rank: 1, why: null };
   if (/^\d{4}$/.test(needle) && String(title.year ?? '') === needle) return { rank: 2, why: null };
   if (name.includes(needle)) return { rank: 3, why: null };
+  // Details in another language: the English title finds it too, said so.
+  const english = title.english_title ? fold(title.english_title) : null;
+  if (english && english !== name && wordStart(english, needle)) {
+    return { rank: 3, why: title.english_title as string };
+  }
   // Two letters would match half the cast of every film.
   if (needle.length >= 3) {
     const actor = title.cast.find((person) => wordStart(fold(person), needle));

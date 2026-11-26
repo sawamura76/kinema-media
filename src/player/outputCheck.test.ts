@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { AudioDevice, DisplayMode } from './equipment';
 import { DEFAULT_SWITCH_SETTINGS } from './displayMode';
-import { outputCheck, type Check, type OutputFacts } from './outputCheck';
+import { checkHdr, checkSound, outputCheck, type Check, type OutputFacts } from './outputCheck';
 
 const rateOf = (hz: number) => ([23, 59].includes(hz) ? ((hz + 1) * 1000) / 1001 : hz);
 const mode = (width: number, height: number, hz: number): DisplayMode => ({
@@ -304,5 +304,148 @@ describe('outputCheck colour depth', () => {
     expect(c['Colour depth']?.why).toMatch(/driver is set to send 8 bits/);
     expect(c['Colour depth']?.fix).toMatch(/10 or 12 bpc/);
     expect(c['Colour depth']?.fix).toMatch(/YCbCr 4:2:2 first/);
+  });
+});
+
+describe('output check: what is not known', () => {
+  it('gives no SDR verdict before mpv has reported the source', () => {
+    const c = checkHdr({ ...base, hdrSource: false, sourceKnown: false });
+    expect(c).toMatchObject({ verdict: 'info', value: 'not known yet' });
+  });
+
+  it('says mono plainly', () => {
+    const a = { ...base.audio!, inChannels: 1, outChannels: 2, codec: 'aac', outFormat: 'float', direct: false, device: null };
+    expect(checkSound({ ...base, audio: a })?.value).toBe('decoded, mono on both speakers');
+    expect(checkSound({ ...base, audio: { ...a, outChannels: 1 } })?.value).toBe(
+      'decoded, mono kept'
+    );
+  });
+});
+
+// A TV PC (2026-11-14): desktop at 4K 30 Hz, 10-bit YCbCr 4:2:2; a 59.94 fps
+// clip asked for 4K 59.94 Hz, which the link had room for only at 8-bit 4:2:0.
+describe('outputCheck: what the switch asked for and got', () => {
+  const sdr60: OutputFacts = {
+    ...base,
+    source: { width: 3840, height: 2160 },
+    drawn: { width: 3840, height: 2160 },
+    hdrSource: false,
+    hdrOut: 'sdr',
+    fps: 60000 / 1001,
+    screen: {
+      ...base.screen!,
+      hdr: 'off',
+      linkBits: 10,
+      linkEncoding: 'YCbCr 4:2:2',
+      modes: [...tvModes, mode(3840, 2160, 30)],
+    },
+  };
+  const asked = { width: 3840, height: 2160, rate: 60000 / 1001 };
+
+  it('a refused mode is said, with the frames left out and what stands in the way', () => {
+    const c = byLabel(
+      outputCheck({
+        ...sdr60,
+        displayHz: 30000 / 1001,
+        switched: {
+          asked,
+          got: null,
+          error: 'not supported',
+          linkBefore: '10-bit YCbCr 4:2:2',
+          linkAfter: null,
+        },
+      })
+    );
+    expect(c.Motion).toMatchObject({
+      verdict: 'limited',
+      value: '50 % of frames left out, 59.94 fps on 29.97 Hz',
+    });
+    expect(c.Motion?.why).toMatch(/asked the screen for 3840×2160 at 59.94 Hz.*refused it/);
+    expect(c.Motion?.fix).toMatch(/18 Gbps/);
+  });
+
+  it('a mode kept at another rate is said as kept', () => {
+    const c = byLabel(
+      outputCheck({
+        ...sdr60,
+        displayHz: 30,
+        switched: {
+          asked,
+          got: { width: 3840, height: 2160, rate: 30 },
+          error: null,
+          linkBefore: null,
+          linkAfter: null,
+        },
+      })
+    );
+    expect(c.Motion?.why).toMatch(/kept 30 Hz/);
+  });
+
+  it('a link lowered to fit the rate is said under colour depth, and motion is even', () => {
+    const c = byLabel(
+      outputCheck({
+        ...sdr60,
+        displayHz: 60000 / 1001,
+        screen: { ...sdr60.screen!, linkBits: 8, linkEncoding: 'YCbCr 4:2:0' },
+        switched: {
+          asked,
+          got: asked,
+          error: null,
+          linkBefore: '10-bit YCbCr 4:2:2',
+          linkAfter: '8-bit YCbCr 4:2:0',
+        },
+      })
+    );
+    expect(c.Motion).toMatchObject({ verdict: 'native', value: 'even, 59.94 fps on 59.94 Hz' });
+    expect(c['Colour depth']).toMatchObject({
+      verdict: 'info',
+      value: '8-bit YCbCr 4:2:0 to the screen',
+    });
+    expect(c['Colour depth']?.why).toMatch(
+      /lowered the link from 10-bit YCbCr 4:2:2 to 8-bit YCbCr 4:2:0 to fit 59.94 Hz/
+    );
+  });
+
+  it('HDR on a lowered link says why it is 8 bits', () => {
+    const c = byLabel(
+      outputCheck({
+        ...sdr60,
+        hdrSource: true,
+        hdrOut: 'passthrough',
+        displayHz: 60000 / 1001,
+        screen: { ...sdr60.screen!, hdr: 'on', linkBits: 8, linkEncoding: 'YCbCr 4:2:0' },
+        switched: {
+          asked,
+          got: asked,
+          error: null,
+          linkBefore: '10-bit YCbCr 4:2:2',
+          linkAfter: '8-bit YCbCr 4:2:0',
+        },
+      })
+    );
+    expect(c['Colour depth']).toMatchObject({
+      verdict: 'limited',
+      value: 'HDR squeezed to 8-bit YCbCr 4:2:0',
+    });
+    expect(c['Colour depth']?.why).toMatch(/lowered the link/);
+  });
+});
+
+// TV PC (2026-11-14): "Send sound straight to the receiver" on, but Windows'
+// exclusive control switched off for the receiver — the panel said nothing.
+describe('outputCheck sound: Windows blocks exclusive control', () => {
+  it('says the block and where to lift it, not that the device cannot take it', () => {
+    const blockedReceiver: AudioDevice = {
+      ...receiver,
+      bitstream: receiver.bitstream.map((b) => ({ ...b, result: 'not_allowed' })),
+    };
+    const c = checkSound({
+      ...base,
+      audio: { ...base.audio!, direct: true, outFormat: 'floatp', device: blockedReceiver },
+    });
+    expect(c).toMatchObject({ verdict: 'limited', value: 'decoded by Skrin' });
+    expect(c?.why).toMatch(/does not let programs take exclusive control of AV receiver/);
+    expect(c?.why).not.toMatch(/does not take/);
+    expect(c?.fix).toMatch(/More sound settings → Playback .* Advanced/);
   });
 });

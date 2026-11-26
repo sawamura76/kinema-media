@@ -29,8 +29,8 @@ one live session installs is not the other's system. On the Ventoy stick:
 ```
 ubuntu-26.04-desktop-amd64.iso      (any name starting ubuntu-26.04)
 kubuntu-26.04-desktop-amd64.iso     (any name starting kubuntu-26.04)
-kinema-linux-test/persistence.dat
-kinema-linux-test/persistence-kubuntu.dat
+skrin-linux-test/persistence.dat
+skrin-linux-test/persistence-kubuntu.dat
 ventoy/ventoy.json                  (merge with an existing one)
 ```
 
@@ -178,8 +178,8 @@ controls, nothing else on the screen), mpv's properties and both logs.
 On the development machine, without mounting the stick's file system:
 
 ```bash
-e2fsck -fy <stick>/kinema-linux-test/persistence.dat
-debugfs -R "rdump /upper/home/ubuntu/kinema-results /tmp" <stick>/kinema-linux-test/persistence.dat
+e2fsck -fy <stick>/skrin-linux-test/persistence.dat
+debugfs -R "rdump /upper/home/ubuntu/kinema-results /tmp" <stick>/skrin-linux-test/persistence.dat
 ```
 
 (The live session's changes sit under `upper/` in the persistence file. It

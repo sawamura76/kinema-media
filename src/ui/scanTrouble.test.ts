@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { scanTrouble, unreachableFolders } from './scanTrouble';
+import { lookupsUnreachable, scanTrouble, unreachableFolders } from './scanTrouble';
 
 const away = (path: string) => `root unavailable, skipped: ${path}`;
 const tmdb = 'A film: TMDB /search/movie failed: HTTP 401, the key was not accepted';
@@ -19,7 +19,7 @@ describe('scanTrouble', () => {
   it('names a folder that could not be read beside the system’s own words', () => {
     expect(scanTrouble(['could not read: D:\\Films\\Locked :: Ingen tilgang. (os error 5)'])).toEqual({
       text: 'Could not read D:\\Films\\Locked (Ingen tilgang. (os error 5))',
-      note: 'Nothing in it was hidden. Kinema tries again at the next scan.',
+      note: 'Nothing in it was hidden. Skrin tries again at the next scan.',
     });
   });
 
@@ -78,12 +78,12 @@ describe('scanTrouble', () => {
   it('says a failed background stage in plain words, once, on Home only', () => {
     const raw = 'measuring pictures: Invalid column type Null at index: 0, name: title_id';
     expect(scanTrouble([raw])).toEqual({
-      text: 'Kinema could not measure the pictures’ shape this time',
+      text: 'Skrin could not measure the pictures’ shape this time',
       note: 'Your library is fine; it tries again on the next scan.',
       homeOnly: true,
     });
     expect(scanTrouble([raw, 'reading files: locked', raw])).toEqual({
-      text: 'Kinema could not measure the pictures’ shape this time · and 1 more',
+      text: 'Skrin could not measure the pictures’ shape this time · and 1 more',
       note: 'Your library is fine; it tries again on the next scan.',
       homeOnly: true,
     });
@@ -102,5 +102,17 @@ describe('unreachableFolders', () => {
     expect(
       unreachableFolders(['root unavailable, skipped: E:/TV', 'videos gone: 3 :: E:/Films/Old', 'TMDB said no'])
     ).toEqual(['E:/TV']);
+  });
+});
+
+describe('lookupsUnreachable', () => {
+  it('knows a first scan that never reached the services', () => {
+    expect(
+      lookupsUnreachable([
+        'A film: TMDB could not be reached: timed out, and neither could Wikidata. Check the internet connection.',
+      ])
+    ).toBe(true);
+    expect(lookupsUnreachable([tmdb])).toBe(false);
+    expect(lookupsUnreachable([])).toBe(false);
   });
 });

@@ -17,7 +17,7 @@
 //! What is written down is tied to what the system answers — WebKitGTK's
 //! version, the graphics devices the kernel lists, Wayland or X11 — never to a
 //! desktop's or vendor's name: when any of that changes, the card is tried
-//! again. `WEBKIT_DISABLE_DMABUF_RENDERER` set outside Kinema is left alone and
+//! again. `WEBKIT_DISABLE_DMABUF_RENDERER` set outside Skrin is left alone and
 //! wins.
 
 // Only Linux chooses; elsewhere the reading below is used by its tests alone.
@@ -27,14 +27,14 @@ use serde::Serialize;
 use std::path::PathBuf;
 use std::sync::OnceLock;
 
-/// In Kinema's data folder: `processor`, the system it was found on, and when.
+/// In Skrin's data folder: `processor`, the system it was found on, and when.
 const FILE: &str = "webkit-drawing.txt";
 const VAR: &str = "WEBKIT_DISABLE_DMABUF_RENDERER";
 
 /// How this start draws, as `webkit_drawing` reports it to the page.
 #[derive(Serialize, Clone, Debug, PartialEq, Eq)]
 pub struct Drawing {
-    /// `card`, `processor` (Kinema's fallback), `given` (set outside Kinema),
+    /// `card`, `processor` (Skrin's fallback), `given` (set outside Skrin),
     /// or `none` where WebKitGTK is not the page's engine.
     pub mode: &'static str,
     /// For `processor`: when the photos stopped (Unix seconds), if known.
@@ -128,7 +128,7 @@ fn remembered(text: &str, system: &str) -> Option<u64> {
 #[cfg(target_os = "linux")]
 pub fn choose() {
     let drawing = if let Some(value) = std::env::var_os(VAR) {
-        let _ = SAID.set(format!("webkit drawing: {VAR}={} set outside Kinema", value.to_string_lossy()));
+        let _ = SAID.set(format!("webkit drawing: {VAR}={} set outside Skrin", value.to_string_lossy()));
         Drawing {
             mode: "given",
             since: None,
@@ -218,7 +218,7 @@ pub fn webkit_drawing() -> Drawing {
     drawing
 }
 
-/// The refresh rate of the screen Kinema's window is on, in Hz, as GTK has
+/// The refresh rate of the screen Skrin's window is on, in Hz, as GTK has
 /// it from the display server (Wayland's output mode, X11's RandR): any
 /// desktop, no desktop's own interface. For the Look check (lightLook.ts),
 /// which cannot tell a screen's pace from frame gaps where the page is drawn

@@ -1,13 +1,13 @@
--- The mouse on mpv's own window, told to Kinema (src/player/mpvMouse.ts).
+-- The mouse on mpv's own window, told to Skrin (src/player/mpvMouse.ts).
 --
--- Loaded by Kinema where mpv plays in a window of its own (Linux), so the
+-- Loaded by Skrin where mpv plays in a window of its own (Linux), so the
 -- player's page, drawn over the video as a picture, can be pointed at,
 -- clicked and dragged like the real page it is. A script because only a
 -- script hears a button go down: an ordinary key binding on a mouse button
 -- runs when it is released, too late for dragging the seek bar.
 --
 -- Every event is written to `user-data/kinema/mouse` as one line among the
--- last few — "seq kind x y ms", joined by ";" — because Kinema hears a
+-- last few — "seq kind x y ms", joined by ";" — because Skrin hears a
 -- property's latest value, not every value it had: a click's press and
 -- release can land between two readings, and both must arrive. Moves in a
 -- row are kept as one, the latest, so the list holds many presses.

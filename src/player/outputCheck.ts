@@ -5,7 +5,7 @@
  * Five checks, each a plain verdict with the reason and the fix in words, for
  * the top of the stats panel:
  *
- *  - **Picture size** — 1:1, scaled up by Kinema, or shrunk.
+ *  - **Picture size** — 1:1, scaled up by Skrin, or shrunk.
  *  - **HDR** — sent as mastered, tone mapped for an SDR screen, or lost to a
  *    Windows setting.
  *  - **Motion** — the film's frame rate divides evenly into the screen's, or
@@ -27,6 +27,7 @@ import type { AudioDevice, DisplayMode } from './equipment';
 import { cadenceRank, type SwitchSettings } from './displayMode';
 import { formatRate } from './equipment';
 import { screenOwner } from '../capabilities';
+import type { SwitchOutcome } from './displaySwitch';
 
 export type Verdict = 'native' | 'limited' | 'info';
 
@@ -57,11 +58,15 @@ export interface OutputFacts {
   fps: number | null;
   displayHz: number | null;
   hdrSource: boolean;
+  /** mpv has reported the source's transfer. False: hdrSource is a guess. Absent counts as known. */
+  sourceKnown?: boolean;
   /** From `describeHdr`: what happened to the dynamic range. */
   hdrOut: 'passthrough' | 'compressed' | 'sdr' | 'unknown';
   /** The track's Dolby Vision profile, or null. Always shown as HDR10. */
   dolbyVision?: number | null;
   switches: SwitchSettings;
+  /** What the switch for this film asked of the screen and got (displaySwitch.ts). */
+  switched?: SwitchOutcome | null;
   audio: {
     /** mpv's decoder name: truehd, dts, eac3, ac3, aac, … */
     codec: string | null;
@@ -78,7 +83,7 @@ export interface OutputFacts {
 
 const res = (s: { width: number; height: number }) => `${s.width}×${s.height}`;
 
-/** What a Linux graphics driver needs to offer the player HDR (README, "HDR on Linux"). */
+/** What a Linux graphics driver needs to offer the player HDR (docs/INSTALL.md, "HDR on Linux"). */
 const LINUX_HDR_DRIVERS =
   'NVIDIA needs driver 595 or newer, which supports GeForce RTX 20 and GTX 16 cards and later — older cards cannot show HDR on Linux. AMD and Intel need Mesa 25.1 or newer.';
 
@@ -110,7 +115,7 @@ export function checkPicture(f: OutputFacts): Check | null {
     return {
       label,
       verdict: 'info',
-      value: `${film} video scaled up ×${scale.toFixed(2)} by Kinema`,
+      value: `${film} video scaled up ×${scale.toFixed(2)} by Skrin`,
       why: 'Classical resampling (spline36): no detail invented, none sharpened in.',
       fix:
         f.switches.resolution !== 'match'
@@ -154,6 +159,7 @@ export function checkPicture(f: OutputFacts): Check | null {
 export function checkHdr(f: OutputFacts): Check {
   const label = 'HDR';
   const owner = screenOwner(f.system);
+  if (f.sourceKnown === false) return { label, verdict: 'info', value: 'not known yet' };
   if (!f.hdrSource) return { label, verdict: 'native', value: 'SDR film, shown as SDR' };
   const dv = f.dolbyVision && f.dolbyVision > 0 ? f.dolbyVision : null;
   switch (f.hdrOut) {
@@ -167,8 +173,8 @@ export function checkHdr(f: OutputFacts): Check {
             // True on every system: no PC playback path sends a Dolby
             // Vision signal, mpv included.
             dv === 5
-              ? 'Kinema cannot send a Dolby Vision signal, and this profile has no HDR10 layer, so it is converted to HDR10 with its own metadata.'
-              : 'Kinema cannot send a Dolby Vision signal, so the video’s HDR10 layer is sent as mastered.',
+              ? 'Skrin cannot send a Dolby Vision signal, and this profile has no HDR10 layer, so it is converted to HDR10 with its own metadata.'
+              : 'Skrin cannot send a Dolby Vision signal, so the video’s HDR10 layer is sent as mastered.',
         };
       }
       return { label, verdict: 'native', value: 'HDR10 as mastered; the screen tone maps it' };
@@ -231,7 +237,7 @@ export function checkHdr(f: OutputFacts): Check {
       }
       if (f.screen?.screenHdr) {
         // An HDR TV on a desktop with no HDR at all (Cinnamon; GNOME on an
-        // old driver): nothing in Kinema or its settings can change that.
+        // old driver): nothing in Skrin or its settings can change that.
         return {
           label,
           verdict: 'info',
@@ -267,18 +273,50 @@ export function checkMotion(f: OutputFacts): Check | null {
     return { label, verdict: 'native', value: `even, ${pair}` };
   }
   const fps = f.fps;
+  const hz = f.displayHz;
+  // More frames than refreshes: some are left out, evenly or not.
+  const value =
+    fps > hz * 1.01
+      ? `${Math.round((1 - hz / fps) * 100)} % of frames left out, ${pair}`
+      : `judders, ${pair}`;
+  const why =
+    fps > hz * 1.01
+      ? 'The video has more frames than the screen has refreshes, so some are never shown and motion is less smooth.'
+      : 'The screen’s refresh rate does not divide evenly by the video’s, so pans judder.';
+  // A fitting mode was asked for and not had: said, with what stood in the way.
+  const s = f.switched;
+  if (
+    s &&
+    evenCadence(fps, s.asked.rate) &&
+    (s.error || (s.got && !evenCadence(fps, s.got.rate)))
+  ) {
+    const asked = `${s.asked.width}×${s.asked.height} at ${formatRate(s.asked.rate)} Hz`;
+    const owner =
+      screenOwner(f.system) === 'Windows' ? 'Windows or the graphics driver' : 'the desktop';
+    return {
+      label,
+      verdict: 'limited',
+      value,
+      why:
+        `${why} Skrin asked the screen for ${asked}, which fits the video, and ${owner} ` +
+        (s.error ? 'refused it.' : `kept ${formatRate(s.got!.rate)} Hz.`) +
+        ' Usually the connection has no room for that mode: every part of the chain — graphics card, cable, receiver, TV input — must carry it.',
+      fix:
+        'If they are all made for it, look for the TV input’s enhanced or deep colour HDMI setting, the receiver’s ' +
+        '4K signal setting, and a cable rated 18 Gbps or more.',
+    };
+  }
   const fitting = (f.screen?.modes ?? [])
     .filter((m) => evenCadence(fps, m.rate))
     .sort((a, b) => b.width * b.height - a.width * a.height);
   const here = fitting.some(
     (m) => f.screen && m.width === f.screen.width && m.height === f.screen.height
   );
-  const why = 'The screen’s refresh rate does not divide evenly by the video’s, so pans judder.';
   if (here) {
     return {
       label,
       verdict: 'limited',
-      value: `judders, ${pair}`,
+      value,
       why,
       fix: !f.switches.refresh
         ? 'Settings → Picture & sound → Screen → Match the refresh rate: this screen has an even mode at its current resolution.'
@@ -292,14 +330,14 @@ export function checkMotion(f: OutputFacts): Check | null {
     return {
       label,
       verdict: 'info',
-      value: `judders, ${pair}`,
-      why: `${why} This screen offers an even rate only at ${m.width}×${m.height}, and Kinema will not lower the resolution to get it.`,
+      value,
+      why: `${why} This screen offers an even rate only at ${m.width}×${m.height}, and Skrin will not lower the resolution to get it.`,
     };
   }
   return {
     label,
     verdict: 'info',
-    value: `judders, ${pair}`,
+    value,
     why: `${why} This screen has no mode that fits the video.`,
   };
 }
@@ -309,8 +347,24 @@ export function checkColourDepth(f: OutputFacts): Check | null {
   if (!bits) return null;
   const label = 'Colour depth';
   const link = `${bits}-bit ${f.screen?.linkEncoding ?? ''}`.trim();
+  const sw = f.switched;
+  const lowered =
+    sw?.got && sw.linkBefore && sw.linkAfter && sw.linkBefore !== sw.linkAfter
+      ? `The graphics driver lowered the link from ${sw.linkBefore} to ${sw.linkAfter} to fit ` +
+        `${formatRate(sw.got.rate)} Hz: the connection has no room for that rate at ${sw.linkBefore}. ` +
+        'Smooth motion was put before colour depth; the desktop’s own format comes back after the film.'
+      : undefined;
   if (f.hdrOut !== 'passthrough') {
+    if (lowered) return { label, verdict: 'info', value: `${link} to the screen`, why: lowered };
     return { label, verdict: 'native', value: `${link} to the screen` };
+  }
+  if (lowered && bits < 10) {
+    return {
+      label,
+      verdict: 'limited',
+      value: `HDR squeezed to ${link}`,
+      why: `HDR is made for 10 bits. ${lowered}`,
+    };
   }
   if (bits >= 10) return { label, verdict: 'native', value: `HDR at ${link}` };
   // Whether the cable is the limit or the driver's setting. 10-bit RGB at 4K
@@ -345,7 +399,7 @@ export function checkColourDepth(f: OutputFacts): Check | null {
     fix:
       'In the graphics driver’s settings, set the output colour depth to 10 or 12 bpc. If only 8 is ' +
       'offered, set the output colour format to YCbCr 4:2:2 first: some drivers offer more than ' +
-      '8 bits at 4K only then. Kinema cannot change either: there is no way to do that which works ' +
+      '8 bits at 4K only then. Skrin cannot change either: there is no way to do that which works ' +
       'the same on every make of graphics card.',
   };
 }
@@ -388,11 +442,26 @@ export function checkSound(f: OutputFacts): Check | null {
     stream !== null &&
     (a.device?.bitstream.some((b) => b.codec === stream && b.result === 'yes') ?? false);
   const folded = a.inChannels !== null && a.outChannels !== null && a.outChannels < a.inChannels;
+  // The device takes it, but Windows will not let a program have the device
+  // to itself, which passthrough needs: said, not passed off as the device's
+  // own limit.
+  const blocked =
+    stream !== null &&
+    (a.device?.bitstream.some((b) => b.codec === stream && b.result === 'not_allowed') ?? false);
+  if (blocked && a.direct) {
+    return {
+      label,
+      verdict: 'limited',
+      value: `decoded by Skrin${folded ? `, folded from ${a.inChannels} to ${a.outChannels} channels` : ''}`,
+      why: `Windows does not let programs take exclusive control of ${a.device?.name ?? 'the device'}, which sending ${CODEC_NAME[stream!] ?? stream} untouched needs, so any Atmos or DTS:X height sound is lost.`,
+      fix: 'Windows Settings → System → Sound → More sound settings → Playback → this device → Properties → Advanced → tick “Allow applications to take exclusive control of this device”, then start the film again.',
+    };
+  }
   if (couldPass && !a.direct) {
     return {
       label,
       verdict: 'limited',
-      value: `decoded by Kinema${folded ? `, folded from ${a.inChannels} to ${a.outChannels} channels` : ''}`,
+      value: `decoded by Skrin${folded ? `, folded from ${a.inChannels} to ${a.outChannels} channels` : ''}`,
       why: `${a.device?.name ?? 'The device'} takes ${CODEC_NAME[stream!] ?? stream} untouched, but the sound goes through ${system}, so any Atmos or DTS:X height sound is lost.`,
       fix: 'Settings → Picture & sound → Sound → Send sound straight to the receiver.',
     };
@@ -413,7 +482,12 @@ export function checkSound(f: OutputFacts): Check | null {
   return {
     label,
     verdict: 'native',
-    value: `decoded, all ${a.outChannels ?? ''} channels kept`.replace('all  ', 'all '),
+    value:
+      a.inChannels === 1 && a.outChannels === 2
+        ? 'decoded, mono on both speakers'
+        : a.outChannels === 1
+          ? 'decoded, mono kept'
+          : `decoded, all ${a.outChannels ?? ''} channels kept`.replace('all  ', 'all '),
     why:
       stream && !couldPass
         ? `${a.device?.name ?? 'The device'} does not take ${CODEC_NAME[stream] ?? stream} untouched, so it gets lossless PCM instead.`

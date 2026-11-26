@@ -2,7 +2,7 @@
 //!
 //! A remux keeps a 2.39:1 film's black bars inside a 16:9 frame, so the file
 //! reports 1.78:1 and the badge would be wrong for most films on disc. Kodi,
-//! Jellyfin, Plex and Zidoo show the file's figure; Kinema looks at the
+//! Jellyfin, Plex and Zidoo show the file's figure; Skrin looks at the
 //! picture. See HISTORY.md, "Picture and sound badges".
 //!
 //! **How:** one ffmpeg run per file, sampling one keyframe at each of eight

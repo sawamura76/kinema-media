@@ -10,8 +10,8 @@ export function gamepadKeys(buttons: boolean[], axes: readonly number[]): string
   if (buttons[0]) keys.push('Enter');
   if (buttons[1] || buttons[9]) keys.push('Escape');
   if (buttons[2]) keys.push(' ');
-  if (buttons[4]) keys.push('PageUp');
-  if (buttons[5]) keys.push('PageDown');
+  if (buttons[4]) keys.push('KinemaPreviousTab');
+  if (buttons[5]) keys.push('KinemaNextTab');
   return keys;
 }
 

@@ -17,12 +17,18 @@ import { subtitleStatus } from '../player/onlineSubtitles';
 import { INTRODB_APP_ENABLED_KEY, INTRODB_ENABLED_KEY } from '../library/api';
 import { UPDATE_CHECK_KEY } from './updates';
 import { useCapabilities, type Capabilities } from '../capabilities';
+import { useOfflineState } from '../net/offline';
 
 type Service = (typeof page.services)[number] & {
   section?: string;
   state?: string;
   only?: string;
+  /** In Keep everything on this computer: "stops" (the default), "imdb" (its own switches), "stays". */
+  offline?: string;
 };
+
+/** What a row says in Keep everything on this computer (net.rs `allowed`). */
+const KEPT_OFF = 'Off: Keep everything on this computer is on.';
 
 /** Each switchable service's state now: on, off, or not known yet. */
 type States = Record<string, boolean>;
@@ -69,6 +75,7 @@ export default function WhatLeavesSection({
   onGo: (section: string) => void;
 }) {
   const can = useCapabilities();
+  const privacy = useOfflineState();
   const [states, setStates] = useState<States>({});
   useEffect(() => {
     let live = true;
@@ -86,6 +93,7 @@ export default function WhatLeavesSection({
     <section className="settings-section what-leaves">
       <h2>{page.title}</h2>
       <p className="settings-intro">{page.intro}</p>
+      <p className="settings-intro">{page.keep}</p>
       {/* Above the list, not after it: past the last button a remote has
           nothing to land on that would scroll them into view. */}
       <p className="settings-intro">{page.local}</p>
@@ -98,10 +106,21 @@ export default function WhatLeavesSection({
           <li key={s.id}>
             <div className="what-leaves-head">
               <strong>{s.name}</strong>
-              {s.state && s.state in states && (
+              {privacy?.offline && (s.offline ?? 'stops') === 'stops' ? (
+                <span className="what-leaves-state off">{KEPT_OFF}</span>
+              ) : privacy?.offline && s.offline === 'imdb' ? (
+                <span className={`what-leaves-state ${privacy.imdbTitles || privacy.imdbRatings ? 'on' : 'off'}`}>
+                  {privacy.imdbTitles || privacy.imdbRatings
+                    ? `On: ${[privacy.imdbTitles && 'list of titles', privacy.imdbRatings && 'ratings'].filter(Boolean).join(' and ')}`
+                    : 'Off'}
+                </span>
+              ) : (
+                s.state &&
+                s.state in states && (
                 <span className={`what-leaves-state ${states[s.state] ? 'on' : 'off'}`}>
                   {stateWords(s.state, states[s.state])}
                 </span>
+                )
               )}
             </div>
             <dl>

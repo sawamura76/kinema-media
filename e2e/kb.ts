@@ -4,8 +4,8 @@
  */
 import { expect, type Page } from '@playwright/test';
 
-/** Whether Kinema's own focus engine answers the keys now (focusStore.ts). */
-function onKinemaEngine(page: Page): Promise<boolean> {
+/** Whether Skrin's own focus engine answers the keys now (focusStore.ts). */
+function onSkrinEngine(page: Page): Promise<boolean> {
   return page.evaluate(
     () => (window as unknown as { __nav?: { answering?: () => boolean } }).__nav?.answering?.() ?? false
   );
@@ -22,9 +22,9 @@ export async function pause(page: Page, ms: number, why: string): Promise<void> 
   await page.waitForTimeout(ms);
 }
 
-/** A press done: at once on Kinema's own engine, spaced on the spatial library's. */
+/** A press done: at once on Skrin's own engine, spaced on the spatial library's. */
 export async function afterPress(page: Page): Promise<void> {
-  if (!(await onKinemaEngine(page))) await pause(page, 150, 'input pacing: no screen answers yet, so presses are spaced');
+  if (!(await onSkrinEngine(page))) await pause(page, 150, 'input pacing: no screen answers yet, so presses are spaced');
 }
 
 /**
@@ -45,7 +45,7 @@ export async function settled(page: Page): Promise<void> {
 }
 
 /**
- * Key presses. On a screen on Kinema's own engine a press is answered before
+ * Key presses. On a screen on Skrin's own engine a press is answered before
  * it returns, so the next can follow at once; a screen still on the spatial
  * library drops presses closer than its throttle (docs/GOTCHAS.md), so they
  * are spaced there until it moves over (round 7).

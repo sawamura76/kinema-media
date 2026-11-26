@@ -1,5 +1,5 @@
 /**
- * What happens when TMDB refuses the key Kinema came with.
+ * What happens when TMDB refuses the key Skrin came with.
  *
  * The HTTP plugin and the Rust commands are replaced with stand-ins: every
  * TMDB request is answered 401, and settings live in a map.

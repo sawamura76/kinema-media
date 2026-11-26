@@ -132,6 +132,20 @@ null-check passes them straight through and the panel confidently states
 "0.00× SDR white". Treat non-positive as absent, and gate on the transfer
 function instead.
 
+### Dropped frames the graphics card did not cause
+
+`frame-drop-count` counts every frame the video output left out, for any
+reason. A 59.94 fps film on a screen left at 30 Hz drops every second frame
+by design: 1786 in one film, with `decoder-frame-drop-count` and
+`vo-delayed-frame-count` both 0. A film decoded in software
+(`hwdec-current=no`) on a slow processor reaches the output late, and the
+output drops it there, so `decoder-frame-drop-count` can stay 0 even when the
+decoder is the limit. Read as "the graphics card fell behind", both stepped a
+player down for good (A3-03). **Do:** take the frames the screen cannot show
+(film rate above `display-fps`) off before counting, and treat drops under
+software decoding or with decoder drops as not the card's
+(`stepDown.ts` `judgeWindow`).
+
 ### The verbose log answers rendering questions that reasoning cannot
 
 `msg-level=all=v` records what libplacebo *did*, not what it was asked to do:
@@ -266,6 +280,13 @@ shown before the jump.
 start=<secs>`. The `-1` is the playlist index, which mpv 0.38 put in front of the
 per-file options; without it the options are read as the index.
 
+**But mpv before 0.38 refuses the `-1`** ("invalid parameter"), and Linux
+systems ship 0.37: every resume failed there while a start from 0:00 (no
+options) played (0.18.0, issue 23). `loadfile.ts` tries the 0.38 form, falls
+back to `loadfile <url> replace <options>` on refusal and keeps the form that
+worked. The fake mpv refuses the wrong form too (`oldLoadfile`), so a test
+catches either regression.
+
 ### A Blu-ray disc opens only as `bd://`, and its failures are only in the log
 
 `loadfile <disc.iso>` and `loadfile <disc>/BDMV/index.bdmv` both fail with
@@ -319,6 +340,37 @@ separate file" (cost a rebuild, 2026-10-30). Only short codes reach `lang`:
 `Film.English.srt` comes with none. **Do:** read `external-filename`, drop
 a title the file name ends with, and read a spelled-out tag yourself
 (`trackLanguage` in tracks.ts).
+
+### A track mpv cannot decode is dropped, and only the log says so
+
+On Linux mpv uses the system's own codec libraries, and some systems' builds
+leave formats out (Fedora's `libavcodec-free`: no HEVC, no E-AC-3, H.264 only
+through OpenH264). mpv logs `Failed to initialize a decoder for codec 'hevc'`,
+deselects the track (`vid` reads `no`) and plays on: sound and a black
+window, or a picture and silence. To the player that silence looked exactly
+like a sound output that refused to open, so it ran the output fallbacks and
+said "playing in stereo" for a track nothing could decode. And the screen
+switch waited its full 15 s, paused, for a first frame that could not come
+(review 2026-11, A3-01/02/05).
+
+A decoder can also open and then fail on every frame (10-bit, interlaced or
+8K H.264 through OpenH264): the track stays selected, `vo-configured` stays
+`no`, and no property counts the errors.
+
+**Do:** read `decoder-list` as a **string** (JSON, like `vo-passes`; never the
+node format) and look for the track's `codec`. For the decoder that turns out
+nothing, read `reader-pts` from `demuxer-cache-state` (also a string): with no
+picture it races to the end of the file within a second or two, where a
+decoder that works holds it within a fraction of a second of the position
+(also over an `smb://` share or `http://` with mpv's cache on: read-ahead
+moves `cache-end`, not `reader-pts`).
+
+**But not on one read.** A recording cut mid-GOP, through a full ffmpeg,
+skips to its first keyframe: the position reads 0 while the reader is
+already 6 s ahead, for a few milliseconds before its picture, and a full
+ffmpeg logs decode errors for it too, so counting errors does not separate
+the two cases either. Believe "no frames" only once it has held, still with
+no picture, for 3 s. `decodeCheck.ts`.
 
 ---
 
@@ -385,6 +437,23 @@ commands stay synchronous on purpose — the main thread serialises them, and
 that ordering is what keeps a `save_progress` ahead of the Home reload that
 follows it.
 
+**One stat call is enough.** A share that goes *silent* (a NAS switched off at
+the wall, a laptop off its Wi-Fi: connections open, nothing answering, nothing
+refused) holds every call to it until Windows' SMB client gives up — about
+three minutes. Four plain `fn` commands looked at the film's file
+(`disc_source` on every open, the loose-video saves every 5 s, `save_progress`
+at the end, `playable_path` on a drop) and the window sat "Not responding" for
+up to 3 min 5 s; a second Skrin started meanwhile hung too, invisibly, as the
+single-instance hand-over waits for the same thread. `off_main` alone is not
+enough either: the look never comes back, so each call would leave one more
+stuck thread. **Do:** look at a film's file through `files::within(path, wait,
+…)`, which gives up after `wait` and starts no second look at a path whose
+first is still stuck; say `files::NOT_ANSWERING` when it gave up. A command
+that must stay synchronous for its order (`save_progress`) waits at most
+half a second, far below the five seconds after which Windows calls a window
+not responding. The single-instance callback runs on the window's thread
+too: it hands the look to a thread of its own.
+
 ---
 
 ### The page's process can end and nothing says so
@@ -392,7 +461,7 @@ follows it.
 The whole interface runs in one process of the web engine. On a computer short
 of memory the kernel kills it (seen on 3.7 GB with 4000×6000 posters), and it can
 crash. Nothing in the page can notice, being gone; Tauri does not hear of it.
-Kinema went on running with the last picture on its window, as if frozen, for
+Skrin went on running with the last picture on its window, as if frozen, for
 as long as anyone waited. **Do:** listen to each engine (`page_life.rs`):
 WebKitGTK's `web-process-terminated`, WebView2's `ProcessFailed`, Android's
 `onRenderProcessGone`. The kernel's kill reads as `Crashed`, not as a memory
@@ -403,10 +472,10 @@ reason, so words to the person cannot claim the cause.
   instance is harmless in plugin 0.3.2 (it returns), but loading the mouse
   script again would double every click: ask `mpv_started` first. The new page
   reads what mpv has open and reopens it there (`pageRecovery.ts`).
-- WebView2's *browser* process ending cannot be reloaded from: only a new Kinema. `app.restart()` on the main thread skips the exit event that frees the single-instance lock, so the new one found it held and left, and Kinema simply closed. It showed only in a real release build, not under a self-test (no lock there): free the lock first (`tauri_plugin_single_instance::destroy`).
+- WebView2's *browser* process ending cannot be reloaded from: only a new Skrin. `app.restart()` on the main thread skips the exit event that frees the single-instance lock, so the new one found it held and left, and Skrin simply closed. It showed only in a real release build, not under a self-test (no lock there): free the lock first (`tauri_plugin_single_instance::destroy`).
 - Android: not answering `onRenderProcessGone` has the system kill the whole
   app, and answering means that WebView may never be used again. Tauri cannot
-  replace it, so Kinema starts anew (`PageGone.kt`). `RustWebViewClient` is
+  replace it, so Skrin starts anew (`PageGone.kt`). `RustWebViewClient` is
   written out by wry's build and final: the one way in is wry's
   `WRY_RUSTWEBVIEWCLIENT_CLASS_EXTENSION`, in `.cargo/config.toml` **at the
   project root**. In `src-tauri/.cargo/` it was silently not applied: no error,
@@ -432,7 +501,7 @@ serialises access to each connection, and SQLite does the rest.
 `app.dialog().message(…).blocking_show()` inside `setup` runs on the main thread. On
 Windows and Android the dialog has a loop of its own and works. On Linux the plugin's
 dialog is drawn by the GTK loop that the main thread runs, and the main thread is
-blocked waiting for it: no window, no error, Kinema hangs with nothing on screen
+blocked waiting for it: no window, no error, Skrin hangs with nothing on screen
 (the main thread sits in a futex wait). Every start-up message had this since Linux
 support began. **Do:** `startup_dialog::tell` / `ask`, which run a GTK dialog
 directly on Linux. **And when testing it in WSL:** set `GDK_BACKEND=x11` and a
@@ -446,7 +515,7 @@ The GTK loop a Linux dialog turns also runs the webview: the page starts while t
 dialog waits, before `setup` has managed the library, and every call it makes fails
 ("state not managed for field `db`"). After "Put it back" the window showed those raw
 errors over Welcome, as if the library were gone. On Android the page stayed black
-until Kinema was started again. Windows waits and starts well. Nothing in the tests
+until Skrin was started again. Windows waits and starts well. Nothing in the tests
 showed it: the dialogs were checked, not the page behind them (seen on the Linux test
 PC and the emulator before 0.15.2). **Do:** `setup` reloads the page once a
 start-up dialog was shown (`startup_dialog::any_shown`), off Windows.
@@ -535,6 +604,38 @@ last-watched query would have the same way after an unmatched episode is
 watched to the end. Tests had no such row, so nothing failed. **Do:** a
 query over `media_files` that reads `title_id` as a number says
 `AND m.title_id IS NOT NULL`; a test library has one file with no title.
+
+---
+
+### `PRAGMA optimize` before the data exists makes the statistics worse than none (2026-11-13)
+
+The scan ran `PRAGMA optimize` straight after the file walk, when no new file
+had a title yet. SQLite recorded every file as sharing one title
+(`idx_media_title 5000 5000`), so the title index looked useless. For each
+title's counts the bundled SQLite then read the whole `media_files` table
+(`SCAN m`; Python's SQLite, without STAT4, chose `idx_media_files_missing`,
+which matches every file — the same cost): Home read every file once per
+title, 11.4 s at 5000 titles, 51 ms with statistics that know the titles.
+Nothing ever fixed it: `PRAGMA optimize` re-analyses a table only when its row
+count changes a lot, and matching changes no counts. A second trap hides a
+fix: an `ANALYZE` on one connection does not reach another — each loads the
+statistics once, so the window's connection keeps the old ones until restart.
+Measure in the bundled SQLite too (a Rust test): Python's picks other plans.
+**Do:** take statistics
+only once the columns the indexes cover have their real values
+(`db::refresh_statistics_if_stale`, after matching); then `ANALYZE
+sqlite_schema` on every other open connection (`db::reload_statistics`). The
+tests in `db.rs` reproduce the poisoned plan in the bundled SQLite.
+
+### `NOT (a OR b LIKE …)` skips every row where b is NULL
+
+`m.match_reason LIKE 'manual:%'` is NULL, not false, when the reason is
+NULL — and `NOT (false OR NULL)` is NULL, so `WHERE … AND NOT {HAND_DECISION}`
+quietly left out every file with no match reason (unparsed, parsed,
+machine-matched without one) instead of treating it as "no person decided".
+No error, just fewer rows; found by the folder-kind test (GitHub #26).
+**Do:** in a condition that is negated, make each part two-valued:
+`IFNULL(col, '') LIKE …`, `IFNULL(flag, 0) = 1`.
 
 ## Library and intro detection
 
@@ -797,9 +898,9 @@ clicking reaches anything, so the UI tests perfectly on a desk and is unusable
 from a sofa. **Test D-pad changes with the mouse physically untouched.**
 
 Entries marked **(before round 7)** describe the spatial library
-(`norigin-spatial-navigation`) that Kinema moved by until round 7 — removed in
+(`norigin-spatial-navigation`) that Skrin moved by until round 7 — removed in
 F4, 2026-10-31. They are kept as history: what it measured, when it updated
-itself later, and the timers that corrected it are all gone, and Kinema's own
+itself later, and the timers that corrected it are all gone, and Skrin's own
 engine (focusStore.ts, focusModel.ts) gives each one's right answer by
 construction (focusModel.test.ts has the cases). The unmarked entries still
 apply.
@@ -1301,6 +1402,29 @@ result's note) cannot be skipped by arithmetic: those grids are drawn whole.
 Measured on a 2-core PC with 1000 films: 100 ms a frame by keys before, 40
 after (17-38 at 416 before); 6000 elements drawn before, 490 after.
 
+The card holding the ring must stay drawn even when the page has scrolled far
+from it (a wheel, the scroll bar): `CardGrid.tsx` keeps the ring's rows as a
+part of their own, with empty space between. Left out, the card went, the
+focus engine put the ring on another card and scrolled the page back to it — a
+wheel turned fast moved the page 622 px instead of 2500 (WebView2) and 59 px a
+notch instead of 149 (WebKit), with no error (round 8, part I2; e2e/big-grid
+"a wheel turned away from the ring").
+
+### The page that scrolls must be a stacking context, or WebKit repaints every card (round 8, part I2)
+
+`.browse` scrolls but had no z-index, so it was not a stacking context, and each
+card's picture box (`position: relative`, for its badges) belonged to the
+window's paint order. Whenever one card's level changed — the focused or
+hovered card's zoom sets `z-index: 1` — WebKit (Linux) repainted every one of
+them: about 3,800 paints and a 250 ms frame per key press at 1000 films on a
+2-core PC, growing with the library, and every wheel step over the grid too
+(the pointer hovers a new card). Chromium (Windows, Android) is not affected.
+No error; it looks like "a big page is slow". **Do:** `isolation: isolate` on a
+scrolling page (`.browse`): same picture, 47,000 paints for eight presses fell
+to 284. Find such a case by counting paints, not by timing: WebKit's own
+inspector (`WEBKIT_INSPECTOR_HTTP_SERVER`, its Timeline domain) reports one
+Paint per layer painted.
+
 ### A picture too big to shrink is not shown as itself (round 8, part I)
 
 `thumbs.rs` decodes at most 512 MB per picture. A poster beside a file of
@@ -1310,6 +1434,15 @@ used to fall back to the original, which the web process decodes at full size,
 kernel's out-of-memory killer, with no error in the app. `Art.tsx` now, where a
 small copy is asked for, falls back to the remote picture and then the drawn
 poster, never to the original (same PC, same pictures: peak 909 MB, no stall).
+
+The title page's backdrop and poster and Home's big picture were left out (no
+`thumbRem`), so a print-size fanart (14000×14000: 780 MB; 30000×30000: about
+3.6 GB) was drawn as itself there. They now pass `screenRem` to `Art`: a
+screen-sized `thumb://` copy (window width, or the poster's rem, times the
+pixel ratio, never above 1920 — the largest size `thumbs.rs` makes), with the
+same fallback, remote picture then drawn one, never the original. **Do:** a new
+picture on any page asks for a copy (`thumbRem` in a grid, `screenRem` where it
+is the point); `Art.test.tsx` checks the three call sites.
 
 ### An Enter a text field acts on must stop there
 
@@ -1377,7 +1510,7 @@ wrap on every engine.
 
 ### The spatial library calls `preventDefault` on every key, even while paused (before round 7)
 
-Kinema's own focus engine (focusStore.ts, round 7) first ignored a key whose
+Skrin's own focus engine (focusStore.ts, round 7) first ignored a key whose
 `defaultPrevented` was set, so that a control keeping a key to itself could
 claim it. Every arrow on Home then did nothing, with no error: the spatial
 library's window listener, registered first, calls `preventDefault` (and
@@ -1401,7 +1534,7 @@ the keypress.
 
 ### A scroll animated per frame stretches on a starved page
 
-Kinema's scroll spring (focusScroll.ts) capped each frame's step at 50 ms.
+Skrin's scroll spring (focusScroll.ts) capped each frame's step at 50 ms.
 A busy CI machine — and a weak box — gave WebKit a frame every few hundred
 milliseconds, so every 220 ms scroll took seconds, the flows waiting for the
 page to settle ran out of their minute, and it looked like a flake in the
@@ -1585,7 +1718,7 @@ nothing. Surface failures; the `catch` that hides them costs more than it saves.
 ### The spatial library marks every control it ever focused
 
 norigin sets `data-focused="true"` on a control when it focuses it, and takes
-it off again only when `shouldFocusDOMNode` is on — which Kinema leaves off.
+it off again only when `shouldFocusDOMNode` is on — which Skrin leaves off.
 So the attribute means "was focused at some point while it was mounted", not
 "is focused". **Do:** read the `focused` class that FocusButton sets, never
 `[data-focused]`, in tests and styles alike.
@@ -1651,6 +1784,21 @@ first screen. **Do:** a card gives `thumbRem` to `Art`, and gets a small copy
 the very picture it should not decode. A new `thumb.localhost` needs the content
 security policy too, and nothing says when it is missing but the fallback.
 
+### Full screen paused the film on every screen, switching off or not
+
+Pressing F (or a double click) in the middle of a film paused it for ~40 ms
+every time, even with display switching off. `mayswitch()` asks whether any of
+the three policies is on, and the resolution one defaults to `auto`, so it is
+true on every desktop; `toggleFullscreen` paused first, then `matchScreen`
+found nothing to change. No error, a short stall in the picture that looked
+like part of the full-screen change itself, and it was taken for #24's pause.
+
+**Do:** pause only when a switch is certain: `matchScreen` takes a
+`beforeSwitch` that `switchForFilm` awaits after it has found a target and
+before it asks the screen (`useScreen.ts`, `displaySwitch.system.test.ts`).
+Proved on the Linux test PC by sampling mpv's `pause` every 50 ms through two
+full-screen toggles (`scripts/proof/linux-click-proof.sh`).
+
 ## Testing and tools
 
 ### Playwright's WebKit on Windows is not Linux's WebKit
@@ -1663,7 +1811,7 @@ WebKit on Linux. Every release from 0.13.0 to 0.14.0 approved that "WebKit-only
 tie" by hand. **Do:** take WebKit's answers from Linux (CI, WSL, a cloud
 session), Edge's from Windows; `npm run verify` and the nightly map already
 run them that way. A difference seen only in Windows WebKit is not a bug in
-Kinema.
+Skrin.
 
 ### The dev server can go on serving a stylesheet from before an edit
 
@@ -1731,6 +1879,23 @@ time checks and the input pacing go through `pause(page, ms, why)` in
 `e2e/kb.ts`, the one place eslint allows `waitForTimeout`. `open()` waits
 30 s for the page: expect's 5 s ended a starved startup as a failure.
 
+### The e2e suite fails under load and passes alone (2026-11-13)
+
+A full `npm run verify -- --all`, or any run beside a cargo build or another
+worktree's verify, ended a few flows with a timeout (`page.goto`, "Previous
+file" never attached) that passed alone. No app error: the app was right and
+late. Cause: one worker per core, and `verify` ran the keyboard flows and the
+nav walk at once, so two pools of that size plus cargo on 6 cores; WebKit on
+Windows runs the same flow about 4x slower than Edge (10 s became 45 s of a
+60 s test), and the first pages of a run all waited on Vite's cold
+transforms. (`useFolderNeighbours` is a plain async call, no timer: not an
+app race.) **Do:** workers default to half the cores (`KINEMA_E2E_WORKERS`
+overrides; verify halves them again when ui and nav share the machine),
+`e2e/warmupSetup.ts` loads the app once before the flows, and the dev-server
+port is `KINEMA_E2E_PORT` / `KINEMA_E2E_NAV_PORT` (verify picks free ones, so
+two worktrees can verify at once; a plain `npx playwright test` is still
+1440). Do not answer the next one with a longer timeout or a retry.
+
 ### Screenshot baselines are per engine and per OS
 
 `toHaveScreenshot` names a picture `name-<look>-<engine>-<platform>.png`:
@@ -1738,8 +1903,10 @@ Edge on Windows, WebKit on Windows and WebKit on Linux are three sets (fonts
 differ; one set would fail on the others). A new engine or OS with no
 baseline writes one and **passes** the first time — so a missing set is not
 a green check. Linux's come from Ubuntu 24.04 (CI's image; WSL's distro is
-the same): `scriptswsl.ps1 'npx playwright test e2e/screens.e2e.ts
---update-snapshots'`, then copy the `*-linux.png` back. The Look is seeded
+the same): `scripts\wsl.ps1 'npx playwright test e2e/screens.e2e.ts
+--update-snapshots=all'`, then copy the `*-linux.png` back. Plain
+`--update-snapshots` rewrites only pictures that fail: a small change inside
+the tolerance passes and the old picture stays, missing what was added. The Look is seeded
 by `kinemaMockLook` in localStorage: the mock's settings are in memory, so
 setting it after load is lost on a reload.
 
@@ -1754,7 +1921,7 @@ the presses. Do not expect a speed-up from here.
 
 ### A self-test's screenshots are of whatever window is in front
 
-`selftest.ps1` photographs the primary screen, not Kinema's window. Started
+`selftest.ps1` photographs the primary screen, not Skrin's window. Started
 from a script while someone is using the PC, Windows' focus-stealing rules keep
 the new window *behind* the one they are working in — fullscreen or not — and
 every screenshot is of their browser. The run itself is fine (the report's
@@ -1775,6 +1942,18 @@ label and whether the controls are shown) before believing a picture, and
 read mpv with a `probe` action while the file plays. The plan's own `probe`
 list runs after the player has closed, when there is no file and no sound
 output to ask about.
+
+### A mapped network drive can be missing from a tool's session (2026-11-21)
+
+A self-test started from a tool session may run in a logon session without
+the user's mapped drives: the library's paths (`Z:\…`) then open nothing —
+the film fails with "Failed to execute command 'seek'", seek previews say
+"could not open the file" — while the same share by its `\server\share`
+path answers. `net use Z: …` there and `net use Z: /delete` after it
+**removed the user's saved mapping** (`HKCU\Network\Z`), which had to be put
+back by hand. **Do:** check `Test-Path` on the library path first; map it for
+the test only if needed, and never delete a mapping afterwards — leave it, or
+check `HKCU\Network` is unchanged.
 
 ### Moving effects into hooks moves them in React's order
 
@@ -1957,11 +2136,33 @@ the default, names sorted, values in lower case (`query` in opensubtitles.rs).
 
 The JWT from `/login` expires in roughly 24 hours; OpenSubtitles' own Kodi
 add-on renews it after 20. There is no refresh token and no device approval,
-so renewing means the password. Kinema keeps it (DPAPI on Windows) and, when
+so renewing means the password. Skrin keeps it (DPAPI on Windows) and, when
 signing in again fails, carries on with the free allowance rather than
 failing the download.
 
 ---
+
+### Speech by loudness counts a film's music and effects as speech (2026-11-21)
+
+Automatic subtitle timing (`sub_timing.rs`) first called a 10 ms frame
+"speech" when its voice-band energy stood a fixed amount above the stretch's
+noise floor. Every unit test passed on made-up sound; on a real film 40–80 %
+of each stretch came out "speech" and only 3 of 8 stretches agreed, so the
+check said "could not tell" on a subtitle 2.5 s late — safely, but uselessly.
+**Do:** find speech by its syllables — energy rising above its own
+half-second average — and take the centre channel where there is one
+(`pan=mono|c0=FC`, retried on the whole mix if the track has none). Tune on
+real sound, not only on made-up signals: the harness is
+`cargo test --lib real_film -- --ignored --nocapture` with
+`SKRIN_TIMING_VIDEO/SUB/DURATION` (libmpv copied to `target/debug/deps/lib`).
+
+### A built-in subtitle's cue times need the video decoded
+
+On a second libmpv handle reading a stretch with `vid=no`, `sub-start` /
+`sub-end` saw 1–2 of 15 cues: subtitles advance with video frames. With
+`vid=auto` and `vo=null` every cue arrives (round 10 D's measurement), at the
+price of decoding the video — so `sub_timing.rs` gives that reference a time
+budget per stretch and falls back to speech.
 
 ## Trakt
 
@@ -1980,7 +2181,7 @@ says how many pages; an account's 135 films arrived as 100), and
 `/sync/watched/shows` returns the shows **without** their seasons and episodes,
 whatever `extended` says — so a comparison built on it saw no watched episodes
 at all. `/sync/watched/episodes` has them, but names each by its own ids, not
-its show's. **Do:** read every page of the films, and ask each show Kinema has
+its show's. **Do:** read every page of the films, and ask each show Skrin has
 episodes of for its progress (`/shows/:id/progress/watched`, by IMDb id, or the
 Trakt id found from the TMDB id), which marks each episode `completed`.
 
@@ -2063,7 +2264,7 @@ mpv's shared-mode 7.1 stream passed `IsFormatSupported` and then failed
 film playing silent, no error in the UI. **Cause, found on the test TV:**
 a half-configured spatial mode — the device's format dropdown switched to an
 Atmos option without Dolby Access installed and spatial sound enabled. Nothing
-could play in that state, not just Kinema. Once Dolby Access was set up and
+could play in that state, not just Skrin. Once Dolby Access was set up and
 only the spatial-sound option switched on, mpv's 7.1 opened normally
 (`equipment:` then read `dynamic=20 static-mask=0xc1ffe`) and the fallback
 never ran. Keep the fallback: a misconfigured Windows is exactly the case it
@@ -2080,7 +2281,7 @@ receiver" (bitstream) keeps it.
 When mpv cannot open the audio output it logs "Audio: no audio" and
 **deselects** the audio track, rather than leaving it selected with nowhere to
 go. So "is a track selected but not playing?" never fires. The sign is a file
-with audio tracks and none selected — which Kinema never asks for, having no
+with audio tracks and none selected — which Skrin never asks for, having no
 "audio off". Putting the same track back (`set aid N`) is what reopens the
 output with new settings; `ao-reload` alone leaves it silent.
 `silencedAudioTrack` in `audioOutput.ts`; staged in `selftest.ps1` by setting
@@ -2143,7 +2344,7 @@ it back to 0 on restore, when mpv's own stale value is right again.
 
 ### A full-screen window keeps the size of the mode it was made full screen in
 
-On the TV PC, with the desktop at 1080p, Kinema switched the TV to 4K for a 4K
+On the TV PC, with the desktop at 1080p, Skrin switched the TV to 4K for a 4K
 film and the film went on playing in the top-left quarter of the screen: the
 window was still 1920×1080. Tauri sizes a full-screen window once, to the
 screen's bounds at that moment, and Windows moves nothing when the screen
@@ -2198,6 +2399,33 @@ the convention madVR and Kodi rely on. The *current* mode is exact —
 `QueryDisplayConfig` gives it as a fraction (`59972/1000` on the development monitor here) — so
 use that for anything already running.
 
+### The old mode call refuses a rate the link has room for only in a smaller colour format
+
+On the TV PC (desktop at 4K 30 Hz, 10-bit YCbCr 4:2:2, set in the graphics
+driver), a 59.94 fps film asked for 4K@59.94. `EnumDisplaySettings` listed the
+mode, and `ChangeDisplaySettingsEx`'s `CDS_TEST` answered "not supported"
+(`DISP_CHANGE_BADMODE`). Windows' own Settings set the same mode at once, at
+8-bit YCbCr 4:2:0: the link had room for 4K60 only in the smaller format, and
+the old call keeps the format the link is in. The film played at 30 Hz with
+every second frame left out, and app.log was the only place that said so.
+
+**Do:** when `CDS_TEST` refuses a listed mode, ask as Settings does —
+`SetDisplayConfig` with the desktop's new size, the path's refresh as an exact
+fraction, no target mode (`DISPLAYCONFIG_PATH_MODE_IDX_INVALID`) and
+`SDC_ALLOW_CHANGES`, validated first (`display/win.rs` →
+`set_mode_letting_driver_fit`). Not saved to the database, so `reset_mode`
+(`ChangeDisplaySettingsEx(NULL)`) still puts the desktop's mode back — proven
+on a second monitor at 50 and 59.94 Hz — but unlike `CDS_FULLSCREEN` it does
+not die with the process: the restore record covers a crash. The link's format
+before is kept in the record and the restore checks it came back. The details
+panel says a refused mode (Motion) and a lowered link (Colour depth).
+
+On the TV PC (GTX 1070, receiver in its limited 4K mode) that call was taken
+without an error and Windows still kept 30 Hz — `SDC_ALLOW_CHANGES` let it pick
+the nearest mode the link could carry in the format it was in. So it is no
+cure: the "asked for … and Windows kept …" check after every switch is what
+catches it, and the details panel is what says it.
+
 ### Probing the device's formats needs nothing open
 
 `IAudioClient::IsFormatSupported` in exclusive mode answers without opening the
@@ -2210,7 +2438,7 @@ takes nothing.
 
 ## Environment (Windows)
 
-### A running Kinema does not see a program installed after it started
+### A running Skrin does not see a program installed after it started
 
 The same as the shell entry below, inside the app: a process keeps the `PATH`
 it was started with, so `Command::new("ffmpeg")` fails for an ffmpeg winget
@@ -2219,7 +2447,7 @@ to the *user* `PATH` in the registry, which nothing running re-reads. No
 error, only "not found" until the next start. `ffmpeg.rs`
 (`installed_since_start`) looks in the registry's `PATH`, winget's links
 folder and its package folder when the bare name is not found. Anything else
-Kinema learns to install the same way needs the same.
+Skrin learns to install the same way needs the same.
 
 ### Spawned shells inherit a stale PATH
 
@@ -2295,6 +2523,39 @@ yourself fails. Proof: `scripts/sandbox-installer-update.ps1` (previous release
 → new setup with defaults). A real taskbar pin cannot be made by script, so
 the Sandbox run uses a copied shortcut for it.
 
+### Windows Sandbox: the app needs WebView2 found its own way, not the installer's
+
+A sandbox has no WebView2. Setting the EdgeUpdate `pv` value and mapping this
+PC's WebView2 folder in makes the setups pass (exit 0), but the app itself then
+opens "Could not find the WebView2 Runtime" (an error box with a sound) and
+never creates its data folder: its loader does not find the engine by that
+value. Many sandbox runs were lost to this, each looking like a test failure.
+`WEBVIEW2_BROWSER_EXECUTABLE_FOLDER` set machine-wide to the lent version's
+folder is what the loader reads. Every `scripts/sandbox-*.ps1` does it through
+`scripts/sandbox-common.ps1` (`Add-SandboxWebView2`), which also stops a run
+with a result line if the engine is missing, before any app starts. A new
+sandbox script uses that helper; nothing else. Also: a self-test run keeps its
+library beside its plan, so a test of the real library starts the app plainly.
+
+### A new product name is a new program to the installer
+
+Tauri's NSIS installer files everything under the product name: the install
+folder (`%LOCALAPPDATA%\<productName>`), the Apps entry
+(`Uninstall\<productName>`), the shortcuts (`<productName>.lnk`) and the
+"already installed" check. Renaming Kinema to Skrin would have installed Skrin
+beside Kinema with no error: two Apps entries, two Start-menu entries, one
+library. `hooks.nsh`'s `NSIS_HOOK_PREINSTALL` runs Kinema's uninstaller first
+with `/S /UPDATE _?=<old folder>` (update mode: no library question, no
+default-player clean-up), then deletes the shortcuts an update leaves. The app
+id (`identifier`) is separate and decides the data folder, so it stayed
+`com.kinema.app`. Linux has the same trap: a new package name installs beside
+the old one. apt follows the deb's `Conflicts`/`Replaces` and removes Kinema
+(checked with `apt-get install -s`). dnf does not: `dnf install ./skrin.rpm`
+and `dnf upgrade ./skrin.rpm` both left Kinema installed beside Skrin on the
+Linux test PC, `Obsoletes` or not, and an unversioned `Provides: kinema` makes
+dnf read the `Obsoletes` as Skrin's own. Only `dnf swap kinema ./skrin.rpm`
+swaps them, so the release notes say that.
+
 ### A clean Windows lacks `VCRUNTIME140.dll`, and error 126 blames the wrong file
 
 The plugin's prebuilt `libmpv-wrapper.dll` needs Microsoft's Visual C++ runtime
@@ -2305,7 +2566,7 @@ which is not. The ZIP had this fault too, and it hid for a long time because
 every PC used for testing already had the runtime, and the Sandbox harnesses
 copied `vcruntime140.dll` in.
 **Do:** Windows builds the wrapper from its pinned source with the C runtime
-built in (`scripts/build-mpv-wrapper.sh`, `crt-static`), and `kinema.exe` has
+built in (`scripts/build-mpv-wrapper.sh`, `crt-static`), and `skrin.exe` has
 its own built in already. **Never copy a runtime into a test sandbox** — it
 hides exactly this.
 
@@ -2344,6 +2605,18 @@ asynchronous stop, or it lands after the next film's `startEngine` cleared it,
 and ends mpv under that film.
 
 ## Linux, and building it from Windows
+
+### pkexec from an app started over SSH finds no password window
+
+Skrin's update button hands the package to `pkexec dnf|apt-get install`, and
+polkit asks the *session the process belongs to* for its password window. An
+app started from an SSH shell belongs to the SSH session, which has no
+graphical agent: pkexec gives up at once with exit 127 ("Error creating
+textual authentication agent … /dev/tty"), though the desktop's agent is
+running. A desktop launch (Plasma 6, GNOME) puts the app in a systemd user
+scope, outside any session, and polkit then uses the user's graphical
+session. **Do:** start test copies over SSH with `systemd-run --user --scope
+skrin …`; then KDE's "Authentication Required" window appears as for a person.
 
 ### A Windows path in a test is one file name on Linux
 
@@ -2384,12 +2657,22 @@ switcher, and it hid from Linux's clippy whatever that switcher stopped using.
 A constant (or helper) used only inside `cfg(not(target_os = "android"))` code
 passes every local check and fails CI's Android clippy under `-D warnings`.
 Nothing on a desktop shows it. **Do:** give the item the same `cfg`, as the
-frame constants for Videos have.
+frame constants for Videos have. It happened twice in round 10 (seek
+previews' `prepare`, then all of `sub_timing.rs`, a desktop-only feature whose
+platform-free core has no caller on Android): for a module that is all one
+such core, one `#![cfg_attr(any(target_os = "android", target_os = "ios"),
+allow(dead_code))]` at its top, with the reason beside it. **Check before
+committing** a module whose callers are desktop-only, as CI runs it — in WSL,
+in the Android kit's copy (`~/kinema-android`, which has the generated
+Android files): `NDK_HOME=~/Android/ndk/<NDK_VERSION>`, the
+`CC_/AR_aarch64_linux_android` lines from ci.yml, then
+`cargo clippy --manifest-path src-tauri/Cargo.toml --target
+aarch64-linux-android --all-targets -- -D warnings` (~30 s once built).
 
 ### New files on Linux are readable by every account
 
 Windows' app data is private to its user; a folder created on Linux with the
-default umask is not. Kinema's holds sign-in tokens, so `util::keep_private`
+default umask is not. Skrin's holds sign-in tokens, so `util::keep_private`
 makes it `0700` at every start.
 
 ### Inside WSL, `npm` is Windows' npm until Linux has its own
@@ -2428,13 +2711,13 @@ rewrite it on open; never let a stored path depend on where it was written.
 ### On Linux, mpv opens a window of its own
 
 `force-window=yes` keeps an idle surface for the transparent window to show,
-and on Windows that surface lives in Kinema's window through `--wid`. On
+and on Windows that surface lives in Skrin's window through `--wid`. On
 Linux it does not, for two different reasons. Under Wayland the plugin
 cannot give mpv a window at all ("Window embedding via --wid is not
-supported on Wayland"). Under X11 it does — `options/wid` reads Kinema's
+supported on Wayland"). Under X11 it does — `options/wid` reads Skrin's
 window — but mpv still picks its Wayland context first whenever
 `WAYLAND_DISPLAY` is set, and opens its own window anyway. Only an explicit
-`gpu-context` would make it draw into Kinema's window, and on X11 that is on
+`gpu-context` would make it draw into Skrin's window, and on X11 that is on
 top of the page, not under it.
 
 ### A library's warnings go nowhere unless something listens
@@ -2455,11 +2738,11 @@ the development PC).
 
 ### The libmpv wrapper crashes on a client message
 
-`script-message` is the obvious way for an mpv key binding to tell Kinema
+`script-message` is the obvious way for an mpv key binding to tell Skrin
 something, and the first key pressed took the whole program down. The
 wrapper (libmpv-wrapper v0.1.1, `src/event.rs`) walks a client message's
 arguments until it meets a null pointer, but mpv gives a count, not a
-terminator; it reads past the end. Nothing in Kinema may send or cause a
+terminator; it reads past the end. Nothing in Skrin may send or cause a
 client message while that stands. Keys come through an observed property
 instead (`mpvKeys.ts`).
 
@@ -2480,7 +2763,7 @@ seek bar cannot be dragged. Only a script's binding with `complex = true`
 is told both. That is why the mouse on mpv's own window goes through a Lua
 script (`pointer/mouse.lua`), and the keys do not.
 
-The script reports through a property, and Kinema hears a property's latest
+The script reports through a property, and Skrin hears a property's latest
 value, not every value it had: a quick click's press and release can fall
 between two readings. Each report therefore carries the last several
 events, numbered (`mpvMouse.ts`).
@@ -2506,7 +2789,7 @@ copies the new event and leaks the original, one per mouse move.
 ### A covered WebKitGTK window stops producing snapshots
 
 On Linux the player's page reaches the screen as a snapshot mpv draws
-(`overlay.rs`), taken while mpv's window covers Kinema's. With the WebKitGTK of
+(`overlay.rs`), taken while mpv's window covers Skrin's. With the WebKitGTK of
 2026-10, in nested KWin 5.27 and GNOME 46, the snapshots simply stopped
 arriving after about a second — no error, the callback never runs — because the
 compositor stops asking a covered window to draw, and WebKit's DMA-BUF renderer
@@ -2562,7 +2845,7 @@ Wayland box with an Intel card showed the whole page missing, with no error in
 any log (GitHub #17). Our WSL and headless runs never showed it, which is why it
 reached a release. So Linux's window is opaque (`tauri.linux.conf.json`), which
 costs nothing: mpv has a window of its own there, so nothing has to show through
-Kinema's.
+Skrin's.
 
 The page stays transparent, and that is what the player needs. The photo for mpv
 asks WebKit for a transparent background, and keeps its see-through parts with an
@@ -2578,25 +2861,43 @@ if they drift apart.
 
 Before that it has exactly nine arguments, and eleven are refused ("has only
 9 arguments"). `overlay.ts` tries with `dw`/`dh` and falls back once; the
-unscaled page then only lines up when Kinema's window is the screen's size.
+unscaled page then only lines up when Skrin's window is the screen's size.
 
 Decide that by `mpv-version`, not by the failure. The error that reaches the
 page is the plugin's generic "error running command" — the "9 arguments" is
 only in `mpv.log` — and the same error comes from an mpv shutting down as the
 player closes. The first version took any failure for an old mpv: on the test
 stick, mpv 0.41 logged "cannot scale the page" as each run ended, and in use
-that path would have made Kinema's window full screen after the player had
+that path would have made Skrin's window full screen after the player had
 gone.
 
 ### Quitting with mpv still running crashes on Linux
 
 The plugin shuts mpv down only when a window's close button is pressed.
-Kinema also quits by itself — Leave → Close, sleep, shut down, the end of a
+Skrin also quits by itself — Leave → Close, sleep, shut down, the end of a
 self-test — through `app.exit`, and mpv was left running. On Linux the
 graphics library then unloads its driver while mpv's video thread is still
 drawing with it: a segfault in the `vo` thread during `exit()`, after
 everything else had worked (seen in a nested KWin under gdb; WSLg happened
 to survive it). `RunEvent::Exit` now destroys mpv first, on every system.
+
+### Quitting with a film on a dead network mount: three silent waits
+
+A film on a share that has stopped answering (sshfs stopped, a dead SMB
+server) left Skrin running after its window closed, with nothing in the log:
+
+1. The close button never reaches `ExitRequested`: the mpv plugin's own
+   `CloseRequested` handler prevents the close, destroys mpv (which waits on
+   the demuxer's read for good) and only then closes the window. A quit
+   limit armed in `ExitRequested`/`Exit` never starts. Arm it at the main
+   window's `CloseRequested`.
+2. `std::process::exit` runs the exit-time clean-up, and that waited on the
+   mount too: the limit fired, logged, and the process stayed. End with
+   `_exit` (Linux) / `TerminateProcess` (Windows).
+3. Even then a thread stuck on the mount keeps the ended process listed
+   (defunct) until the mount answers — the kernel's doing — and its single-instance D-Bus name stays owned, so the next start
+   waits on it for good. Give the name back (`tauri_plugin_single_instance::destroy`)
+   before ending. `engine.rs`, `arm_exit_limit`.
 
 ### GNOME's colour mode 2 is not HDR
 
@@ -2615,7 +2916,7 @@ Cinnamon's window manager, Muffin, is a fork of Mutter and kept
 `DisplayConfig` request for request — the same `GetCurrentState` and
 `ApplyMonitorsConfig`, the same shapes — but renamed the service to
 `org.cinnamon.Muffin.DisplayConfig` at `/org/cinnamon/Muffin/DisplayConfig`.
-Asked by GNOME's name, a Cinnamon session answers nothing, and Kinema used to
+Asked by GNOME's name, a Cinnamon session answers nothing, and Skrin used to
 offer no switching there at all. It answers in Cinnamon's X11 session (Linux
 Mint's default) as well as on Wayland, lists no colour modes and has no HDR.
 To test it without a Cinnamon machine, Xvfb is not enough: its one mode has
@@ -2663,7 +2964,7 @@ surface (mpv.log: "Available surface configurations"). With nothing HDR to
 pick, mpv converts the film to SDR and `video-target-params` says gamma 2.2,
 BT.709, 203 nits; nothing is logged as an error. OpenGL is no way round it:
 mpv has no colour-space hint there and targets BT.1886. This is the driver,
-not Kinema, and not fixable by an option: on such a machine HDR films play
+not Skrin, and not fixable by an option: on such a machine HDR films play
 tone-mapped to SDR. (Mesa's Vulkan for AMD and Intel is meant to offer the
 HDR colour spaces through `wp_color_management`; not yet tried here.)
 
@@ -2671,26 +2972,26 @@ HDR colour spaces through `wp_color_management`; not yet tried here.)
 
 Plasma 5.27's `kscreen-doctor -j` aborted now and then on its own heap
 corruption (`corrupted size vs. prev_size in fastbins`, exit by SIGABRT) —
-twice in three Kinema starts under a nested KWin, both while a film was
+twice in three Skrin starts under a nested KWin, both while a film was
 starting, and not once in 200 calls made one after another or in pairs
-under load. Kinema asks once per launch which desktop it is on, so one crash
-at that moment meant "not a desktop Kinema can ask" for the whole session:
+under load. Skrin asks once per launch which desktop it is on, so one crash
+at that moment meant "not a desktop Skrin can ask" for the whole session:
 no switching, and the equipment check saying it could not read the screens,
 with nothing else logged. `kscreen.rs` now asks once more when the program
 ended by a signal (an ordinary failure, such as an unknown mode, is not
 repeated), and `desktop.rs` logs why a Plasma session was not recognised.
-Plasma 6.6's did not crash once in a full run on a real TV (six Kinema
+Plasma 6.6's did not crash once in a full run on a real TV (six Skrin
 starts, a switch and a restore), so it may be 5.27's alone; the retry stays.
 
-### Tiling desktops tile Kinema's window beside the film's
+### Tiling desktops tile Skrin's window beside the film's
 
-On Linux the player's controls are a photo of Kinema's window drawn over
-mpv's. Sway and Hyprland tile windows, so when mpv's window appears Kinema's
+On Linux the player's controls are a photo of Skrin's window drawn over
+mpv's. Sway and Hyprland tile windows, so when mpv's window appears Skrin's
 is squeezed beside it (933 of 1920 pixels on Hyprland) and the photo is
 scaled to the film's shape — stretched and soft, with no error anywhere; on
 GNOME and Plasma windows float and it never showed. Both float a window
 whose minimum and maximum size are equal *when it appears*, so
-`display.rs` → `player_window` hides Kinema's window and shows it again
+`display.rs` → `player_window` hides Skrin's window and shows it again
 undecorated at the screen's size, fixed, while the film is full screen.
 Undecorated matters: GTK's invisible shadow margins and title bar made a
 "1600×900" window 1560×860 of page. It must stop floating when the film
@@ -2721,7 +3022,7 @@ requests the desktop handled first; while playing it never showed.
 **Do:** where the picture is mpv's own window, put the screen back *first*,
 while that window is still full screen and simply follows the screen
 (`useScreen.ts` → `leaveFullscreen`), and do not take it out of full screen
-at all when the player closes — the window closes with the film. Kinema's
+at all when the player closes — the window closes with the film. Skrin's
 own window (Windows) keeps the old order.
 
 ### Hyprland's report does not show HDR it passes through
@@ -2755,7 +3056,7 @@ the player plugin is named.
 
 The system's Back — a remote's Back button, a phone's gesture — is not a
 key the page receives. Tauri's activity sends it to the WebView's own
-history, and Kinema has none, so Back in the middle of Settings left the
+history, and Skrin has none, so Back in the middle of Settings left the
 app for the TV's home screen. **Do:** listen with `onBackButtonPress`
 (`@tauri-apps/api/app`); with a listener present Tauri leaves the press to
 it. `backButton.ts` passes it on as a `BrowserBack` key press to whatever
@@ -2775,7 +3076,7 @@ does not, so on a fresh start OK on the first-run page did nothing, twice.
 picker is not implemented on mobile". Android TV 11 and later often has no
 system folder picker either, and where there is one it answers with a
 document address, not a path the scanner can walk. **Do:** ask
-`chooseFolder` (`library/folders.ts`), which opens Kinema's own browser
+`chooseFolder` (`library/folders.ts`), which opens Skrin's own browser
 wherever the capabilities say `folder_picker: false`.
 
 ### Android shows an app only the kind of file it asked for
@@ -2787,15 +3088,15 @@ no error. Up to Android 12 READ_EXTERNAL_STORAGE shows every file. **Do:**
 treat a missing sidecar on Android as possibly hidden; "All files access"
 (MANAGE_EXTERNAL_STORAGE) brings them back, and is granted in the system's
 settings, not in a dialog. On Android TV that screen is a list of every
-app, whichever of the two intents opens it; the person has to find Kinema
+app, whichever of the two intents opens it; the person has to find Skrin
 in it (`StoragePlugin.kt`).
 
 ### `run-as` does not see what the app sees on a drive
 
 `adb shell run-as com.kinema.app ls /storage/…` answers "Permission
-denied" even when Kinema has been allowed to read the drive: the
+denied" even when Skrin has been allowed to read the drive: the
 permission belongs to the app's process, not to its user id in a shell.
-**Do:** check what Kinema can read through Kinema — the folder browser,
+**Do:** check what Skrin can read through Skrin — the folder browser,
 a scan, a self-test plan that plays a file from the drive.
 
 ### Android says the HDMI output takes a format it then refuses
@@ -2805,6 +3106,17 @@ HDMI, Media3 passed a film's DTS through, and Android refused the output
 (`ERROR_CODE_AUDIO_TRACK_INIT_FAILED`): the whole film failed. **Do:** treat
 any failure of the sound renderer as a reason to step down, not to stop
 (`Media3Plugin.kt` `fallBack`).
+
+### Media3 leaves out sound it cannot play, without an error
+
+A track neither decoded on the device nor offered by the HDMI output for
+sending on untouched (TrueHD on most devices, even with a receiver that
+takes it) is marked `NO_UNSUPPORTED_SUBTYPE` and simply not chosen. No
+error comes, so a fallback that waits for one never runs, and a film whose
+only sound is that track plays silent with no word. **Do:** once the
+tracks are known, if none of the sound tracks is chosen, choose one that
+can play, or say the film plays without sound (`Media3Plugin.kt`
+`soundLeftOut`).
 
 ### Android's surround setting is not what a box does
 
@@ -2873,7 +3185,7 @@ decoded PCM; then Media3 decodes, or picks a track it can decode.
 
 A Blu-ray stream file (`.m2ts`, 192-byte packets) fails with "None of the
 available extractors": Media3's transport-stream reader reads 188-byte
-packets, and the 192-byte ones of `.m2ts` are not recognised. Kinema reads
+packets, and the 192-byte ones of `.m2ts` are not recognised. Skrin reads
 them with its own extractor (`M2tsExtractor.kt`), which hides the 4 extra
 bytes of each packet from Media3's reader and turns the places it gives out
 back into the file's own. It is added ahead of Media3's list in
@@ -2882,7 +3194,13 @@ ways that give no error:
 
 - Media3's factory reads stream type 0x80 (a disc's uncompressed sound) as
   video and 0x86 (DTS-HD) as an ad marker. `BdTsPayloadReaderFactory.kt`
-  decides these first.
+  decides these first. Dropping 0x80 made an LPCM disc play silent with no
+  track listed and no word: `BdLpcmReader` gives it as PCM, the disc's
+  big-endian samples and channel order turned into the WAV order.
+- ffmpeg, making a `.m2ts`, writes AAC and MPEG sound as stream type 0x06
+  ("private data") with no descriptor; Media3 reads that as nothing, so the
+  sound was silently missing. The start of the file is looked at for what
+  those streams' bytes are (`BdCoreScan.soundByBytes`).
 - Dolby TrueHD (0x83) is one stream holding the TrueHD access units and, now
   and then, a Dolby Digital frame. Media3 has no reader for it. It is given
   as two tracks, TrueHD and the Dolby Digital "core".
@@ -2929,21 +3247,21 @@ registering it twice is harmless if a later Tauri does it too.
 
 ### An app behind the home screen goes on working, and Android lets it
 
-Nothing stops a page or its native side when Kinema leaves the screen: the
+Nothing stops a page or its native side when Skrin leaves the screen: the
 WebView only slows the page's timers, and a worker and Rust's threads are not
 slowed at all. A scan left behind on a 2-core box read file names at one full
-core, and the box got slower with Kinema nowhere in sight, so people force
-closed it. There is no error, and an idle Kinema or a film left paused cost
+core, and the box got slower with Skrin nowhere in sight, so people force
+closed it. There is no error, and an idle Skrin or a film left paused cost
 next to nothing, so only a scan shows it. **Do:** work a person is not waiting for calls
 `yieldToPlayback` (page) or `jobs::wait_for_turn` (Rust) between its units, and
 gives a worker small parts rather than one long batch, which cannot be stopped.
-`presence.ts` turns Kinema's being in front or not into those two flags; any key
+`presence.ts` turns Skrin's being in front or not into those two flags; any key
 proves it is in front, because a scan waiting by mistake looks like one that
 never ends. A desktop never sets them.
 
 ### A TV box's screen going off stops a scan, and says nothing until someone is back
 
-When a box goes to sleep at its screen timeout, Kinema has left the screen, so
+When a box goes to sleep at its screen timeout, Skrin has left the screen, so
 the rule above holds the scan there. A film stays awake on its own. Seen on a box
 whose timeout is 60 minutes: the scan stopped at the moment the screen went off
 and went on at wake with nothing lost, and the "Picked up after a pause" line
@@ -2951,7 +3269,7 @@ only shows once someone is there to read it. **Do:** a library's first scan keep
 the screen on (`screenHold.ts`, Android's `FLAG_KEEP_SCREEN_ON`), on a lease it
 renews as the work moves on, so a step that hangs cannot hold a TV awake for
 good; a film lets go, since a paused one could otherwise do just that. Later
-scans still wait. The flag stays set when Kinema is behind, and Android ignores
+scans still wait. The flag stays set when Skrin is behind, and Android ignores
 it there: `dumpsys window` showing it proves nothing about the screen, read
 `mWakefulness`. An emulator has `stay_on_while_plugged_in` at 15 and never sleeps
 until that is 0, which looks exactly like a hold that is never let go.
@@ -2989,8 +3307,22 @@ keeps playing in the background keeps it, and the next app gets "no video
 decoders available" (`ERROR_CODE_DECODER_INIT_FAILED`, `0xfffffff4`); if
 the next app is in front, Android takes it back from the one behind
 (`ERROR_CODE_DECODING_RESOURCES_RECLAIMED`). **Do:** pause and `stop()` the
-player when Kinema leaves the screen, `prepare()` it again, paused, when it
+player when Skrin leaves the screen, `prepare()` it again, paused, when it
 returns (`Media3Plugin.kt`, `suspended`).
+
+### A software decoder that takes the type may not take the profile
+
+Seek previews on Android (`PreviewPlugin.kt`) pick a software decoder by
+type and size. Android TV 16's own `c2.android.hevc.decoder` takes HEVC at
+1080p and 4K but not Main10: `configure` and `start` succeed, the first
+picture fails with "work failed to complete: 14", and the codec is then
+released — the next call says "flush() is valid only at Executing states".
+And a file states its HDR profile ("VP9 Profile 2 HDR", 4096; "HEVC Main10
+HDR10"), which no decoder lists, though the plain profile decodes it.
+**Do:** match `KEY_PROFILE` against the decoder's `profileLevels`, with an
+HDR profile counted as its plain one (`base`). Also: one Kotlin session
+shared by successive Rust handles needs an id, or the old file's handle,
+dropped after the next file opened, closes the new session.
 
 ### smb-rs, the SMB library, needed two fixes to stream at all
 
@@ -3048,3 +3380,14 @@ the error's source chain, which the webview never sees. Every failure then
 looked the same, and the log held the keys. **Do:** use `reach.rs`
 (`check_reach`) to ask the host again from Rust, and never print the raw URL
 without `applog`'s key hiding.
+
+### mpv plays a text file named `.mkv` as a playlist and fetches what it names
+
+mpv picks the demuxer by content, not by extension: an M3U, PLS, CUE or mpv
+EDL saved as `.mkv` is opened as that playlist, and mpv then requests every
+address in it, `http://` included. With yt-dlp installed, mpv's ytdl helper
+visits the address again posing as a browser. **Do:** keep
+`access-references=no` and `ytdl=no` in `BASE_MPV_OPTIONS` (`mpvOptions.ts`);
+Skrin reads its own playlists. The same switch also turns off Matroska
+ordered chapters (mpv `demux_mkv_timeline.c`), so such a file plays straight
+through; `bd://` and `sub-add` are not references and still work.

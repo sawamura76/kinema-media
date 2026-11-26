@@ -186,7 +186,9 @@ pub fn next(conn: &Connection, limit: i64) -> rusqlite::Result<Vec<Todo>> {
     let mut stmt = conn.prepare(
         "SELECT m.id, m.path, m.parent_dir, m.file_name, m.size_bytes, m.missing, m.match_status,
                 m.parsed_title, m.parsed_year, m.parsed_season, m.parsed_episode, m.parsed_kind,
-                m.parsed_from, m.title_id, m.match_confidence, m.match_reason, t.title, t.year
+                m.parsed_from, m.title_id, m.match_confidence, m.match_reason,
+                -- The name it was matched by, not a translation of it (details language).
+                COALESCE(NULLIF(t.english_title, ''), t.title), t.year
            FROM worth_a_look_todo w
            JOIN media_files m ON m.id = w.file_id
            LEFT JOIN titles t ON t.id = m.title_id

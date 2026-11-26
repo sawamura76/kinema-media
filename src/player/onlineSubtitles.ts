@@ -16,7 +16,7 @@ import { formatTime } from '../ui/format';
 export const AUTO_FORCED_KEY = 'opensubtitles_forced';
 
 export interface SubtitleStatus {
-  /** This copy of Kinema has an OpenSubtitles app key. */
+  /** This copy of Skrin has an OpenSubtitles app key. */
   available: boolean;
   user: string | null;
   /** Downloads left today, as OpenSubtitles last said. */

@@ -1,6 +1,6 @@
 /**
  * Settings → Keep track of what I watch: connecting SIMKL or Trakt, so what is finished in
- * Kinema is added to the account.
+ * Skrin is added to the account.
  *
  * Both sign in the same way — a code and a QR code here, approval on a phone —
  * so one panel serves both, told apart by `SERVICES`. Every control is a
@@ -45,7 +45,7 @@ interface ServiceText {
   developerPage: string;
   /** Anything extra worth saying before connecting. */
   beforeConnecting?: string;
-  /** Why the service might stop accepting Kinema's sign-in. */
+  /** Why the service might stop accepting Skrin's sign-in. */
   whyReconnect: string;
 }
 
@@ -54,7 +54,7 @@ const SERVICES: Record<Service, ServiceText> = {
     name: 'SIMKL',
     logo: { src: '/simkl.svg', withName: true },
     developerPage: 'simkl.com/settings/developer',
-    whyReconnect: 'it was ended on SIMKL, or Kinema went unused for six months',
+    whyReconnect: 'it was ended on SIMKL, or Skrin went unused for six months',
   },
   trakt: {
     name: 'Trakt',
@@ -62,7 +62,7 @@ const SERVICES: Record<Service, ServiceText> = {
     developerPage: 'app.trakt.tv/settings/apps',
     beforeConnecting:
       'A free Trakt account can be connected to only one app besides Trakt’s own. If yours is already connected to another (Kodi, Plex, a phone app), disconnect it on Trakt first, or Trakt will refuse.',
-    whyReconnect: 'it was ended on Trakt, or Kinema went unused for a long time',
+    whyReconnect: 'it was ended on Trakt, or Skrin went unused for a long time',
   },
 };
 
@@ -151,12 +151,12 @@ export default function AccountSection({ service }: { service: Service }) {
               break;
             case 'denied':
               setCode(null);
-              setNote(`Kinema was declined on ${text.name}. Connect again if that was a mistake.`);
+              setNote(`Skrin was declined on ${text.name}. Connect again if that was a mistake.`);
               break;
             case 'refused':
               setCode(null);
               setError(
-                `${text.name} does not recognise this copy of Kinema. The log has the details.`
+                `${text.name} does not recognise this copy of Skrin. The log has the details.`
               );
               break;
             case 'failed':
@@ -230,7 +230,7 @@ export default function AccountSection({ service }: { service: Service }) {
         )}
       </h2>
       <p className="settings-intro">
-        Adds what you finish watching in Kinema to your {text.name} account, including anything you
+        Adds what you finish watching in Skrin to your {text.name} account, including anything you
         mark as watched.{' '}
         {service === 'trakt'
           ? 'Where you stop part-way is also sent, and read back so another device can carry on (once connected, a switch here turns that off). Nothing else comes back from Trakt, and marking something as not watched here leaves Trakt as it is.'
@@ -240,7 +240,7 @@ export default function AccountSection({ service }: { service: Service }) {
 
       {!status.available && (
         <p className="settings-hint">
-          This copy of Kinema was built without a {text.name} app, so it cannot connect. Released
+          This copy of Skrin was built without a {text.name} app, so it cannot connect. Released
           copies have one; a build from source can use its own, under Advanced → Developer tools.
         </p>
       )}
@@ -261,7 +261,7 @@ export default function AccountSection({ service }: { service: Service }) {
             </p>
             <p className="simkl-user-code">{code.user_code}</p>
             <p className="settings-hint">
-              Then approve Kinema on {text.name}. This code works for {countdown(secondsLeft)}{' '}
+              Then approve Skrin on {text.name}. This code works for {countdown(secondsLeft)}{' '}
               more.
             </p>
             {note && <p className="settings-hint">{note}</p>}
@@ -326,7 +326,7 @@ export default function AccountSection({ service }: { service: Service }) {
         <>
           {status.needs_reconnect && (
             <p className="settings-warn">
-              {text.name} no longer accepts Kinema&rsquo;s sign-in — {text.whyReconnect}. Connect
+              {text.name} no longer accepts Skrin&rsquo;s sign-in — {text.whyReconnect}. Connect
               again; what you watched meanwhile is kept and sent.
             </p>
           )}
@@ -343,8 +343,8 @@ export default function AccountSection({ service }: { service: Service }) {
             </FocusButton>
           </FocusGroup>
           <p className="settings-hint">
-            You approve on {text.name}&rsquo;s own page, on your phone or here; Kinema never sees
-            your password. Everything you have already watched in Kinema is sent once when you
+            You approve on {text.name}&rsquo;s own page, on your phone or here; Skrin never sees
+            your password. Everything you have already watched in Skrin is sent once when you
             connect
             {service === 'trakt' ? ', leaving out what Trakt already has' : ''}.
           </p>

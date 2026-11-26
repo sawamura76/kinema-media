@@ -5,7 +5,7 @@
  * list — an empty genre produces no rail at all, so a small library looks
  * deliberate instead of full of empty shelves.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Art from './Art';
 import { drawnStyle } from './drawnColour';
 import Rail from './Rail';
@@ -24,7 +24,7 @@ import { useFocusGroup, useNavGroup } from './focusGroups';
 import { count } from './format';
 import type { ContinueItem } from '../player/api';
 import { parseGenres, type Title } from './api';
-import { pickHero } from './hero';
+import { chosenHero, pickHero } from './hero';
 import { useScanStatus } from '../library/pipeline';
 import { scanWords } from '../library/scanWords';
 import { useMyList } from '../library/myList';
@@ -153,6 +153,7 @@ export default function Home(props: Props) {
             reviewCount={reviewCount}
             onReview={onReview}
             onAddFolder={onAddFolder}
+            offline={props.scanTrouble?.offline === true}
           />
         </FocusScreen>
       );
@@ -164,7 +165,7 @@ export default function Home(props: Props) {
     );
   }
 
-  // Home itself and the pages that stand in for it above are on Kinema's own
+  // Home itself and the pages that stand in for it above are on Skrin's own
   // engine (focusEngine.tsx, round 7).
   return (
     <FocusScreen key="home">
@@ -182,11 +183,13 @@ function NothingNamed({
   reviewCount,
   onReview,
   onAddFolder,
+  offline = false,
 }: {
   files: number;
   reviewCount: number;
   onReview: () => void;
   onAddFolder?: () => void;
+  offline?: boolean;
 }) {
   const { ref, focusKey } = useNavGroup({ kind: 'column' }, { focusKey: NOTHING_NAMED_FOCUS_KEY });
   // The count of files to review comes after Home is up: the ring, already on
@@ -196,22 +199,33 @@ function NothingNamed({
   return (
     <FocusProvider value={focusKey}>
       <section className="first-run first-scan nothing-named" ref={ref}>
-        {files > 0 ? (
+        {files > 0 && offline ? (
           <>
             <h1>
-              Kinema found {count(files, 'file')} but could not name {files === 1 ? 'it' : 'them'}
+              Skrin found {count(files, 'file')} but could not reach the internet to name{' '}
+              {files === 1 ? 'it' : 'them'}
             </h1>
             <p className="muted">
-              Rather than guess, Kinema leaves a file it is not sure of for you to name. A wrong
+              Check the connection. Skrin asks again at the next scan and every time it starts, so
+              nothing needs renaming.
+            </p>
+          </>
+        ) : files > 0 ? (
+          <>
+            <h1>
+              Skrin found {count(files, 'file')} but could not name {files === 1 ? 'it' : 'them'}
+            </h1>
+            <p className="muted">
+              Rather than guess, Skrin leaves a file it is not sure of for you to name. A wrong
               title is worse than none. Look through them and pick the right film or show, or add
               a folder whose files are named after what they are.
             </p>
           </>
         ) : (
           <>
-            <h1>Kinema found no videos in your folders</h1>
+            <h1>Skrin found no videos in your folders</h1>
             <p className="muted">
-              The folders added hold no films or shows Kinema can play. Add the folder you keep
+              The folders added hold no films or shows Skrin can play. Add the folder you keep
               them in.
             </p>
           </>
@@ -274,9 +288,18 @@ function HomeRows({
   // The moment Home opened, fixed for its life: the hero is the day's pick,
   // not something that changes under the remote while you browse.
   const [openedAt] = useState(() => Date.now());
+  // A film named in home-top.txt, for screenshots (hero.ts); read once.
+  const [chosen, setChosen] = useState<string | null>(null);
+  useEffect(() => {
+    let live = true;
+    void chosenHero().then((name) => live && setChosen(name));
+    return () => {
+      live = false;
+    };
+  }, []);
   const hero = useMemo(
-    () => pickHero(titles, resumable[0]?.title_id ?? null, openedAt),
-    [titles, resumable, openedAt]
+    () => pickHero(titles, resumable[0]?.title_id ?? null, openedAt, chosen),
+    [titles, resumable, openedAt, chosen]
   );
 
   // Not sliced here: `Rail` applies the cap, so there is one number governing
@@ -429,6 +452,7 @@ function Hero({
       <header className="hero" ref={ref}>
         <Art
           className="hero-backdrop"
+          screenRem="window"
           local={title.backdrop_path}
           remote={title.backdrop_url}
           fallback={<div className="hero-backdrop drawn-backdrop" style={drawnStyle(title.title, title.year)} />}

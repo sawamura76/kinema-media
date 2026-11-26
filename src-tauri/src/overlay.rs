@@ -1,7 +1,7 @@
 //! The player's page, as a picture for mpv to draw over the video.
 //!
 //! Where mpv plays in a window of its own (capabilities `own_window`: Linux),
-//! Kinema's page cannot be put over the video — Wayland has no `--wid`, and a
+//! Skrin's page cannot be put over the video — Wayland has no `--wid`, and a
 //! second window cannot be kept above mpv's (docs/GOTCHAS.md). So the page is
 //! photographed and mpv draws the photo: `overlay_frame` takes one, the
 //! frontend (`player/overlay.ts`) hands it to mpv's `overlay-add`. The page

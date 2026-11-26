@@ -17,6 +17,7 @@ import { count } from '../ui/format';
 import { describeFailure } from '../metadata/reach';
 import { userError, withoutQueries } from '../ui/errors';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import RemoteImg from '../ui/RemoteImg';
 import FocusButton from '../ui/FocusButton';
 import FocusInput from '../ui/FocusInput';
 import FocusGroup from '../ui/FocusGroup';
@@ -32,6 +33,7 @@ import {
   applyMatch,
   prepareTitle,
   groupFiles,
+  groupName,
   ignoreFiles,
   loadProviderKeys,
   providerForKind,
@@ -79,10 +81,10 @@ interface Props {
 const QUEUE_LIMIT = 2000;
 
 /**
- * The website's guide to the names Kinema understands. Most refusals are a
+ * The website's guide to the names Skrin understands. Most refusals are a
  * name the parser could not read, and renaming is often quicker than a search.
  */
-const FILE_NAMES_GUIDE = 'https://basswaves.github.io/kinema/file-names.html';
+const FILE_NAMES_GUIDE = 'https://skrin.org/file-names.html';
 
 function GuideLink() {
   return (
@@ -91,7 +93,7 @@ function GuideLink() {
      
       onSelect={() => void openLink(FILE_NAMES_GUIDE)}
     >
-      How Kinema reads file names ↗
+      How Skrin reads file names ↗
     </FocusButton>
   );
 }
@@ -210,7 +212,7 @@ export default function FixMatch({ onChanged }: Props) {
     return (
       <section className="fixmatch">
         <p className="muted">
-          Nothing needs attention: every file found has its title. Files Kinema will not guess
+          Nothing needs attention: every file found has its title. Files Skrin will not guess
           at appear here, with the reason.
         </p>
         <GuideLink />
@@ -224,7 +226,7 @@ export default function FixMatch({ onChanged }: Props) {
         <h2>Needs attention</h2>
         {pending.length > 0 && (
           <span className="muted">
-            {pending.length} title{pending.length === 1 ? '' : 's'} Kinema would not guess at
+            {pending.length} title{pending.length === 1 ? '' : 's'} Skrin would not guess at
           </span>
         )}
       </header>
@@ -364,7 +366,7 @@ export default function FixMatch({ onChanged }: Props) {
               <div key={group.key} className="fixmatch-row ignored">
                 <div className="fixmatch-summary">
                   <div className="fixmatch-title">
-                    {group.title}
+                    {groupName(group)}
                     {group.year ? ` (${group.year})` : ''}
                     <span className="muted"> · {count(group.files.length, 'file')}</span>
                   </div>
@@ -436,7 +438,7 @@ function RowSummary({
       tabIndex={0}
     >
       <div className="fixmatch-title">
-        {group.title}
+        {groupName(group)}
         {group.year ? ` (${group.year})` : ''}
         <span className="muted">
           {' '}
@@ -470,19 +472,19 @@ function adviceFor(reason: string): string {
   if (/^unlinked by hand/.test(reason)) {
     return 'You unlinked this from a wrong title. It waits here until you pick the right one below.';
   }
-  // Refused by a version of Kinema that had nothing to look movies up with.
+  // Refused by a version of Skrin that had nothing to look movies up with.
   if (/no provider available/.test(reason)) {
-    return 'Kinema had no way to look this up when it was scanned. Search for it below.';
+    return 'Skrin had no way to look this up when it was scanned. Search for it below.';
   }
   // A lookup that got no answer decided nothing: it is not "could not identify".
   if (/could not be reached|did not answer, but answers now|error sending request/.test(reason)) {
-    return 'Kinema could not reach the service it looks titles up with when this was scanned. The next scan asks again, or search below.';
+    return 'Skrin could not reach the service it looks titles up with when this was scanned. The next scan asks again, or search below.';
   }
   if (/no candidates (returned|scored)/.test(reason)) {
     return 'Nothing came back for this name. Search for it below using the real title.';
   }
   if (/ambiguous vs/.test(reason)) {
-    return 'Two releases looked equally likely, so Kinema did not choose. Pick the right one below.';
+    return 'Two releases looked equally likely, so Skrin did not choose. Pick the right one below.';
   }
   if (/tie vs/.test(reason)) {
     return 'A close call between two titles. Check the choice below is the one you meant.';
@@ -499,7 +501,7 @@ function adviceFor(reason: string): string {
   if (/^title \d+%/.test(reason)) {
     return 'The name was too different from anything found. Search below with the real title.';
   }
-  return 'Kinema could not identify this. Search for it below.';
+  return 'Skrin could not identify this. Search for it below.';
 }
 
 function GroupRow({
@@ -530,7 +532,7 @@ function GroupRow({
   // Named from the file to start with (the parsed title, or the file name when
   // there was none) — editable, since a file name is rarely what anyone calls
   // a home video.
-  const [localName, setLocalName] = useState(group.title);
+  const [localName, setLocalName] = useState(groupName(group));
   const [localYear, setLocalYear] = useState(group.year ? String(group.year) : '');
   const [localError, setLocalError] = useState<string | null>(null);
   const besidePlaced = group.files.some((f) => f.match_reason === BESIDE_REASON);
@@ -564,7 +566,7 @@ function GroupRow({
     ? 'no title in the file name or its folders'
     : withoutQueries(group.files.find((f) => f.match_reason)?.match_reason ?? 'not matched yet');
   const advice = group.untitled
-    ? 'Kinema could not read a title from this file or the folders around it. Search for what it is below.'
+    ? 'Skrin could not read a title from this file or the folders around it. Search for what it is below.'
     : adviceFor(reason);
 
 
@@ -604,7 +606,7 @@ function GroupRow({
           )}
 
           <MatchSearch
-            initialQuery={group.untitled ? searchableName(group.title) : group.title}
+            initialQuery={group.untitled ? searchableName(group.title) : groupName(group)}
             isSeries={isSeries}
             onToggleSeries={() => setIsSeries((v) => !v)}
             busy={busy}
@@ -708,7 +710,12 @@ export function MatchSearch({
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
 
+  // A second press while a search runs is ignored here, not by `disabled`: a
+  // disabled button under the ring sends the ring to "Ignore these".
+  const searchingRef = useRef(false);
   const search = useCallback(async () => {
+    if (searchingRef.current) return;
+    searchingRef.current = true;
     setSearching(true);
     setSearchError(null);
     try {
@@ -723,6 +730,7 @@ export function MatchSearch({
     } catch (e) {
       setSearchError(await describeFailure(e));
     } finally {
+      searchingRef.current = false;
       setSearching(false);
     }
   }, [query, isSeries]);
@@ -747,7 +755,7 @@ export function MatchSearch({
         <FocusButton
           className="primary"
          
-          disabled={searching || !query.trim()}
+          disabled={!query.trim()}
           onSelect={() => void search()}
         >
           {searching ? 'Searching…' : 'Search'}
@@ -777,7 +785,7 @@ export function MatchSearch({
             {results.map((candidate) => (
               <div key={candidate.providerId} className="fixmatch-candidate">
                 {candidate.posterUrl ? (
-                  <img src={candidate.posterUrl} alt="" loading="lazy" />
+                  <RemoteImg src={candidate.posterUrl} />
                 ) : (
                   <div className="poster-placeholder">no poster</div>
                 )}

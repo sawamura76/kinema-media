@@ -1,0 +1,2 @@
+import {defineConfig} from '@playwright/test';
+export default defineConfig({testDir:'e2e',testMatch:['handheld-art.e2e.ts','details-language.e2e.ts','seek-preview.e2e.ts','proxy.e2e.ts'],workers:1,timeout:45000,expect:{timeout:10000},use:{baseURL:'http://127.0.0.1:15545',viewport:{width:1280,height:720},screenshot:'only-on-failure'},webServer:{command:'node node_modules/vite/bin/vite.js --mode mock --port 15545 --strictPort --host 127.0.0.1',url:'http://127.0.0.1:15545'}});

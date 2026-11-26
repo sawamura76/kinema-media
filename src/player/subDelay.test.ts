@@ -3,6 +3,7 @@ import {
   MAX_FILES,
   describeSubDelay,
   parseSubDelays,
+  parseSubSpeeds,
   subDelayLabel,
   withSubDelay,
 } from './subDelay';
@@ -11,7 +12,7 @@ describe('subtitle timing', () => {
   it('reads what was stored, and drops what is damaged or none', () => {
     expect(parseSubDelays('{"a.mkv":1500,"b.mkv":0,"c.mkv":"x","d.mkv":149}')).toEqual({
       'a.mkv': 1500,
-      'd.mkv': 100,
+      'd.mkv': 150,
     });
     expect(parseSubDelays('[1]')).toEqual({});
     expect(parseSubDelays('not json')).toEqual({});
@@ -37,5 +38,13 @@ describe('subtitle timing', () => {
     expect(describeSubDelay(-2300)).toBe('Subtitles 2.3 s earlier');
     expect(describeSubDelay(1000)).toBe('Subtitles 1 s later');
     expect(describeSubDelay(0)).toBe('Subtitles at their own timing');
+    // A found amount is finer than a step.
+    expect(subDelayLabel(-2340)).toBe('−2.34 s');
+    expect(describeSubDelay(2500)).toBe('Subtitles 2.5 s later');
+  });
+
+  it('keeps a found speed only where it is one of the known kind', () => {
+    expect(parseSubSpeeds('{"a.mkv":1.0427,"b.mkv":1,"c.mkv":3,"d.mkv":"x"}')).toEqual({ 'a.mkv': 1.0427 });
+    expect(parseSubSpeeds('nope')).toEqual({});
   });
 });

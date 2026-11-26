@@ -1,5 +1,5 @@
 /**
- * The keyless movie fallback: what Kinema makes of Wikidata's answers.
+ * The keyless movie fallback: what Skrin makes of Wikidata's answers.
  *
  * The HTTP plugin is replaced with canned MediaWiki replies, chosen by the
  * request's `action`, so these check the mapping and the manners without a
@@ -146,11 +146,11 @@ describe('Wikidata as the movie fallback', () => {
 
     expect(candidates).toEqual([]);
     expect(requests).toHaveLength(2);
-    expect(requests[0].headers?.['Api-User-Agent']).toMatch(/^Kinema /);
+    expect(requests[0].headers?.['Api-User-Agent']).toMatch(/^Skrin /);
   });
 
   // `maxlag` is for bots that edit. Sent on reads, Wikidata refused every one
-  // as "busy" for as long as its query service lagged — which Kinema never uses.
+  // as "busy" for as long as its query service lagged — which Skrin never uses.
   it('does not ask Wikimedia to refuse reads while its copies lag', async () => {
     replies = [() => ({ query: { search: [] } })];
     await settle(wikidataSearch('Anything'));
@@ -174,7 +174,7 @@ describe('Wikidata as the movie fallback', () => {
 
     expect(requests).toHaveLength(5);
     expect(describeError(error)).toBe(
-      'Wikipedia is busy right now. Kinema tries again on the next scan, or try again in a minute.'
+      'Wikipedia is busy right now. Skrin tries again on the next scan, or try again in a minute.'
     );
   });
 });

@@ -62,6 +62,38 @@ pub struct TitleInput {
     pub next_air_season: Option<i64>,
     #[serde(default)]
     pub next_air_episode: Option<i64>,
+    /// TMDB's title as asked without a language, beside a translated
+    /// `title`. Absent from other providers, whose `title` is that already.
+    #[serde(default)]
+    pub english_title: Option<String>,
+    /// The language the details were fetched in, `en` or `pl-PL`. Absent from
+    /// other providers, which fetch in English.
+    #[serde(default)]
+    pub details_language: Option<String>,
+    /// Every country's age rating, tab-separated `DK=15` (TMDB only); empty
+    /// when TMDB has none, absent from other providers.
+    #[serde(default)]
+    pub certifications: Option<String>,
+    /// TMDB's recommendations, comma-separated TMDB ids (TMDB only).
+    #[serde(default)]
+    pub similar_ids: Option<String>,
+    /// A series' season posters (TMDB only); absent keeps what is stored.
+    #[serde(default)]
+    pub season_posters: Option<Vec<SeasonPosterInput>>,
+}
+
+#[derive(Deserialize)]
+pub struct SeasonPosterInput {
+    pub season: i64,
+    pub poster_url: String,
+}
+
+/// A season's poster on the page: the cached copy when there is one.
+#[derive(Serialize)]
+pub struct SeasonPoster {
+    pub season: i64,
+    pub poster_url: String,
+    pub poster_path: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -150,6 +182,9 @@ pub struct Title {
     pub imdb_votes: Option<i64>,
     /// Rotten Tomatoes' Tomatometer, 0–100, through the user's OMDb key.
     pub tomatometer: Option<i64>,
+    /// TMDB's English title when `title` is a translation (the details
+    /// language), for search to match on too. None or the same otherwise.
+    pub english_title: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -201,6 +236,13 @@ pub struct About {
     pub next_air_date: Option<String>,
     pub next_air_season: Option<i64>,
     pub next_air_episode: Option<i64>,
+    /// Every country's age rating, tab-separated `DK=15`; the page picks the
+    /// system's country (`ageRating.ts`) and shows nothing when it is absent.
+    pub certifications: Option<String>,
+    /// TMDB's recommendations that the library holds, in TMDB's order.
+    pub similar: Vec<Title>,
+    /// A series' season posters, for the seasons TMDB has one for.
+    pub season_posters: Vec<SeasonPoster>,
 }
 
 fn names(joined: Option<String>) -> Vec<String> {
@@ -233,6 +275,24 @@ pub(crate) fn about_for(conn: &rusqlite::Connection, art: &str, title_id: i64) -
             params![title_id],
             |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?, r.get(6)?, r.get(7)?)),
         )?;
+    let (certifications, similar_ids, kind): (Option<String>, Option<String>, String) = conn.query_row(
+        "SELECT certifications, similar_ids, kind FROM titles WHERE id = ?1",
+        params![title_id],
+        |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+    )?;
+    let similar = similar_held(conn, art, title_id, &kind, similar_ids.as_deref().unwrap_or(""))?;
+    let season_posters = {
+        let mut stmt = conn.prepare(
+            "SELECT s.season, s.poster_url,
+                    (SELECT :art || a.local_path FROM artwork_cache a
+                      WHERE a.url = s.poster_url AND a.local_path <> '')
+               FROM season_art s WHERE s.title_id = :id ORDER BY s.season",
+        )?;
+        let rows = stmt.query_map(named_params! { ":art": art, ":id": title_id }, |r| {
+            Ok(SeasonPoster { season: r.get(0)?, poster_url: r.get(1)?, poster_path: r.get(2)? })
+        })?;
+        rows.collect::<rusqlite::Result<Vec<_>>>()?
+    };
     let some = |s: Option<String>| s.filter(|v| !v.is_empty());
     let collection = match some(collection_id) {
         Some(id) => {
@@ -257,7 +317,56 @@ pub(crate) fn about_for(conn: &rusqlite::Connection, art: &str, title_id: i64) -
         next_air_date: some(date),
         next_air_season: season,
         next_air_episode: episode,
+        certifications: some(certifications),
+        similar,
+        season_posters,
     })
+}
+
+/// How many recommendations the page shows at most.
+const SIMILAR_LIMIT: usize = 20;
+
+/// TMDB's recommendations for a title that the library holds (a file that is
+/// not missing), same kind, in TMDB's order, never the title itself. Empty
+/// when there are none, and the page then says nothing.
+fn similar_held(
+    conn: &rusqlite::Connection,
+    art: &str,
+    title_id: i64,
+    kind: &str,
+    ids: &str,
+) -> rusqlite::Result<Vec<Title>> {
+    if ids.is_empty() {
+        return Ok(Vec::new());
+    }
+    let mut found: Vec<Title> = Vec::new();
+    let mut again = conn.prepare(&format!(
+        "{TITLE_SELECT} WHERE t.kind = :k AND t.id <> :id AND t.tmdb_id IS NOT NULL
+           AND instr(',' || :ids || ',', ',' || t.tmdb_id || ',') > 0
+           AND EXISTS (SELECT 1 FROM media_files m WHERE m.title_id = t.id AND m.missing = 0)"
+    ))?;
+    for t in again.query_map(
+        named_params! { ":art": art, ":k": kind, ":id": title_id, ":ids": ids },
+        map_title,
+    )? {
+        found.push(t?);
+    }
+    let order: Vec<&str> = ids.split(',').collect();
+    let tmdb: std::collections::HashMap<i64, String> = {
+        let mut m = std::collections::HashMap::new();
+        let mut q = conn.prepare("SELECT tmdb_id FROM titles WHERE id = ?1")?;
+        for t in &found {
+            if let Some(v) = q.query_row(params![t.id], |r| r.get::<_, Option<String>>(0))? {
+                m.insert(t.id, v);
+            }
+        }
+        m
+    };
+    found.sort_by_key(|t| {
+        order.iter().position(|o| Some(*o) == tmdb.get(&t.id).map(String::as_str)).unwrap_or(usize::MAX)
+    });
+    found.truncate(SIMILAR_LIMIT);
+    Ok(found)
 }
 
 /// Upsert by (provider, provider_id) so re-matching never duplicates a title.
@@ -272,12 +381,15 @@ pub fn save_title(db: tauri::State<Db>, title: TitleInput) -> Result<i64, String
              genres, runtime_mins, rating, poster_url, backdrop_url, fetched_at,
              trailer_key, trailer_site, logo_url, certification, directors, writers,
              collection_id, collection_name, show_status, next_air_date, next_air_season,
-             next_air_episode)
+             next_air_episode, english_title, details_language, certifications, similar_ids)
          VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,
-                 ?21,?22,?23,?24,?25,?26)
+                 ?21,?22,?23,?24,?25,?26,?27,?28,?29,?30)
          ON CONFLICT(provider, provider_id) DO UPDATE SET
             imdb_id = excluded.imdb_id, tmdb_id = excluded.tmdb_id,
             title = excluded.title, year = excluded.year, overview = excluded.overview,
+            -- Both always together with the title they describe.
+            english_title = excluded.english_title,
+            details_language = excluded.details_language,
             genres = excluded.genres, runtime_mins = excluded.runtime_mins,
             rating = excluded.rating, poster_url = excluded.poster_url,
             backdrop_url = excluded.backdrop_url, fetched_at = excluded.fetched_at,
@@ -289,6 +401,8 @@ pub fn save_title(db: tauri::State<Db>, title: TitleInput) -> Result<i64, String
             trailer_site = COALESCE(excluded.trailer_site, titles.trailer_site),
             logo_url     = COALESCE(excluded.logo_url,     titles.logo_url),
             certification = COALESCE(excluded.certification, titles.certification),
+            certifications = COALESCE(excluded.certifications, titles.certifications),
+            similar_ids    = COALESCE(excluded.similar_ids,    titles.similar_ids),
             directors       = COALESCE(excluded.directors,       titles.directors),
             writers         = COALESCE(excluded.writers,         titles.writers),
             collection_id   = COALESCE(excluded.collection_id,   titles.collection_id),
@@ -308,7 +422,8 @@ pub fn save_title(db: tauri::State<Db>, title: TitleInput) -> Result<i64, String
             title.trailer_key, title.trailer_site, title.logo_url, title.certification,
             joined(&title.directors), joined(&title.writers), title.collection_id,
             title.collection_name, title.show_status, title.next_air_date,
-            title.next_air_season, title.next_air_episode
+            title.next_air_season, title.next_air_episode, title.english_title,
+            title.details_language, title.certifications, title.similar_ids
         ],
     )
     .map_err(to_string_err)?;
@@ -320,6 +435,20 @@ pub fn save_title(db: tauri::State<Db>, title: TitleInput) -> Result<i64, String
             |r| r.get(0),
         )
         .map_err(to_string_err)?;
+
+    // Season posters: replaced wholesale when TMDB sent a list (an empty
+    // one too: it has none); absent keeps what is stored.
+    if let Some(posters) = &title.season_posters {
+        tx.execute("DELETE FROM season_art WHERE title_id = ?1", params![title_id])
+            .map_err(to_string_err)?;
+        for p in posters.iter().filter(|p| !p.poster_url.is_empty()) {
+            tx.execute(
+                "INSERT OR REPLACE INTO season_art (title_id, season, poster_url) VALUES (?1,?2,?3)",
+                params![title_id, p.season, p.poster_url],
+            )
+            .map_err(to_string_err)?;
+        }
+    }
 
     // Cast is replaced wholesale, but only when the provider actually supplied
     // some. An empty list means "this provider does not do cast" — TVmaze and
@@ -470,10 +599,11 @@ pub(crate) const TITLE_SELECT: &str = "
            t.certification,
            (SELECT r.rating FROM imdb_ratings r WHERE r.imdb_id = t.imdb_id),
            (SELECT r.votes  FROM imdb_ratings r WHERE r.imdb_id = t.imdb_id),
-           (SELECT s.tomatometer FROM omdb_scores s WHERE s.imdb_id = t.imdb_id)
+           (SELECT s.tomatometer FROM omdb_scores s WHERE s.imdb_id = t.imdb_id),
+           t.english_title
       FROM titles t";
 
-fn map_title(r: &rusqlite::Row) -> rusqlite::Result<Title> {
+pub(crate) fn map_title(r: &rusqlite::Row) -> rusqlite::Result<Title> {
     Ok(Title {
         id: r.get(0)?,
         kind: r.get(1)?,
@@ -515,6 +645,7 @@ fn map_title(r: &rusqlite::Row) -> rusqlite::Result<Title> {
         imdb_rating: r.get(25)?,
         imdb_votes: r.get(26)?,
         tomatometer: r.get(27)?,
+        english_title: r.get(28)?,
     })
 }
 
@@ -785,6 +916,42 @@ pub fn list_stale_titles(db: tauri::State<Db>, limit: i64) -> Result<Vec<Trailer
     stale_titles(&conn, crate::util::now_secs(), limit).map_err(to_string_err)
 }
 
+/// TMDB titles fetched in another language than `language`, the one chosen
+/// for details (detailsLanguage.ts), by id. A title stored before the setting
+/// existed has none, which is English. `after` is the last id of the batch
+/// before, so a title that failed is not asked about again in the same pass.
+pub(crate) fn titles_in_other_language(
+    conn: &rusqlite::Connection,
+    language: &str,
+    after: i64,
+    limit: i64,
+) -> rusqlite::Result<Vec<TrailerTarget>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, provider_id, kind FROM titles
+          WHERE provider = 'tmdb' AND COALESCE(details_language, 'en') <> ?1 AND id > ?2
+          ORDER BY id LIMIT ?3",
+    )?;
+    let rows = stmt.query_map(params![language, after, limit], |r| {
+        Ok(TrailerTarget {
+            id: r.get(0)?,
+            tmdb_id: r.get(1)?,
+            kind: r.get(2)?,
+        })
+    })?;
+    rows.collect()
+}
+
+#[tauri::command]
+pub fn list_titles_in_other_language(
+    db: tauri::State<Db>,
+    language: String,
+    after: i64,
+    limit: i64,
+) -> Result<Vec<TrailerTarget>, String> {
+    let conn = db.0.lock().map_err(to_string_err)?;
+    titles_in_other_language(&conn, &language, after, limit).map_err(to_string_err)
+}
+
 /// A title matched through a fallback provider, and what is known to find it
 /// on TMDB with.
 #[derive(Debug, Serialize)]
@@ -816,7 +983,7 @@ fn fallback_titles(conn: &rusqlite::Connection, now: i64, limit: i64) -> rusqlit
                 EXISTS (SELECT 1 FROM media_files m WHERE m.title_id = t.id
                          AND (m.match_reason LIKE 'manual:%' OR m.match_reason LIKE 'nfo:%'))
            FROM titles t
-          WHERE t.provider IN ('wikidata', 'omdb', 'tvmaze')
+          WHERE t.provider IN ('wikidata', 'omdb', 'tvmaze', 'imdb')
             AND EXISTS (SELECT 1 FROM media_files m WHERE m.title_id = t.id)
             AND (t.upgrade_checked_at IS NULL OR t.upgrade_checked_at <= ?1)
           ORDER BY t.upgrade_checked_at IS NOT NULL, t.upgrade_checked_at, t.id
@@ -970,7 +1137,7 @@ fn titles_needing_detail(conn: &rusqlite::Connection) -> rusqlite::Result<Vec<Tr
         "SELECT id, tmdb_id, kind FROM titles
           WHERE tmdb_id IS NOT NULL AND tmdb_id <> ''
             AND (trailer_key IS NULL OR logo_url IS NULL OR certification IS NULL
-                 OR directors IS NULL)
+                 OR directors IS NULL OR certifications IS NULL OR similar_ids IS NULL)
           ORDER BY id",
     )?;
     let rows = stmt.query_map([], |r| {
@@ -1052,7 +1219,8 @@ pub fn list_unmatched(
 #[cfg(test)]
 mod tests {
     use super::{
-        about_for, adopt, episodes_for, fallback_titles, map_title, stale_titles, titles_needing_detail, Title, TITLE_SELECT,
+        about_for, adopt, episodes_for, fallback_titles, map_title, stale_titles,
+        titles_in_other_language, titles_needing_detail, Title, TITLE_SELECT,
         TMDB_MAX_AGE_SECS,
     };
     use rusqlite::{named_params, params};
@@ -1101,7 +1269,7 @@ mod tests {
                  (2, 'movie',  'tmdb',   '22', '22', 'Rated',   0, '', '', 'R'),
                  (3, 'movie',  'tmdb',   '33', '33', 'Unrated', 0, '', '', ''),
                  (4, 'series', 'tvmaze', '44', NULL, 'Show',    0, NULL, NULL, NULL);
-             UPDATE titles SET directors = '';",
+             UPDATE titles SET directors = '', certifications = '', similar_ids = '';",
         )
         .unwrap();
         let ids: Vec<i64> = titles_needing_detail(&conn).unwrap().iter().map(|t| t.id).collect();
@@ -1166,6 +1334,41 @@ mod tests {
         assert!(alone.directors.is_empty());
     }
 
+    /// "More like this" lists only recommended films the library holds, in
+    /// TMDB's order, never the film itself; ratings and season posters ride along.
+    #[test]
+    fn recommendations_held_and_the_rest_of_the_about_come_back() {
+        let conn = library("similar");
+        conn.execute_batch(
+            "INSERT INTO titles (id, kind, provider, provider_id, tmdb_id, title, fetched_at,
+                                 similar_ids, certifications) VALUES
+                 (2, 'movie', 'tmdb', '22', '22', 'This',  0, '77,33,44,22', 'DK=15\tUS=R'),
+                 (3, 'movie', 'tmdb', '33', '33', 'Held A', 0, '', NULL),
+                 (4, 'movie', 'tmdb', '44', '44', 'Not held', 0, '', NULL),
+                 (5, 'movie', 'tmdb', '77', '77', 'Held B', 0, '', NULL),
+                 (6, 'series', 'tmdb', '66', '33', 'Same id, a show', 0, '', NULL);
+             INSERT INTO season_art (title_id, season, poster_url) VALUES (1, 2, 'https://x/s2.jpg');",
+        )
+        .unwrap();
+        for (id, title) in [(301, 2), (302, 3), (303, 5), (304, 6)] {
+            conn.execute(
+                "INSERT INTO media_files (id, root_id, path, parent_dir, file_name, extension,
+                     size_bytes, modified_at, first_seen_at, last_seen_at, match_status, title_id)
+                 VALUES (?1, 1, ?2, 'C:/films', ?2, 'mkv', 1, 0, 0, 0, 'matched', ?3)",
+                params![id, format!("C:/films/{id}.mkv"), title],
+            )
+            .unwrap();
+        }
+        let about = about_for(&conn, "", 2).unwrap();
+        let held: Vec<i64> = about.similar.iter().map(|t| t.id).collect();
+        assert_eq!(held, vec![5, 3], "TMDB's order, held only, a film for a film");
+        assert_eq!(about.certifications.as_deref(), Some("DK=15\tUS=R"));
+        assert!(about_for(&conn, "", 3).unwrap().similar.is_empty());
+        let show = about_for(&conn, "", 1).unwrap();
+        assert_eq!(show.season_posters.len(), 1);
+        assert_eq!(show.season_posters[0].season, 2);
+    }
+
     /// Only TMDB's data has an age limit, and the oldest is refreshed first.
     #[test]
     fn titles_past_tmdbs_age_limit_are_listed_oldest_first() {
@@ -1189,6 +1392,32 @@ mod tests {
             .collect();
         assert_eq!(stale, vec!["33", "22"]);
         assert_eq!(stale_titles(&conn, now, 1).unwrap().len(), 1);
+    }
+
+    /// A change of details language lists every TMDB title fetched in
+    /// another one — a title from before the setting is English — and only
+    /// TMDB's: the fallbacks have nothing to translate.
+    #[test]
+    fn titles_in_another_language_are_listed_after_the_last_one_asked() {
+        let conn = library("language");
+        conn.execute_batch(
+            "UPDATE titles SET provider = 'tmdb', details_language = NULL WHERE id = 1;
+             INSERT INTO titles (id, kind, provider, provider_id, title, fetched_at, details_language) VALUES
+                 (2, 'movie',  'tmdb',   '22', 'Done',     0, 'pl-PL'),
+                 (3, 'series', 'tmdb',   '33', 'English',  0, 'en'),
+                 (4, 'series', 'tvmaze', '44', 'Fallback', 0, NULL);",
+        )
+        .unwrap();
+        let ids = |language: &str, after: i64| -> Vec<i64> {
+            titles_in_other_language(&conn, language, after, 10)
+                .unwrap()
+                .into_iter()
+                .map(|t| t.id)
+                .collect()
+        };
+        assert_eq!(ids("pl-PL", 0), vec![1, 3]);
+        assert_eq!(ids("pl-PL", 1), vec![3]);
+        assert_eq!(ids("en", 0), vec![2]);
     }
 
     /// A film found through Wikidata moves to TMDB under the same row, and
@@ -1297,6 +1526,90 @@ mod tests {
         assert_eq!(rows, vec![(101, 0, 600.0), (102, 0, 300.0)]);
     }
 
+    /// Going back online, on a copy of a real library with real TMDB: every
+    /// title is turned into what matching on this computer leaves (provider
+    /// `imdb`, the IMDb id, no TMDB id), then moved back the way the app does
+    /// it — listed by `fallback_titles` forty at a time, TMDB's `/find` by
+    /// the IMDb id, re-keyed by `adopt` — and checked against the TMDB id it
+    /// had. `BACK_ONLINE_LIBRARY`: a copy of library.db this may change.
+    #[test]
+    #[ignore = "needs a library copy and TMDB"]
+    fn back_online_by_imdb_id_on_a_library_copy() {
+        let path = std::env::var("BACK_ONLINE_LIBRARY").expect("BACK_ONLINE_LIBRARY");
+        let conn = rusqlite::Connection::open(path).unwrap();
+        let key = crate::settings::setting(&conn, "tmdb_api_key")
+            .or_else(|| std::env::var("TMDB_KEY").ok())
+            .expect("a TMDB key in the copy's settings or TMDB_KEY");
+        let mut expected = std::collections::HashMap::new();
+        {
+            let mut stmt = conn
+                .prepare("SELECT id, provider_id FROM titles WHERE provider = 'tmdb' AND imdb_id LIKE 'tt%'
+                           AND EXISTS (SELECT 1 FROM media_files m WHERE m.title_id = titles.id)")
+                .unwrap();
+            for row in stmt.query_map([], |r| Ok((r.get::<_, i64>(0)?, r.get::<_, String>(1)?))).unwrap() {
+                let (id, tmdb) = row.unwrap();
+                expected.insert(id, tmdb);
+            }
+        }
+        conn.execute_batch(
+            "UPDATE titles SET provider = 'imdb', provider_id = imdb_id, tmdb_id = NULL, upgrade_checked_at = NULL
+              WHERE provider = 'tmdb' AND imdb_id LIKE 'tt%'
+                AND EXISTS (SELECT 1 FROM media_files m WHERE m.title_id = titles.id);",
+        )
+        .unwrap();
+        let client = crate::net::client(crate::net::Service::Tmdb).unwrap().build().unwrap();
+        let find = |imdb: &str, series: bool| -> Option<String> {
+            let url = format!(
+                "https://api.themoviedb.org/3/find/{imdb}?external_source=imdb_id&api_key={key}"
+            );
+            let body: serde_json::Value = tauri::async_runtime::block_on(async {
+                serde_json::from_slice(&client.get(&url).send().await.ok()?.bytes().await.ok()?).ok()
+            })?;
+            let hits = body.get(if series { "tv_results" } else { "movie_results" })?;
+            Some(hits.get(0)?.get("id")?.as_i64()?.to_string())
+        };
+        let started = std::time::Instant::now();
+        let (mut right, mut other, mut none, mut refused) = (0, 0, 0, 0);
+        let mut asked = std::collections::HashSet::new();
+        loop {
+            let batch: Vec<_> = fallback_titles(&conn, crate::util::now_secs(), 40)
+                .unwrap()
+                .into_iter()
+                .filter(|t| asked.insert(t.id))
+                .collect();
+            if batch.is_empty() {
+                break;
+            }
+            for t in batch {
+                assert_eq!(t.provider, "imdb");
+                let Some(found) = find(t.imdb_id.as_deref().unwrap(), t.kind == "series") else {
+                    conn.execute("UPDATE titles SET upgrade_checked_at = ?2 WHERE id = ?1", params![t.id, crate::util::now_secs()])
+                        .unwrap();
+                    none += 1;
+                    continue;
+                };
+                if !adopt(&conn, t.id, "tmdb", &found).unwrap() {
+                    refused += 1;
+                } else if expected.get(&t.id) == Some(&found) {
+                    right += 1;
+                } else {
+                    other += 1;
+                    println!("other: title {} now {found}, had {:?}", t.id, expected.get(&t.id));
+                }
+            }
+        }
+        let left: i64 = conn
+            .query_row("SELECT COUNT(*) FROM titles WHERE provider = 'imdb'", [], |r| r.get(0))
+            .unwrap();
+        println!(
+            "{} titles: {right} back on their TMDB entry, {other} on another, {none} not found, {refused} refused; {left} left as matched offline; {:.1}s",
+            expected.len(),
+            started.elapsed().as_secs_f64()
+        );
+        assert_eq!(other, 0);
+        assert_eq!(right + none + refused, expected.len());
+    }
+
     /// Never-asked fallback titles come first; one asked this month waits; a
     /// title with no files, or a TMDB one, is not listed; by hand is said.
     #[test]
@@ -1309,7 +1622,8 @@ mod tests {
                  (21, 'movie', 'omdb', 'tt1', 'Never asked', NULL, 0, NULL),
                  (22, 'series', 'tvmaze', '5', 'Asked today', NULL, 0, 99999990),
                  (23, 'movie', 'wikidata', 'Q2', 'No files', NULL, 0, NULL),
-                 (24, 'movie', 'wikidata', 'Q3', 'By hand', NULL, 0, NULL);
+                 (24, 'movie', 'wikidata', 'Q3', 'By hand', NULL, 0, NULL),
+                 (25, 'movie', 'imdb', 'tt0000025', 'Matched offline', 1999, 0, NULL);
              INSERT INTO media_files (id, root_id, path, parent_dir, file_name, extension,
                      size_bytes, modified_at, first_seen_at, last_seen_at, match_status,
                      title_id, match_reason)
@@ -1317,12 +1631,13 @@ mod tests {
                         (210, 1, 'C:/m/b.mkv', 'C:/m', 'b.mkv', 'mkv', 1, 0, 0, 0, 'matched', 21, NULL),
                         (220, 1, 'C:/m/c.mkv', 'C:/m', 'c.mkv', 'mkv', 1, 0, 0, 0, 'matched', 22, NULL),
                         (240, 1, 'C:/m/d.mkv', 'C:/m', 'd.mkv', 'mkv', 1, 0, 0, 0, 'matched', 24,
-                         'manual: “By hand” via wikidata');",
+                         'manual: “By hand” via wikidata'),
+                        (250, 1, 'C:/m/e.mkv', 'C:/m', 'e.mkv', 'mkv', 1, 0, 0, 0, 'matched', 25, NULL);",
         )
         .unwrap();
         let listed = fallback_titles(&conn, 100_000_000, 10).unwrap();
         let ids: Vec<i64> = listed.iter().map(|t| t.id).collect();
-        assert_eq!(ids, vec![21, 24, 20]);
+        assert_eq!(ids, vec![21, 24, 25, 20], "a title matched offline moves to TMDB too");
         assert!(listed.iter().find(|t| t.id == 24).unwrap().by_hand);
         assert!(!listed.iter().find(|t| t.id == 21).unwrap().by_hand);
         assert_eq!(listed.iter().find(|t| t.id == 20).unwrap().year, Some(2001));

@@ -15,6 +15,7 @@ import {
   ignoreFileIds,
   adoptProvider,
   listStaleTitles,
+  listTitlesInOtherLanguage,
   listTitlesNeedingDetail,
   listFallbackTitles,
   markUpgradeChecked,
@@ -58,10 +59,12 @@ import {
   type ScoredCandidate,
 } from './score';
 import { withoutQueries } from '../ui/errors';
+import { detailsLanguage } from './detailsLanguage';
 import { explainUnreachable } from './reach';
 import { wikidataGetMovie, wikidataSearch } from './wikidata';
 import { idsInName, nfoForGroup, resolveIds, resolveNfoIds, sourceName, type NfoIds } from './nfo';
 import { yieldToPlayback } from '../library/playback';
+import { chooseImdb, fileMinutes, imdbGet, imdbMetadata, imdbSearch, OFFLINE_KEY } from './imdbOffline';
 
 export interface MatchProgress {
   groupsTotal: number;
@@ -90,6 +93,27 @@ export interface FileGroup {
    * search a provider for, so the matcher never sees them.
    */
   untitled?: boolean;
+  /** A country in brackets on the show's folder, "US" in `The Office (US)`. */
+  country?: string;
+}
+
+/** A group's name as people read and search it: the title and a folder's country. */
+export function groupName(group: Pick<FileGroup, 'title' | 'country'>): string {
+  return group.country ? `${group.title} (${group.country})` : group.title;
+}
+
+/**
+ * The country in brackets on a show's folder, when the folder is the show's
+ * name and the country: `The Office (US)`. Two shows of one name differ by it.
+ */
+function showCountryOf(file: MediaFile): string | null {
+  if (!file.parsed_title) return null;
+  const wanted = normaliseTitle(file.parsed_title);
+  for (const part of file.parent_dir.split(/[\\/]/)) {
+    const m = /^(.*?)\s*\(([A-Z]{2,3})\)$/.exec(part.trim());
+    if (m && normaliseTitle(m[1]) === wanted) return m[2];
+  }
+  return null;
 }
 
 /**
@@ -182,10 +206,11 @@ export function groupFiles(
     // Two shows of one name (Battlestar Galactica 1978 and 2003) are two
     // groups. They were one, linked to the first, with its NFO deciding for both.
     const showYear = isSeries ? showYearOf(file) : null;
+    const country = isSeries ? showCountryOf(file) : null;
     const apart = (showYears.get(name)?.size ?? 0) > 1;
     const key = `${isSeries ? 'tv' : 'movie'}::${name}::${
       isSeries ? (apart ? (showYear ?? '') : '') : (file.parsed_year ?? '')
-    }`;
+    }${country ? `::${country}` : ''}`;
 
     let group = groups.get(key);
     if (!group) {
@@ -196,6 +221,7 @@ export function groupFiles(
         isSeries,
         files: [],
         maxSeason: null,
+        ...(country ? { country } : {}),
       };
       groups.set(key, group);
     }
@@ -219,9 +245,14 @@ export interface ProviderKeys {
   /** Whose TMDB key that is: one entered in Settings, or the app's own. */
   tmdbSource: TmdbKeySource | null;
   omdb: string | null;
+  /**
+   * "Keep everything on this computer" is on: names are matched against
+   * IMDb's list on this computer (imdbOffline.ts) and no key is used.
+   */
+  offline?: boolean;
 }
 
-export type Provider = 'tmdb' | 'tvmaze' | 'omdb' | 'wikidata';
+export type Provider = 'tmdb' | 'tvmaze' | 'omdb' | 'wikidata' | 'imdb';
 
 /**
  * Read the provider keys from the database, at the moment they are needed.
@@ -232,11 +263,15 @@ export type Provider = 'tmdb' | 'tvmaze' | 'omdb' | 'wikidata';
  * input boxes, and only what was saved should be used.
  */
 export async function loadProviderKeys(): Promise<ProviderKeys> {
-  const [own, omdb, rejected] = await Promise.all([
+  const [own, omdb, rejected, offline] = await Promise.all([
     getSetting('tmdb_api_key'),
     getSetting('omdb_api_key'),
     getSetting(BUILTIN_REJECTED_KEY),
+    getSetting(OFFLINE_KEY),
   ]);
+  // Offline, no key is handed out at all: everything that asks a service
+  // with one finds none, as when no key works.
+  if (offline === '1') return { tmdb: null, tmdbSource: null, omdb: null, offline: true };
   const tmdb = chooseTmdbKey(own, usableBuiltinKey(BUILTIN_TMDB_KEY, rejected));
   return { tmdb: tmdb?.key ?? null, tmdbSource: tmdb?.source ?? null, omdb: omdb?.trim() || null };
 }
@@ -252,6 +287,7 @@ export async function loadProviderKeys(): Promise<ProviderKeys> {
  * Wikidata (everything but pictures).
  */
 export function providerForKind(isSeries: boolean, keys: ProviderKeys): Provider {
+  if (keys.offline) return 'imdb';
   if (keys.tmdb) return 'tmdb';
   if (isSeries) return 'tvmaze';
   return keys.omdb ? 'omdb' : 'wikidata';
@@ -274,6 +310,7 @@ export function searchProvider(
   }
   if (provider === 'tvmaze') return tvmazeSearch(title);
   if (provider === 'wikidata') return wikidataSearch(title);
+  if (provider === 'imdb') return imdbSearch([title], isSeries);
   return omdbSearch(keys.omdb as string, title, year);
 }
 
@@ -330,7 +367,15 @@ export async function prepareTitle(
     throw new Error('TVmaze has no movie data. Use TMDB or OMDb for a movie.');
   }
   if (isSeries && provider === 'wikidata') {
-    throw new Error('Kinema reads only movies from Wikidata. Use TMDB or TVmaze for a series.');
+    throw new Error('Skrin reads only movies from Wikidata. Use TMDB or TVmaze for a series.');
+  }
+
+  if (provider === 'imdb') {
+    // IMDb's list has names and numbers only: no episodes (they keep the
+    // numbers from their file names), no pictures, no plot.
+    const found = await imdbGet(providerId);
+    if (!found) throw new Error(`${providerId} is not in IMDb's list on this computer.`);
+    return saveTitle(imdbMetadata(found));
   }
 
   const metadata =
@@ -383,10 +428,18 @@ export async function backfillTitleDetails(): Promise<DetailBackfill> {
     const kind = target.kind === 'series' ? 'series' : 'movie';
     try {
       const metadata = await tmdbGetTitle(keys.tmdb, target.tmdb_id, kind);
+      // A show's episodes too when its details are not in English: the
+      // title's row says which language it is in, and its episodes must be.
+      const language = metadata.details_language ?? 'en';
+      const episodes =
+        kind === 'series' && language !== 'en'
+          ? await tmdbGetEpisodes(keys.tmdb, target.tmdb_id, language)
+          : [];
       // Straight back through `saveTitle`, so a backfilled title is stored by
       // exactly the same path as a freshly matched one — including the cast
       // rows, which nothing else writes.
-      await saveTitle(metadata);
+      const titleId = await saveTitle(metadata);
+      if (episodes.length > 0) await saveEpisodes(titleId, episodes);
       if (metadata.logo_url || metadata.trailer_key) result.found++;
       else result.none++;
     } catch (e) {
@@ -414,22 +467,49 @@ export async function refreshStaleTitles(): Promise<DetailBackfill> {
   const result: DetailBackfill = { found: 0, none: 0, errors: [] };
   const keys = await loadProviderKeys();
   if (!keys.tmdb) return result;
+  const tmdb = keys.tmdb;
+  const language = await detailsLanguage();
+  let unreachable = false;
 
-  for (const target of await listStaleTitles(REFRESH_PER_SCAN)) {
+  /** One title again, title and episodes; false when the key was refused. */
+  const refetch = async (target: { tmdb_id: string; kind: string }): Promise<boolean> => {
     await yieldToPlayback();
     const kind = target.kind === 'series' ? 'series' : 'movie';
     try {
-      const titleId = await saveTitle(await tmdbGetTitle(keys.tmdb, target.tmdb_id, kind));
-      if (kind === 'series') {
-        const episodes = await tmdbGetEpisodes(keys.tmdb, target.tmdb_id);
-        if (episodes.length > 0) await saveEpisodes(titleId, episodes);
-      }
+      // Episodes before the title is saved: the title's row is what says
+      // which language it is in, so it must not say so before its episodes are.
+      const metadata = await tmdbGetTitle(tmdb, target.tmdb_id, kind, language);
+      const episodes = kind === 'series' ? await tmdbGetEpisodes(tmdb, target.tmdb_id, language) : [];
+      const titleId = await saveTitle(metadata);
+      if (episodes.length > 0) await saveEpisodes(titleId, episodes);
       result.found++;
     } catch (e) {
       result.errors.push(`${target.tmdb_id}: ${e instanceof Error ? e.message : String(e)}`);
       // A refused key will be refused for every other title too.
-      if (e instanceof TmdbKeyRejected) break;
+      if (e instanceof TmdbKeyRejected) return false;
+      if (e instanceof Unreachable) unreachable = true;
     }
+    return true;
+  };
+
+  for (const target of await listStaleTitles(REFRESH_PER_SCAN)) {
+    if (!(await refetch(target))) return result;
+  }
+
+  // A changed details language: every title in another one, in this scan,
+  // a batch at a time. The owner's choice (2026-11-20) was the whole library
+  // in the background, not each title as it is opened. A title that fails is
+  // left for the next scan, never asked about twice in one.
+  let after = 0;
+  for (;;) {
+    const batch = await listTitlesInOtherLanguage(language, after, REFRESH_PER_SCAN);
+    if (batch.length === 0) break;
+    for (const target of batch) {
+      if (!(await refetch(target))) return result;
+      // No answer from TMDB: the rest waits for a scan that has one.
+      if (unreachable) return result;
+    }
+    after = batch[batch.length - 1].id;
   }
   return result;
 }
@@ -494,34 +574,61 @@ async function tmdbIdFor(key: string, target: FallbackTitle): Promise<string | n
  * month later. A few per scan, like the six-month refresh, so a big library is
  * not asked about at once.
  */
-export async function upgradeFallbackTitles(): Promise<FallbackUpgrade> {
+export async function upgradeFallbackTitles({
+  all = false,
+}: {
+  /**
+   * Every one, not a few: "Keep everything on this computer" was just
+   * switched off, and the library moves to TMDB in one background run (the
+   * owner's choice 4a) rather than forty titles a scan.
+   */
+  all?: boolean;
+} = {}): Promise<FallbackUpgrade> {
   const result: FallbackUpgrade = { films: 0, shows: 0, left: 0, errors: [] };
   const keys = await loadProviderKeys();
-  if (!keys.tmdb) return result;
+  if (!keys.tmdb || keys.offline) return result;
 
-  for (const target of await listFallbackTitles(REFRESH_PER_SCAN)) {
-    await yieldToPlayback();
-    const kind = target.kind === 'series' ? 'series' : 'movie';
-    try {
-      const tmdbId = await tmdbIdFor(keys.tmdb, target);
-      const metadata = tmdbId ? await tmdbGetTitle(keys.tmdb, tmdbId, kind) : null;
-      const episodes = tmdbId && kind === 'series' ? await tmdbGetEpisodes(keys.tmdb, tmdbId) : [];
-      if (!tmdbId || !metadata || !(await adoptProvider(target.id, 'tmdb', tmdbId))) {
-        await markUpgradeChecked(target.id);
-        result.left++;
-        continue;
-      }
-      const titleId = await saveTitle(metadata);
-      if (episodes.length > 0) await saveEpisodes(titleId, episodes);
-      if (kind === 'series') result.shows++;
-      else result.films++;
-    } catch (e) {
-      result.errors.push(`${target.title}: ${e instanceof Error ? e.message : String(e)}`);
-      // A refused key will be refused for every other title too.
-      if (e instanceof TmdbKeyRejected) break;
+  // A title that failed is listed again: each is asked once a run.
+  const asked = new Set<number>();
+  const next = async () =>
+    (await listFallbackTitles(REFRESH_PER_SCAN)).filter((t) => !asked.has(t.id));
+  for (let batch = await next(); batch.length > 0; batch = all ? await next() : []) {
+    for (const target of batch) {
+      asked.add(target.id);
+      if (!(await upgradeOne(keys.tmdb, target, result))) return result;
     }
   }
   return result;
+}
+
+/** One fallback title to TMDB; false when the rest should wait. */
+async function upgradeOne(
+  key: string,
+  target: FallbackTitle,
+  result: FallbackUpgrade
+): Promise<boolean> {
+  await yieldToPlayback();
+  const kind = target.kind === 'series' ? 'series' : 'movie';
+  try {
+    const tmdbId = await tmdbIdFor(key, target);
+    const metadata = tmdbId ? await tmdbGetTitle(key, tmdbId, kind) : null;
+    const episodes = tmdbId && kind === 'series' ? await tmdbGetEpisodes(key, tmdbId) : [];
+    if (!tmdbId || !metadata || !(await adoptProvider(target.id, 'tmdb', tmdbId))) {
+      await markUpgradeChecked(target.id);
+      result.left++;
+      return true;
+    }
+    const titleId = await saveTitle(metadata);
+    if (episodes.length > 0) await saveEpisodes(titleId, episodes);
+    if (kind === 'series') result.shows++;
+    else result.films++;
+  } catch (e) {
+    result.errors.push(`${target.title}: ${e instanceof Error ? e.message : String(e)}`);
+    // A refused key will be refused for every other title too, and with no
+    // answer from TMDB the rest waits for a scan that has one.
+    if (e instanceof TmdbKeyRejected || e instanceof Unreachable) return false;
+  }
+  return true;
 }
 
 /**
@@ -687,6 +794,23 @@ async function resolveGroup(
   };
 
   const provider = providerFor(group, keys);
+
+  if (provider === 'imdb') {
+    // One lookup for both names, then the scorer with the offline rules.
+    const names = shorter ? [searchTitle, shorter] : [searchTitle];
+    const found = await imdbSearch(names, group.isSeries);
+    const minutes = group.isSeries
+      ? null
+      : await fileMinutes(group.files.map((f) => f.id)).catch(() => null);
+    const { best, matched } = chooseImdb(found, ctx, minutes);
+    return {
+      provider,
+      providerId: best?.providerId ?? null,
+      confidence: best?.confidence ?? 0,
+      reason: `${best?.reason ?? "no candidates in IMDb's list"}${nfoNote}`,
+      matched: matched && best !== null,
+    };
+  }
 
   let candidates = await searchProvider(provider, keys, searchTitle, searchYear, group.isSeries);
   if (shorter) {

@@ -31,7 +31,7 @@ async function filmPage(page: Page): Promise<void> {
 
 /**
  * Press `key` until the ring's text contains `text` (at most `max` presses).
- * A title page is on Kinema's own engine: each press is answered before it
+ * A title page is on Skrin's own engine: each press is answered before it
  * returns, so there is nothing to wait for between them.
  */
 async function until(page: Page, key: string, text: string, max = 8): Promise<void> {

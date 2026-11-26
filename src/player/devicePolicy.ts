@@ -7,7 +7,7 @@
  * each of the three has one of three answers (agreed 2026-10-02):
  *
  *  - **every device that can** — what "On" always meant, stored as `on` so a
- *    library from before keeps its setting, and an older Kinema reading this
+ *    library from before keeps its setting, and an older Skrin reading this
  *    one's still understands it;
  *  - **only these** — the screens or sound devices listed beside it, by the
  *    stable ids the equipment check gives them. A device connected later is

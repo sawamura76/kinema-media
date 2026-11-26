@@ -46,7 +46,7 @@ interface Props {
 }
 
 export default function CollectionPage({ titles, id, kind, onSelect, onBack, onSaved }: Props) {
-  // A column on Kinema's own engine (round 7): the heading row, the rows
+  // A column on Skrin's own engine (round 7): the heading row, the rows
   // of choices, then the titles.
   const { ref, focusKey } = useNavGroup({ kind: 'column' }, { focusKey: COLLECTION_FOCUS_KEY });
   const traits = useTitleTraits(titles);
@@ -147,7 +147,7 @@ export default function CollectionPage({ titles, id, kind, onSelect, onBack, onS
         {!id && (
           <p className="muted collection-hint">
             {ruleIsEmpty(rule) ? 'Choose what the titles have in common.' : ruleName(rule)}
-            {' — picture and sound as Kinema read them from the files.'}
+            {' — picture and sound as Skrin read them from the files.'}
           </p>
         )}
         {present.traits.length > 0 && (

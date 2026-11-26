@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Write Kinema's winget manifest for one release.
+  Write Skrin's winget manifest for one release.
 
 .DESCRIPTION
   The three files winget-pkgs wants (version, installer, defaultLocale), for
@@ -9,9 +9,9 @@
   writes and validates them for every tag, and winget.yml writes them again
   from the published file and submits them, when the owner starts it.
 
-  Installing Kinema with winget brings ffmpeg too (Gyan.FFmpeg.Essentials, the
+  Installing Skrin with winget brings ffmpeg too (Gyan.FFmpeg.Essentials, the
   same package Settings installs with one press), for the detail page's badges.
-  Uninstalling Kinema leaves it: other programs may use it.
+  Uninstalling Skrin leaves it: other programs may use it.
 
   ASCII only, like build-app.ps1: powershell.exe reads a .ps1 without a BOM as
   ANSI.
@@ -27,16 +27,16 @@ param(
     [Parameter(Mandatory)] [string]$OutDir,
     # The installer's name on the release. Up to 0.12.0 it carried the
     # version; later releases do not.
-    [string]$FileName = 'kinema-windows-x64-setup.exe',
+    [string]$FileName = 'skrin-windows-x64-setup.exe',
     # The day the release is published; today by default.
     [string]$ReleaseDate = (Get-Date -Format 'yyyy-MM-dd')
 )
 
 $ErrorActionPreference = 'Stop'
 
-$id = 'Basswaves.Kinema'
+$id = 'Basswaves.Skrin'
 $manifestVersion = '1.10.0'
-$repo = 'https://github.com/basswaves/kinema'
+$repo = 'https://github.com/basswaves/skrin'
 $url = "$repo/releases/download/v$Version/$FileName"
 
 $files = @{
@@ -55,7 +55,7 @@ PackageVersion: $Version
 InstallerType: nullsoft
 Scope: user
 UpgradeBehavior: install
-ProductCode: Kinema
+ProductCode: Skrin
 ReleaseDate: $ReleaseDate
 Dependencies:
   PackageDependencies:
@@ -75,13 +75,13 @@ PackageLocale: en-US
 Publisher: Basswaves
 PublisherUrl: https://github.com/basswaves
 PublisherSupportUrl: $repo/issues
-PackageName: Kinema
+PackageName: Skrin
 PackageUrl: $repo
 License: MIT
 LicenseUrl: $repo/blob/master/LICENSE
 ShortDescription: A local, serverless media library for movies and TV shows
-Description: Kinema shows the films and series on your own drives and network shares as a library, and plays them with mpv. It runs no server and needs no account. Made for a TV and a remote as much as for a desk.
-Moniker: kinema
+Description: Skrin (formerly Kinema) shows the films and series on your own drives and network shares as a library, and plays them with mpv. It runs no server and needs no account. Made for a TV and a remote as much as for a desk.
+Moniker: skrin
 Tags:
 - media-player
 - mpv

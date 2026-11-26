@@ -1,0 +1,27 @@
+name: Windows portable
+on:
+  workflow_dispatch:
+  push:
+    tags: ['media-v*']
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - run: npm ci
+      - run: npm run check
+      - run: npx tauri-plugin-libmpv-api setup-lib
+      - run: npm run app:build -- -NoShortcut
+      - run: Copy-Item BUTTERCHURN-LICENSES.txt dist-app
+      - run: Compress-Archive -Path dist-app/* -DestinationPath kinema-media-windows-x64.zip
+      - uses: actions/upload-artifact@v7
+        with:
+          name: kinema-media-windows-x64
+          path: kinema-media-windows-x64.zip

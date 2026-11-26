@@ -1,5 +1,5 @@
 /**
- * Kinema's own folder browser, where the system has no folder picker
+ * Skrin's own folder browser, where the system has no folder picker
  * (`library/folders.ts`): on Android, a USB drive or the device's own storage,
  * then the folders inside, chosen with a remote, a mouse or a keyboard.
  *
@@ -8,7 +8,7 @@
  * level, and from the drives closes without choosing, as Cancel does. Each folder says how many videos sit directly in
  * it, which is what tells a library folder from the rest at a glance.
  *
- * Where Kinema opens network shares itself (capability `network_shares`),
+ * Where Skrin opens network shares itself (capability `network_shares`),
  * Network drives, after the drives, leads to the servers and their shares
  * (`NetworkPlaces.tsx`); a share then opens folder by folder as a drive does,
  * and Back from its top goes back to the server's shares.
@@ -108,6 +108,33 @@ export default function FolderBrowser({ request }: { request: FolderRequest }) {
       }
     })();
   }, [ask, loadPlaces]);
+
+  // Android's answer can reach us a moment after the dialog closes: while the
+  // permission still reads as not given, look again when the app comes back
+  // to the front, so a granted permission is never left saying "needs permission".
+  const waiting = access !== null && access.read !== 'granted';
+  useEffect(() => {
+    if (!waiting) return;
+    const recheck = () => {
+      if (document.visibilityState === 'hidden') return;
+      storageAccess()
+        .then(async (now) => {
+          if (now.read !== 'granted') return;
+          setAccess(now);
+          setError(null);
+          await loadPlaces();
+        })
+        .catch(() => {});
+    };
+    document.addEventListener('visibilitychange', recheck);
+    window.addEventListener('focus', recheck);
+    const later = window.setTimeout(recheck, 800);
+    return () => {
+      document.removeEventListener('visibilitychange', recheck);
+      window.removeEventListener('focus', recheck);
+      window.clearTimeout(later);
+    };
+  }, [waiting, loadPlaces]);
 
   /** Somewhere else: what was shown goes at once, the new contents follow. */
   const go = useCallback((next: Spot | null) => {
@@ -287,11 +314,11 @@ export default function FolderBrowser({ request }: { request: FolderRequest }) {
           {refused && (
             <div className="folder-note">
               <p>
-                Kinema needs Android’s permission to read the films on your drives. It only reads
+                Skrin needs Android’s permission to read the films on your drives. It only reads
                 them: nothing is moved, renamed or written to.
               </p>
               <p className="muted">
-                If Android no longer asks, allow it in Android’s settings: Apps → Kinema →
+                If Android no longer asks, allow it in Android’s settings: Apps → Skrin →
                 Permissions.
               </p>
               <FocusButton focusKey={RETRY_KEY} className="btn-primary" onSelect={() => void ask()}>
@@ -356,12 +383,12 @@ export default function FolderBrowser({ request }: { request: FolderRequest }) {
               {access?.allFiles === 'off' && (
                 <div className="folder-note">
                   <p className="muted">
-                    Subtitle files beside your films need one more permission, All files access.
-                    Films play without it.
+                    Subtitle files, and films in older formats (.vob, .iso, .divx, .ogm, .rmvb),
+                    need one more permission, All files access. Other films play without it.
                   </p>
                   <p className="muted">
-                    Android opens its own settings, sometimes a list of apps: switch Kinema on
-                    there, then press Back. Android calls it managing all files; Kinema only reads
+                    Android opens its own settings, sometimes a list of apps: switch Skrin on
+                    there, then press Back. Android calls it managing all files; Skrin only reads
                     them.
                   </p>
                   <FocusButton
@@ -374,7 +401,7 @@ export default function FolderBrowser({ request }: { request: FolderRequest }) {
               )}
               {access?.allFiles === 'unavailable' && (
                 <p className="muted folder-note">
-                  This device cannot let Kinema read the subtitle files beside your films, only
+                  This device cannot let Skrin read the subtitle files beside your films, only
                   the films themselves.
                 </p>
               )}

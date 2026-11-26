@@ -1,0 +1,10 @@
+{
+  "note": "Android emulator (bash scripts/android-bench.sh start, ready, lib prepare, mcp; then kinema_app attach port 9223 android true). Put the made-up extras (Extras/Making of.mkv) and theme.mp3 into the kit film's folder with run-as + tar (see android-bench.sh tar_in). Region: the emulator's webview language en-US, so the US rating shows. D-pad only: keys, never taps.",
+  "steps": [
+    {"call": "addWithoutMatch", "args": [[1], false, "Kit Clip", 2001]},
+    {"call": "setSetting", "args": ["theme_music", "on"]},
+    {"read": "(()=>{window.__a=[];const O=window.__O||Audio;window.__O=O;window.Audio=function(...a){const x=new O(...a);x.muted=true;window.__a.push(x);return x};window.Audio.prototype=O.prototype;return 'hook'})()"},
+    {"read": "(async()=>{const I=window.__TAURI_INTERNALS__.invoke;const mk=(id,t,sim)=>({kind:'movie',provider:'tmdb',provider_id:String(id),imdb_id:null,tmdb_id:String(id),title:t,year:2005,overview:'Made-up.',genres:'Drama',runtime_mins:90,rating:7.1,poster_url:null,backdrop_url:null,cast:[],certifications:'DK=15\tUS=PG-13\tGB=12A',similar_ids:sim,season_posters:null});const a=await I('save_title',{title:mk(9001,'Proof Alpha','9002,9003')});const b=await I('save_title',{title:mk(9002,'Proof Beta','9001')});await I('save_title',{title:mk(9003,'Proof Gamma','9001')});await I('record_match',{fileIds:[3],titleId:a,confidence:1,reason:'proof',placements:null});await I('record_match',{fileIds:[4],titleId:b,confidence:1,reason:'proof',placements:null});return [a,b]})()", "label": "Alpha (file 3) and Beta (file 4); Gamma is not held"},
+    {"note": "then by keys: Movies tab -> Kit Clip -> Enter: expect Extras row + theme advancing; Down, Enter: extra plays; Escape: back on the page, focus on the extra. Proof Alpha: 'More like this' shows only Beta, meta line shows PG-13, Down+Enter opens Beta, Escape returns with focus on it.", "keys": []}
+  ]
+}

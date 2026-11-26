@@ -13,8 +13,34 @@
  *
  * "Each day" is by the calendar, not by launch, so reopening the app does not
  * reshuffle it. Pure, with the clock passed in, so it is testable.
+ *
+ * One exception, for screenshots: a film named in `home-top.txt` in the data
+ * folder (`home_top.rs`) is shown instead, watched or not. A name that matches
+ * nothing changes nothing.
  */
+import { invoke } from '@tauri-apps/api/core';
 import type { Title } from './api';
+
+let asked: Promise<string | null> | null = null;
+
+/** The name in `home-top.txt`, read once per launch; null when there is none. */
+export function chosenHero(): Promise<string | null> {
+  asked ??= invoke<string | null>('home_top').catch(() => null);
+  return asked;
+}
+
+/** Letters and digits only, lower case: "Dune: Part Two" is "dune part two". */
+const plain = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
+
+/** The title a name in `home-top.txt` means: "Title" or "Title (Year)". */
+export function findChosen(titles: Title[], name: string): Title | null {
+  const m = /^(.*?)\s*\((\d{4})\)\s*$/.exec(name);
+  const want = plain(m ? m[1] : name);
+  const year = m ? Number(m[2]) : null;
+  if (!want) return null;
+  const same = titles.filter((t) => plain(t.title) === want && (year === null || t.year === year));
+  return same.find((t) => t.backdrop_url || t.backdrop_path) ?? same[0] ?? null;
+}
 
 const NEW_FOR_DAYS = 3;
 const DAY_MS = 86_400_000;
@@ -25,7 +51,15 @@ function localDay(now: number): number {
   return Math.floor((now - d.getTimezoneOffset() * 60_000) / DAY_MS);
 }
 
-export function pickHero(titles: Title[], continueFirst: number | null, now: number): Title | null {
+export function pickHero(
+  titles: Title[],
+  continueFirst: number | null,
+  now: number,
+  chosen: string | null = null
+): Title | null {
+  const named = chosen ? findChosen(titles, chosen) : null;
+  if (named) return named;
+
   const withBackdrop = titles.filter((t) => t.backdrop_url || t.backdrop_path);
   const pictures = withBackdrop.length > 0 ? withBackdrop : titles;
   if (pictures.length === 0) return null;

@@ -1,13 +1,13 @@
 /**
- * A YouTube trailer playing inside Kinema (trailer.ts says when): YouTube's
- * embedded player in a frame, driven from Kinema's own keys. OK pauses, the
+ * A YouTube trailer playing inside Skrin (trailer.ts says when): YouTube's
+ * embedded player in a frame, driven from Skrin's own keys. OK pauses, the
  * arrows seek ten seconds, Back or Esc closes, and Down reaches the buttons.
  * Any error YouTube reports, or no answer in a few seconds, closes it and
  * opens the trailer in the browser instead.
  *
  * The frame is another site's page: once it holds the keyboard, keys go to it
  * and never come back. So it is kept out of the tab order, and when a click
- * hands it the keyboard anyway, Kinema takes it straight back — the click
+ * hands it the keyboard anyway, Skrin takes it straight back — the click
  * itself still reaches YouTube's own controls.
  */
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
@@ -18,9 +18,8 @@ import { useNavLeaf } from './focusStore';
 import { openLink } from './links';
 import {
   closeTrailer,
-  EMBED_ORIGIN,
-  embedUrl,
   errorText,
+  frameSource,
   readNews,
   watchUrl,
   type ShownTrailer,
@@ -39,15 +38,16 @@ export default function TrailerOverlay({ trailer }: { trailer: ShownTrailer }) {
   // the way out (focusStore.ts).
   const { ref, focusKey } = useNavGroup({ kind: 'column', current: SCREEN_KEY, hold: ALL_ARROWS, modal: true });
   const frame = useRef<HTMLIFrameElement>(null);
+  const { src, origin: frameOrigin } = frameSource(trailer, window.location.origin);
   const player = useRef({ state: -1, time: 0, ready: false });
   const [paused, setPaused] = useState(false);
 
   const send = useCallback((func: string, args: unknown[] = []) => {
     frame.current?.contentWindow?.postMessage(
       JSON.stringify({ event: 'command', func, args, id: 1, channel: 'widget' }),
-      EMBED_ORIGIN
+      frameOrigin
     );
-  }, []);
+  }, [frameOrigin]);
 
   const toggle = useCallback(() => {
     send(player.current.state === PLAYING ? 'pauseVideo' : 'playVideo');
@@ -67,7 +67,7 @@ export default function TrailerOverlay({ trailer }: { trailer: ShownTrailer }) {
   // What YouTube's frame says: ready, playing or paused, where it is, errors.
   useEffect(() => {
     const onMessage = (e: MessageEvent) => {
-      if (e.origin !== EMBED_ORIGIN || e.source !== frame.current?.contentWindow) return;
+      if (e.origin !== frameOrigin || e.source !== frame.current?.contentWindow) return;
       const news = readNews(e.data);
       if (!news) return;
       const info = news.info as Record<string, unknown> | number | undefined;
@@ -92,7 +92,7 @@ export default function TrailerOverlay({ trailer }: { trailer: ShownTrailer }) {
       window.removeEventListener('message', onMessage);
       window.clearTimeout(timer);
     };
-  }, [close]);
+  }, [close, frameOrigin]);
 
   // Once the frame has loaded, ask it for news until it answers, as YouTube's
   // own API does: the player inside may not be listening yet.
@@ -101,7 +101,7 @@ export default function TrailerOverlay({ trailer }: { trailer: ShownTrailer }) {
       if (player.current.ready) return;
       frame.current?.contentWindow?.postMessage(
         JSON.stringify({ event: 'listening', id: 1, channel: 'widget' }),
-        EMBED_ORIGIN
+        frameOrigin
       );
       for (const name of ['onReady', 'onStateChange', 'onError']) send('addEventListener', [name]);
     };
@@ -111,7 +111,7 @@ export default function TrailerOverlay({ trailer }: { trailer: ShownTrailer }) {
       else hello();
     }, 250);
     window.setTimeout(() => window.clearInterval(ping), READY_MS);
-  }, [send]);
+  }, [send, frameOrigin]);
 
   // Capture phase, like the key list: the page behind must never see Back.
   // Space and the play key pause too, wherever the ring is.
@@ -145,7 +145,6 @@ export default function TrailerOverlay({ trailer }: { trailer: ShownTrailer }) {
     return () => window.removeEventListener('blur', onBlur);
   }, []);
 
-  const origin = window.location.origin;
 
   return (
     <FocusProvider value={focusKey}>
@@ -160,7 +159,7 @@ export default function TrailerOverlay({ trailer }: { trailer: ShownTrailer }) {
           <Screen onToggle={toggle} onSeek={seek}>
             <iframe
               ref={frame}
-              src={embedUrl(trailer.key, origin)}
+              src={src}
               title={`${trailer.title} · Trailer`}
               tabIndex={-1}
               allow="autoplay; encrypted-media; picture-in-picture"

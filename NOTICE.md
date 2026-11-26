@@ -1,6 +1,6 @@
 # Notices and attribution
 
-Kinema itself is MIT licensed — see [LICENSE](LICENSE). This file covers the
+Skrin itself is MIT licensed — see [LICENSE](LICENSE). This file covers the
 third-party software it links against, the binaries it invokes but does not
 ship, and the metadata services it reads.
 
@@ -25,12 +25,12 @@ built in so it starts on a Windows that lacks Microsoft's.
 Two consequences worth stating plainly:
 
 - The library is **loaded dynamically at runtime** and is not statically linked,
-  so linking against it does not impose copyleft obligations on Kinema's own
+  so linking against it does not impose copyleft obligations on Skrin's own
   MIT-licensed source.
 - Because the release ZIP and installer redistribute that unmodified LGPL binary, the LGPL's
   relinking condition applies to it. It is satisfied by construction: the DLL
   sits beside the executable and **may be replaced with any compatible build of
-  libmpv** without rebuilding Kinema. Source for the library is available from
+  libmpv** without rebuilding Skrin. Source for the library is available from
   the mpv project and from the build repository linked above.
 
 If you build a GPL configuration of mpv into a distribution of this app
@@ -54,7 +54,7 @@ layer for subtitles), and the app is built with the AndroidX libraries
 (AppCompat, Activity, Lifecycle, WebKit), Google's Material Components and the
 Kotlin standard library — all **Apache-2.0**, fetched from Google's and Maven
 Central's repositories when the app is built and compiled into the `.apk`, never
-committed here. Kinema adds code beside Media3's own readers (for Blu-ray
+committed here. Skrin adds code beside Media3's own readers (for Blu-ray
 `.m2ts` streams) rather than changing them.
 
 ## Audio fingerprinting — rusty-chromaprint
@@ -67,7 +67,7 @@ detection possible inside the app rather than as another installed tool.
 
 [`smb`](https://crates.io/crates/smb) and its parts (MIT), a pure Rust SMB 2
 and 3 client with no C library, which reaches a NAS where the system does not
-open it for Kinema (Android). One part, `smb-transport`, is used as a copy with
+open it for Skrin (Android). One part, `smb-transport`, is used as a copy with
 a one-line change, in `src-tauri/vendor/` with the crate's own licence; its
 README there says what changed.
 
@@ -86,7 +86,7 @@ authoritative list.
 
 ## Tools invoked but never shipped
 
-Kinema ships no third-party executables, downloads none, and depends on none
+Skrin ships no third-party executables, downloads none, and depends on none
 being present. Each of these is optional, is found at a path the user chooses,
 and its absence degrades one feature rather than breaking the app.
 
@@ -101,7 +101,7 @@ you install was configured — that is between you and your ffmpeg.
 
 ### Skiptro
 
-Optional intro detection. Kinema can run a copy **you installed yourself**, at a
+Optional intro detection. Skrin can run a copy **you installed yourself**, at a
 path you chose, with the command lines editable in Settings, and can read its
 database at `%APPDATA%\Skiptro\skiptro.db`. Nothing from Skiptro is included
 here.
@@ -112,11 +112,11 @@ here.
 
 ### TMDB
 
-This product uses the TMDB API but is **not endorsed or certified by TMDB**.
+This product uses TMDB and the TMDB APIs but is **not endorsed, certified, or otherwise approved by TMDB**.
 
 Data and images from [The Movie Database](https://www.themoviedb.org), used
 non-commercially under [TMDB's terms of use](https://www.themoviedb.org/api-terms-of-use).
-Released builds carry an API key of Kinema's own, added at build time and not
+Released builds carry an API key of Skrin's own, added at build time and not
 in this repository; a key a user enters in Settings is used instead and stays
 in the local database in app data. As the terms require, nothing from TMDB is
 kept longer than six months: older titles and images are fetched again
@@ -141,8 +141,8 @@ attribution and permit non-commercial use. Requests are rate-limited in
 Optional, with a user-supplied key stored locally, subject to OMDb's terms:
 a movie fallback, and the source of Rotten Tomatoes scores. OMDb's data is
 licensed [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) and
-is credited in Settings. There is deliberately no key of Kinema's own: its free
-keys allow 1,000 lookups a day, and Kinema spends at most 500 of the user's on
+is credited in Settings. There is deliberately no key of Skrin's own: its free
+keys allow 1,000 lookups a day, and Skrin spends at most 500 of the user's on
 scores, one per title a month (`src/metadata/scores.ts`).
 
 ### Wikidata and Wikipedia
@@ -195,21 +195,21 @@ Only when a user connects their own [SIMKL](https://simkl.com) account: the
 films and episodes they finish are added to its history through SIMKL's API,
 under SIMKL's [terms](https://simkl.com/about/policies/terms/) and API rules.
 Nothing is read back and no SIMKL data is shown, beyond the account's name in
-Settings. Released builds carry Kinema's own SIMKL app ID, added at build time.
+Settings. Released builds carry Skrin's own SIMKL app ID, added at build time.
 
 `public/simkl.svg` is SIMKL's brand mark, unmodified, as published in SIMKL's
 API documentation for apps to show; their API rules ask that SIMKL is named and
-its mark visible. It is drawn white on Kinema's dark settings, which the same
+its mark visible. It is drawn white on Skrin's dark settings, which the same
 documentation provides for (the one-colour mark recoloured by CSS). The mark is
 SIMKL's property and is used solely to identify their service.
 
 ### OpenSubtitles
 
 Subtitles from [OpenSubtitles.com](https://www.opensubtitles.com), through its
-REST API with Kinema's own app key, only when asked for in the player or when
+REST API with Skrin's own app key, only when asked for in the player or when
 the user has switched on fetching forced subtitles. A file is identified to it
 by its title's ids and OpenSubtitles' file hash (the size and the first and
-last 64 KiB). What is fetched is stored in Kinema's app data. Attribution is
+last 64 KiB). What is fetched is stored in Skrin's app data. Attribution is
 shown in Settings.
 
 ### Trakt
@@ -218,15 +218,15 @@ Only when a user connects their own [Trakt](https://trakt.tv) account: the
 films and episodes they finish are added to its history through Trakt's API,
 under Trakt's API terms, and — once, at connect — the account's watched films
 and episodes are read so nothing is sent twice. Nothing else is read back, and
-no Trakt data is shown beyond the account's name in Settings. Kinema is not
-endorsed by or affiliated with Trakt. Released builds carry Kinema's own Trakt
+no Trakt data is shown beyond the account's name in Settings. Skrin is not
+endorsed by or affiliated with Trakt. Released builds carry Skrin's own Trakt
 app, added at build time.
 
 `public/trakt.svg` is Trakt's full logo for dark backgrounds, one of the
 approved versions on Trakt's [branding page](https://app.trakt.tv/branding),
 exactly as that page's download gives it. It is shown as their guidelines
 require: unaltered, with clear space round it, and only to name their service —
-not as part of Kinema's own mark or to suggest Trakt endorses it.
+not as part of Skrin's own mark or to suggest Trakt endorses it.
 
 ### IMDb
 
@@ -237,7 +237,7 @@ Ratings and vote counts from IMDb's
 used for personal and non-commercial purposes under IMDb's
 [terms for them](https://help.imdb.com/article/imdb/general-information/can-i-use-imdb-data-in-my-software/G5JTRESSHJBBHTGX).
 As those terms require, only the published file is used — imdb.com itself is
-never read — and no copy of it is kept: each copy of Kinema fetches
+never read — and no copy of it is kept: each copy of Skrin fetches
 `title.ratings.tsv.gz` for itself, weekly at most, and keeps only the rows for
 titles in its own library (`src-tauri/src/imdb.rs`). The credit above is shown
 in Settings.

@@ -14,7 +14,8 @@
  */
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { useState, type ReactNode } from 'react';
-import { fileName, remPx, thumbSize } from './thumbSize';
+import { useProxiedSrc } from '../net/proxy';
+import { detailThumbSize, fileName, remPx, thumbSize } from './thumbSize';
 
 interface Props {
   /** Absolute path to the cached file, from the `*_path` field. */
@@ -43,12 +44,25 @@ interface Props {
    * costs. Left off where the picture is the point, as on a title's own page.
    */
   thumbRem?: number;
+  /**
+   * The picture is the point of a page (a title's backdrop and poster, Home's
+   * big picture): `'window'` for one drawn across the window, or its width in
+   * rem. It is shown from a screen-sized copy (never wider than 1920), and never
+   * as the original, which can be print-size and gigabytes in the page (A6-08).
+   */
+  screenRem?: number | 'window';
 }
 
 /** The small copy's address; null when no size fits. */
 function thumbSrc(local: string, rem: number): string | null {
   const width = thumbSize(rem, remPx(), window.devicePixelRatio || 1);
   return width ? `${convertFileSrc(fileName(local), 'thumb')}?w=${width}` : null;
+}
+
+/** The screen-sized copy's address. */
+function screenSrc(local: string, rem: number | 'window'): string {
+  const width = detailThumbSize(rem === 'window' ? null : rem, remPx(), window.innerWidth, window.devicePixelRatio || 1);
+  return `${convertFileSrc(fileName(local), 'thumb')}?w=${width}`;
 }
 
 export default function Art({
@@ -59,6 +73,7 @@ export default function Art({
   lazy,
   alt = '',
   thumbRem,
+  screenRem,
 }: Props) {
   // The set of sources that have failed, keyed by URL. Keying by URL rather
   // than counting attempts means new props are retried automatically — the new
@@ -66,7 +81,7 @@ export default function Art({
   const [failed, setFailed] = useState<ReadonlySet<string>>(() => new Set());
 
   const localSrc = local ? convertFileSrc(local) : null;
-  const small = local && thumbRem ? thumbSrc(local, thumbRem) : null;
+  const small = local ? (screenRem ? screenSrc(local, screenRem) : thumbRem ? thumbSrc(local, thumbRem) : null) : null;
   // Local first, remote second: the cache is an accelerator, the URL the truth.
   // Where a small copy is asked for (a grid), a picture that could not make one
   // is NOT then shown as itself: it is one the computer cannot decode within
@@ -74,7 +89,10 @@ export default function Art({
   // full size froze a 4 GB computer (round 8 part I). Its place is the remote
   // picture, or the drawn poster.
   const sources = (small ? [small, remote] : [localSrc, remote]).filter((s): s is string => Boolean(s));
-  const src = sources.find((candidate) => !failed.has(candidate)) ?? null;
+  const chosen = sources.find((candidate) => !failed.has(candidate)) ?? null;
+  // With the proxy on, a picture from the internet comes through it (net.rs),
+  // never straight from the webview.
+  const src = useProxiedSrc(chosen);
 
   if (!src) return <>{fallback}</>;
 
@@ -91,12 +109,12 @@ export default function Art({
         // like a working one — the images still appear, just fetched over the
         // network again. devlog puts this in app.log, so the difference is
         // visible from outside the webview.
-        if (src === localSrc) console.warn(`artwork: cached copy failed, using ${remote}`, local);
+        if (chosen === localSrc) console.warn(`artwork: cached copy failed, using ${remote}`, local);
         // Each source is marked failed exactly once, so this terminates. The
         // previous version tracked a single failed source and flipped between
         // the two forever when *both* were broken — offline with a half-built
         // cache, which is precisely when it mattered.
-        setFailed((previous) => new Set(previous).add(src));
+        if (chosen) setFailed((previous) => new Set(previous).add(chosen));
       }}
     />
   );

@@ -1,10 +1,10 @@
 /**
- * Leaving Kinema from the sofa.
+ * Leaving Skrin from the sofa.
  *
  * In TV mode the app fills the screen, so there is no title bar and no close
  * button, and a remote has nothing else to reach for. Back on Home (with
- * nowhere further back to go) opens this instead: close Kinema, put the PC to
- * sleep, or shut it down — the last two only where Kinema can do them
+ * nowhere further back to go) opens this instead: close Skrin, put the PC to
+ * sleep, or shut it down — the last two only where Skrin can do them
  * (`capabilities.ts`). Back again, or Cancel, closes it and leaves Home as it
  * was, with the ring where it had been.
  */
@@ -24,7 +24,7 @@ interface Props {
 
 export default function LeaveDialog({ onClose }: Props) {
   // A menu (NAV-MAP, agreed 2026-10-11): focus never leaves it, Up on Close
-  // Kinema goes round to Cancel and back, and closing it gives the ring
+  // Skrin goes round to Cancel and back, and closing it gives the ring
   // back to where it was on Home (focusStore.ts).
   const { ref, focusKey } = useFocusGroup('menu', { current: FIRST_KEY });
   const [busy, setBusy] = useState<string | null>(null);
@@ -49,7 +49,7 @@ export default function LeaveDialog({ onClose }: Props) {
 
   // The choices stay on screen while one runs, so a refusal leaves the ring
   // on the choice that was refused. Replacing them with the progress line
-  // sent it back to Close Kinema, one OK away from closing instead of trying
+  // sent it back to Close Skrin, one OK away from closing instead of trying
   // again.
   const run = (action: PowerAction, doing: string) => {
     if (busy) return;
@@ -57,7 +57,7 @@ export default function LeaveDialog({ onClose }: Props) {
     setBusy(doing);
     powerAction(action)
       .then(() => {
-        // Sleep returns once the PC is awake again; Kinema is where it was.
+        // Sleep returns once the PC is awake again; Skrin is where it was.
         if (action === 'sleep') cancel();
       })
       .catch((e: unknown) => {
@@ -74,16 +74,16 @@ export default function LeaveDialog({ onClose }: Props) {
           ref={ref}
           onClick={(e) => e.stopPropagation()}
           role="dialog"
-          aria-label="Leave Kinema"
+          aria-label="Leave Skrin"
         >
-          <h2>Leave Kinema</h2>
+          <h2>Leave Skrin</h2>
           <div className="leave-choices">
             <FocusButton
               focusKey={FIRST_KEY}
               className="leave-choice"
-              onSelect={() => run('close', 'Closing Kinema…')}
+              onSelect={() => run('close', 'Closing Skrin…')}
             >
-              Close Kinema
+              Close Skrin
             </FocusButton>
             {can?.sleep && (
               <FocusButton
@@ -107,7 +107,7 @@ export default function LeaveDialog({ onClose }: Props) {
           </div>
           {busy && <p className="leave-busy">{busy}</p>}
           {error && <p className="leave-error">{error}</p>}
-          <p className="muted">Press Back to return to Kinema.</p>
+          <p className="muted">Press Back to return to Skrin.</p>
         </div>
       </div>
     </FocusProvider>

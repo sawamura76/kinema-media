@@ -3,7 +3,7 @@
 //!
 //! Media3, on Android, plays only what it is handed, so the page asks here
 //! before opening a film and hands it the ones found — on a drive the system
-//! opened or a share Kinema opens itself alike (files.rs). mpv finds most of
+//! opened or a share Skrin opens itself alike (files.rs). mpv finds most of
 //! them on its own (`sub-auto=fuzzy`, mpvOptions.ts) and is handed the rest
 //! (`exact_name`, engine.ts `addSubtitlesBeside`).
 //!
@@ -155,8 +155,32 @@ pub fn span_of(text: &str) -> Option<SubtitleSpan> {
     span
 }
 
+/// Every cue's start and end in seconds, in the file's order: SRT and WebVTT
+/// (`… --> …` lines) and ASS/SSA (`Dialogue:` lines, whose second and third
+/// fields are the times). Only the times are read — never the text, never
+/// written back (sidecars are read, never written). For automatic timing
+/// (sub_timing.rs), which reads them on the desktop only so far.
+#[cfg_attr(any(target_os = "android", target_os = "ios"), allow(dead_code))]
+pub fn cues_of(text: &str) -> Vec<(f64, f64)> {
+    let mut cues = Vec::new();
+    for line in text.lines() {
+        let times = if let Some((start, end)) = line.split_once("-->") {
+            cue_time(start).zip(cue_time(end))
+        } else if let Some(rest) = line.trim_start().strip_prefix("Dialogue:") {
+            let mut fields = rest.split(',').skip(1);
+            fields.next().and_then(cue_time).zip(fields.next().and_then(cue_time))
+        } else {
+            None
+        };
+        if let Some((start, end)) = times.filter(|(s, e)| e > s && *s >= 0.0) {
+            cues.push((start, end));
+        }
+    }
+    cues
+}
+
 /// The span of the subtitle file at `path`; None when it cannot be read or
-/// holds no cues Kinema can read, which says nothing either way.
+/// holds no cues Skrin can read, which says nothing either way.
 #[tauri::command]
 pub async fn subtitle_span(path: String) -> Result<Option<SubtitleSpan>, String> {
     crate::jobs::off_main(move || {
@@ -272,5 +296,16 @@ mod tests {
         assert_eq!(span_of(&vtt), Some(SubtitleSpan { cues: 1, first_secs: 5.0, last_secs: 7.0 }));
         assert_eq!(span_of("no cues here"), None);
         assert_eq!(span_of("1 --> x"), None);
+    }
+
+    #[test]
+    fn cue_times_are_read_from_srt_vtt_and_ass() {
+        let srt = "1\r\n00:00:01,500 --> 00:00:03,000\r\nHi\r\n\r\n2\r\n00:01:00,000 --> 00:01:02,250\r\nThere\r\n";
+        assert_eq!(cues_of(srt), vec![(1.5, 3.0), (60.0, 62.25)]);
+        let vtt = "WEBVTT\n\n00:05.000 --> 00:07.000 line:0\nHi\n";
+        assert_eq!(cues_of(vtt), vec![(5.0, 7.0)]);
+        let ass = "[Events]\nFormat: Layer, Start, End, Style, Text\nDialogue: 0,0:01:02.34,0:01:05.00,Default,,0,0,0,,Hi, there\nComment: 0,0:00:01.00,0:00:02.00,x\n";
+        assert_eq!(cues_of(ass), vec![(62.34, 65.0)]);
+        assert!(cues_of("00:00:05,000 --> 00:00:04,000\n").is_empty());
     }
 }

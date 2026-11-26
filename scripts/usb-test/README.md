@@ -3,7 +3,7 @@
 How the native-output work was verified on hardware that is not on the
 development PC (the test TV + receiver). Build a stick with:
 
-    Kinema\                   kinema.exe, libmpv-2.dll, libmpv-wrapper.dll from dist-app\
+    Kinema\                   skrin.exe, libmpv-2.dll, libmpv-wrapper.dll from dist-app\
     Automatic test\           run.ps1, ..\selftest.ps1, and one folder per plan.json
     3. Run automatic test.cmd
     2. Copy logs to USB.cmd   (for manual runs)

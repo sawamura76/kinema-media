@@ -53,7 +53,7 @@ export function WorthALookSection({
       <header className="fixmatch-head">
         <h3>Worth a look</h3>
         <span className="muted">
-          {count(files, 'file')} Kinema matched by itself before an update, which the new rules
+          {count(files, 'file')} Skrin matched by itself before an update, which the new rules
           would look at again. Nothing changes until you choose.
         </span>
       </header>

@@ -7,7 +7,7 @@
 $ErrorActionPreference = 'Continue'
 $here = $PSScriptRoot
 $stick = Split-Path $here
-$exe = Join-Path $stick 'Kinema\kinema.exe'
+$exe = Join-Path $stick 'Kinema\skrin.exe'
 $out = Join-Path $stick 'Logs from the TV PC'
 New-Item -ItemType Directory -Force $out | Out-Null
 Add-Type -AssemblyName System.Windows.Forms

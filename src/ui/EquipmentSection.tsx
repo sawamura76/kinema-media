@@ -1,5 +1,5 @@
 /**
- * Settings → Your equipment: what Kinema can see of the screens and audio
+ * Settings → Your equipment: what Skrin can see of the screens and audio
  * outputs this PC is connected to, and what it remembers of ones it has seen
  * before.
  *
@@ -33,6 +33,29 @@ const day = (secs: number) =>
     year: 'numeric',
   });
 
+interface Remembered {
+  name: string;
+  connected: boolean;
+  last_seen: number;
+}
+
+/**
+ * Devices remembered but not connected, newest first. One whose name is
+ * connected now is left out: a re-created endpoint (new driver, monitor
+ * plugged in again) gets a new id under the same name, and listing the old
+ * one beside the live one says it is both there and away.
+ */
+export function awayDevices<A extends Remembered, B extends Remembered>(
+  displays: A[],
+  audio: B[]
+): (A | B)[] {
+  const gone = <D extends Remembered>(list: D[]): D[] => {
+    const live = new Set(list.filter((d) => d.connected).map((d) => d.name));
+    return list.filter((d) => !d.connected && !live.has(d.name));
+  };
+  return [...gone(displays), ...gone(audio)].sort((a, b) => b.last_seen - a.last_seen);
+}
+
 /** `system` is for the wording only: "What Windows reports", "What Linux reports". */
 export default function EquipmentSection({ system }: { system: string }) {
   const [equipment, setEquipment] = useState<Equipment | null>(null);
@@ -65,18 +88,15 @@ export default function EquipmentSection({ system }: { system: string }) {
 
   const displays = equipment?.displays.filter((d) => d.connected) ?? [];
   const audio = equipment?.audio.filter((a) => a.connected) ?? [];
-  const away = [
-    ...(equipment?.displays.filter((d) => !d.connected) ?? []),
-    ...(equipment?.audio.filter((a) => !a.connected) ?? []),
-  ].sort((a, b) => b.last_seen - a.last_seen);
+  const away = awayDevices(equipment?.displays ?? [], equipment?.audio ?? []);
 
   return (
     <section className="settings-section">
       <h2>Your equipment</h2>
       <p className="settings-intro">
-        What {system} reports about the screens and sound devices connected to this PC. Kinema
+        What {system} reports about the screens and sound devices connected to this PC. Skrin
         checks every time it starts and bases its playback choices on this. Nothing here is a
-        setting: if something looks wrong, the cause is in {system} or the cables, not in Kinema.
+        setting: if something looks wrong, the cause is in {system} or the cables, not in Skrin.
       </p>
       <div className="settings-toggle-row">
         <FocusButton className="btn-secondary" onSelect={() => void check()}>
@@ -87,7 +107,7 @@ export default function EquipmentSection({ system }: { system: string }) {
             ? `Last checked ${new Date(equipment.checked_at * 1000).toLocaleTimeString()}. `
             : ''}
           Only needed if a TV or receiver was switched on, or a {system} sound or display setting
-          was changed, after Kinema started.
+          was changed, after Skrin started.
         </span>
       </div>
       {error && <p className="equipment-problem">Could not check: {error}</p>}
@@ -103,7 +123,7 @@ export default function EquipmentSection({ system }: { system: string }) {
                 {d.new && <span className="equipment-new">new</span>}
                 <span className="muted">
                   {d.connection} ·{' '}
-                  {/* A mode of 0×0 is one the desktop did not report (a Linux desktop Kinema cannot ask). */}
+                  {/* A mode of 0×0 is one the desktop did not report (a Linux desktop Skrin cannot ask). */}
                   {d.width > 0 ? `${d.width}×${d.height} at ${formatRate(refreshRate(d))} Hz · ` : ''}
                   {hdrLabel(d, system)}
                 </span>

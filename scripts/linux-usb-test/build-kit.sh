@@ -12,7 +12,7 @@
 #                             8 GB ext4, label casper-rw, the kit inside at
 #                             /opt/kinema-kit — what the live system sees
 #   ventoy.json               the Ventoy setting pairing each ISO with its file
-# Copy them to a Ventoy stick: the persistence file into kinema-linux-test/
+# Copy them to a Ventoy stick: the persistence file into skrin-linux-test/
 # on the stick, ventoy.json into ventoy/ (merging with one already there).
 # See README.md.
 #
@@ -32,10 +32,10 @@ esac
 kit="$out/kit"
 mkdir -p "$kit/tools" "$out"
 
-deb=$(ls "$root"/dist-linux/kinema*amd64.deb 2> /dev/null | head -1)
+deb=$(ls "$root"/dist-linux/skrin*amd64.deb 2> /dev/null | head -1)
 [ -n "$deb" ] || { echo "no .deb in dist-linux/: run scripts/package-linux.sh first" >&2; exit 1; }
 
-rm -f "$kit"/kinema*amd64.deb
+rm -f "$kit"/skrin*amd64.deb
 cp "$here/run.sh" "$kit/run.sh"
 cp "$here/display.py" "$kit/tools/display.py"
 cp "$root/scripts/selftest.sh" "$kit/tools/selftest.sh"
@@ -49,13 +49,13 @@ cat > "$out/ventoy.json" <<'JSON'
   "persistence": [
     {
       "image": "/ubuntu-26.04*.iso",
-      "backend": "/kinema-linux-test/persistence.dat",
+      "backend": "/skrin-linux-test/persistence.dat",
       "autosel": 1,
       "timeout": 5
     },
     {
       "image": "/kubuntu-26.04*.iso",
-      "backend": "/kinema-linux-test/persistence-kubuntu.dat",
+      "backend": "/skrin-linux-test/persistence-kubuntu.dat",
       "autosel": 1,
       "timeout": 5
     }

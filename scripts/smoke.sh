@@ -16,7 +16,7 @@
 # (scripts/build-mpv-wrapper.sh) beside the exe or in src-tauri/lib/.
 set -u
 root="$(cd "$(dirname "$0")/.." && pwd)"
-exe="${1:-${KINEMA_EXE:-$root/src-tauri/target/release/kinema}}"
+exe="${1:-${KINEMA_EXE:-$root/src-tauri/target/release/skrin}}"
 [ -x "$exe" ] || { echo "FAIL no exe at $exe"; exit 1; }
 # selftest.sh looks for the wrapper beside the exe.
 [ -e "$(dirname "$exe")/libmpv-wrapper.so" ] || cp "$root/src-tauri/lib/libmpv-wrapper.so" "$(dirname "$exe")/" 2>/dev/null \
@@ -68,3 +68,37 @@ if why:
     print(f"FAIL {'; '.join(why)} ({d})"); sys.exit(1)
 print(f"PASS played to {pos:.1f} s, {p.get('width')}x{p.get('height')} {p.get('video-codec')}, audio {audio[0]}, vo {p.get('current-vo')} ({d})")
 CHECK
+rc1=$?
+
+# --- Fix timing against a subtitle built into the film (round 10 proof) -----
+# A made-up 12-minute clip with a text subtitle inside (scripts/make-timing-clip.py,
+# no speech needed) and an external copy of the lines 2.5 s later: "Fix timing"
+# (sub_timing.rs, through the self-test's subTimingCheck call) must answer about
+# -2.5 s, "fixed", against the built-in subtitle, the true shift to a few 10 ms.
+if command -v python3 >/dev/null; then
+tdir="$dir/timing"; mkdir -p "$tdir"
+python3 "$root/scripts/make-timing-clip.py" "$tdir" 2.5 12 > "$tdir/make.log" 2>&1   || { echo "FAIL could not make the timing clip ($tdir/make.log)"; exit 1; }
+cat > "$tdir/plan.json" <<PLAN
+{"path":"$tdir/timing-clip.mkv","fileId":null,"titleId":null,"seconds":14,"openAfter":2,
+ "mpv":{"vo":"gpu-next,null"},
+ "actions":[{"at":5,"do":"call","fn":"subTimingCheck","args":[{"video":"$tdir/timing-clip.mkv","subtitle":"$tdir/timing-clip.shifted.srt","aid":1,"centre":false,"reference":1,"duration":720}]}]}
+PLAN
+KINEMA_EXE="$exe" bash "$root/scripts/headless-selftest.sh" "$tdir/plan.json" 6 > "$tdir/headless.log" 2>&1
+python3 - "$tdir" <<'CHECK2'
+import json, sys
+d = sys.argv[1]
+try:
+    r = json.load(open(f"{d}/report.json"))
+except Exception as e:
+    print(f"FAIL timing: no report ({e}); see {d}"); sys.exit(1)
+done = [e for e in r.get("timeline", []) if e["kind"] == "call:done" and (e.get("detail") or {}).get("fn") == "subTimingCheck"]
+if not done:
+    print(f"FAIL timing: the check never answered ({[e['kind'] for e in r.get('timeline', [])]}) in {d}"); sys.exit(1)
+f = done[0]["detail"]["result"]
+if f.get("outcome") != "fixed" or abs(f.get("delay_secs", 0) + 2.5) > 0.1 or f.get("reference") != "subtitles":
+    print(f"FAIL timing: expected fixed about -2.5 s against the subtitles, got {f} ({d})"); sys.exit(1)
+print(f"PASS timing: built-in subtitle reference, {f['delay_secs']:+.3f} s in {f['millis']} ms ({d})")
+CHECK2
+rc2=$?
+fi
+exit $(( ${rc1:-0} | ${rc2:-0} ))

@@ -70,7 +70,7 @@ function labelOf(c: Registered): string {
 function leaves(): NavLeaf[] {
   const all = registry();
   const parentsInUse = new Set<string>();
-  // Kinema's areas are never controls, even an empty one.
+  // Skrin's areas are never controls, even an empty one.
   const snapshot = navSnapshot();
   const areas = new Set(snapshot.nodes.filter((n) => n.area).map((n) => n.key));
   for (const c of Object.values(all)) if (c.focusable) parentsInUse.add(c.parentFocusKey);
@@ -203,7 +203,7 @@ export function installNavProbe(): void {
   (window as unknown as { __nav: unknown }).__nav = {
     setFocus: (key: string) => navHas(key) && navFocus(key),
     current: () => navFocused(),
-    /** Kinema's own engine answers the keys: a press is done when it returns. */
+    /** Skrin's own engine answers the keys: a press is done when it returns. */
     answering: () => navAnswering(),
     /** No scroll the ring caused is still gliding. */
     still: () => !gliding(),

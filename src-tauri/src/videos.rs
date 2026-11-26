@@ -445,7 +445,7 @@ fn ffmpeg_frame(video: &Path, target: &Path, configured: Option<&str>, width: u3
 /// to a JPEG (`vo=image`) and closes. Loaded the way the player's own wrapper
 /// is found: beside the program, then its `lib` folder, then the system's.
 #[cfg(not(target_os = "android"))]
-mod mpv_frame {
+pub(crate) mod mpv_frame {
     use super::FRAME_AT_PERCENT;
     use std::ffi::{c_char, c_int, c_void, CString};
     use std::path::Path;
@@ -478,7 +478,7 @@ mod mpv_frame {
     #[cfg(not(windows))]
     const NAMES: &[&str] = &["libmpv.so.2", "libmpv.so"];
 
-    fn library() -> Option<&'static libloading::Library> {
+    pub(crate) fn library() -> Option<&'static libloading::Library> {
         static LIB: std::sync::OnceLock<Option<libloading::Library>> = std::sync::OnceLock::new();
         LIB.get_or_init(|| {
             let mut candidates = Vec::new();

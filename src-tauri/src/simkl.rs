@@ -1,8 +1,8 @@
 //! SIMKL — telling the user's SIMKL account what they finished watching.
 //!
 //! **One way, and only additions.** When a film or an episode becomes watched
-//! in Kinema — played past the end, or marked by hand — it is queued and sent
-//! to SIMKL's history. Nothing ever comes back, and un-watching in Kinema
+//! in Skrin — played past the end, or marked by hand — it is queued and sent
+//! to SIMKL's history. Nothing ever comes back, and un-watching in Skrin
 //! removes nothing from SIMKL: SIMKL may have that watch from another app, and
 //! a one-way link has no business deleting what it did not write (decided
 //! 2026-09-30). What was already watched before connecting is sent once, at
@@ -10,8 +10,8 @@
 //!
 //! **Signing in is SIMKL's AUTH V2 device flow**, the one built for a TV: the
 //! screen shows a short code and a QR code, the person approves on their
-//! phone, and Kinema asks every few seconds whether they have. No password or
-//! secret passes through Kinema — a desktop program cannot keep a
+//! phone, and Skrin asks every few seconds whether they have. No password or
+//! secret passes through Skrin — a desktop program cannot keep a
 //! `client_secret`, and this flow needs none. AUTH V1 (the old PIN flow)
 //! retires around April 2027, which is why it is not used.
 //!
@@ -29,23 +29,27 @@
 //!
 //! **Tokens.** An access token lasts 7 days and is refreshed a day before it
 //! runs out; the refresh token lasts 180 days, extended by every refresh, so
-//! only a Kinema left unused for six months has to be connected again. Both
+//! only a Skrin left unused for six months has to be connected again. Both
 //! live in the settings table beside the TMDB and OMDb keys, in the user's own
 //! app data. SIMKL suggests the operating system's secret store; the settings
-//! table was chosen because it works the same on every platform Kinema may
+//! table was chosen because it works the same on every platform Skrin may
 //! reach, and a library folder is already private to its user.
 //!
 //! **A self-test never talks to SIMKL.** It runs on a copy of the library,
 //! tokens included, and a second process refreshing the same grant would cut
-//! the real Kinema's token off (SIMKL's "one grant, one live access token").
+//! the real Skrin's token off (SIMKL's "one grant, one live access token").
 
 use crate::library::Db;
 use crate::settings::setting;
 use crate::tracking::{
-    self, http, qr_svg, read_tokens, save_tokens, user_agent, DeviceCode, PollOutcome, Sent, Status,
+    self, qr_svg, read_tokens, save_tokens, user_agent, DeviceCode, PollOutcome, Sent, Status,
     Tokens, Waiting, SIMKL,
 };
 use crate::util::{now_secs, to_string_err};
+
+fn http() -> Option<tauri_plugin_http::reqwest::Client> {
+    tracking::http(crate::net::Service::Simkl)
+}
 use rusqlite::Connection;
 use serde_json::{json, Value};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -53,7 +57,7 @@ use std::sync::Mutex;
 use std::time::{Duration, Instant};
 use tauri::Manager;
 
-/// Kinema's own SIMKL app ID, set when a release is built (a repository
+/// Skrin's own SIMKL app ID, set when a release is built (a repository
 /// secret, like the TMDB key). Not a secret — SIMKL puts it in every URL — but
 /// kept out of the source so the repository says nothing about whose SIMKL
 /// account registered it. A build without one has no SIMKL unless an ID is
@@ -311,7 +315,7 @@ async fn send_all(app: &tauri::AppHandle) -> Result<(), String> {
         let body = history_body(&batch);
         let mut outcome = post_history(&client_id, &access, &body).await;
 
-        // A 401 most often means the token ran out early — or another Kinema
+        // A 401 most often means the token ran out early — or another Skrin
         // on this library (a development build beside the release) refreshed
         // it, which replaces it. So first see whether the stored token has
         // changed, and only refresh if it has not: refreshing on top of the
@@ -372,7 +376,7 @@ async fn usable_access(
 
 // ---- connecting ---------------------------------------------------------------
 
-/// A sign-in in progress. The device code is the credential Kinema polls with,
+/// A sign-in in progress. The device code is the credential Skrin polls with,
 /// so it stays here and never reaches the page (SIMKL: "never display it").
 struct Pending {
     client_id: String,
@@ -422,7 +426,7 @@ pub async fn simkl_start_connect(app: tauri::AppHandle) -> Result<DeviceCode, St
     let client_id = {
         let db = app.state::<Db>();
         let conn = db.0.lock().map_err(to_string_err)?;
-        client_id(&conn).ok_or("This copy of Kinema has no SIMKL app ID.")?
+        client_id(&conn).ok_or("This copy of Skrin has no SIMKL app ID.")?
     };
     let http = http().ok_or("could not start a web request")?;
     let response = http
@@ -437,11 +441,11 @@ pub async fn simkl_start_connect(app: tauri::AppHandle) -> Result<DeviceCode, St
         .unwrap_or(Value::Null);
     if status == 401 {
         crate::log!("simkl: SIMKL does not accept this app ID: {body}");
-        return Err("SIMKL does not recognise this copy of Kinema's app ID.".into());
+        return Err("SIMKL does not recognise this copy of Skrin's app ID.".into());
     }
     let Some((device_code, shown, interval)) = parse_device(&body) else {
         crate::log!("simkl: unexpected answer to the sign-in request ({status}): {body}");
-        return Err("SIMKL gave an answer Kinema does not understand.".into());
+        return Err("SIMKL gave an answer Skrin does not understand.".into());
     };
     let now = Instant::now();
     let state = app.state::<SimklState>();
@@ -573,7 +577,7 @@ pub async fn simkl_poll_connect(app: tauri::AppHandle) -> Result<PollOutcome, St
     })
 }
 
-/// The account's name, to say who Kinema is connected as. Asked once, at
+/// The account's name, to say who Skrin is connected as. Asked once, at
 /// connect; without it the page just says "Connected".
 async fn account_name(client_id: &str, access: &str) -> Option<String> {
     let response = http()?

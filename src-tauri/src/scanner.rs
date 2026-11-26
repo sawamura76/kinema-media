@@ -82,6 +82,16 @@ pub struct ScanReport {
     gone_lines: Vec<(PathBuf, Vec<i64>)>,
 }
 
+/// The same file time, allowing for the clock change. A FAT drive keeps local
+/// time, so when summer or winter time begins every file on it moves by exactly
+/// an hour with the size unchanged; read as "changed", the whole drive would be
+/// probed again twice a year (A7-08). An hour is all that is forgiven, and the
+/// stored time is left as it was, so the answer is the same at every scan.
+fn same_time(stored: i64, found: i64) -> bool {
+    let d = (stored - found).abs();
+    d == 0 || d == 3600
+}
+
 fn mtime_secs(meta: &std::fs::Metadata) -> i64 {
     meta.modified()
         .ok()
@@ -97,7 +107,7 @@ pub(crate) fn has_video_extension(path: &Path) -> bool {
         .is_some_and(|e| VIDEO_EXTENSIONS.contains(&e.to_lowercase().as_str()))
 }
 
-/// The extensions the library scans for, for the file types Kinema offers
+/// The extensions the library scans for, for the file types Skrin offers
 /// to open (`default_player.rs`).
 #[cfg_attr(not(windows), allow(dead_code))]
 pub(crate) fn video_extensions() -> &'static [&'static str] {
@@ -118,7 +128,9 @@ pub(crate) fn is_video(path: &Path) -> bool {
     !path
         .file_name()
         .and_then(|n| n.to_str())
-        .map(|name| crate::trailer::is_trailer_file_name(name) || is_sample_file_name(name))
+        .map(|name| crate::trailer::is_trailer_file_name(name)
+                || crate::extras::is_extra_file_name(name)
+                || is_sample_file_name(name))
         .unwrap_or(false)
 }
 
@@ -383,7 +395,7 @@ fn walk_local(
             entered.push(entry.path().to_path_buf());
         }
 
-        // Android, with Kinema behind another app: the walk waits between
+        // Android, with Skrin behind another app: the walk waits between
         // folders (jobs::set_behind). Not for a film, as a share's walk does:
         // a walk of a local disk has never had to.
         if entry.file_type().is_dir() {
@@ -424,6 +436,18 @@ fn walk_local(
             continue;
         }
         if entry.path().parent().is_some_and(|p| discs.contains(p)) {
+            continue;
+        }
+
+        // A name that is not valid text (an old Latin-1 name on Linux) cannot
+        // be stored as it is: the stored copy would name a file that does not
+        // exist, and Play would fail on it every time (A7-06). Say so instead.
+        if entry.path().to_str().is_none() {
+            found(Err(Unread {
+                path: entry.path().to_string_lossy().into_owned(),
+                why: "its name is not valid text (UTF-8); rename the file or its folder, then scan again"
+                    .to_string(),
+            }))?;
             continue;
         }
 
@@ -478,7 +502,7 @@ fn refusing_folders(listing: &Path, why: String) -> Vec<Unread> {
     }
 }
 
-/// Every video under a folder on a share Kinema opens itself (netshare.rs).
+/// Every video under a folder on a share Skrin opens itself (netshare.rs).
 /// A folder listing there carries each file's size and time, so a file costs
 /// no request of its own — the one stat per file the rules above allow is
 /// already paid for.
@@ -615,7 +639,7 @@ fn write_batch(
 
             match existing {
                 Some((id, old_size, old_mtime, was_missing))
-                    if old_size == file.size && old_mtime == file.modified =>
+                    if old_size == file.size && same_time(old_mtime, file.modified) =>
                 {
                     if was_missing {
                         touch.execute(params![id, now])?;
@@ -720,7 +744,7 @@ fn gone_from(root: &Path, stale: Vec<(i64, String)>) -> HashMap<PathBuf, GoneFro
 /// - **Gone**, or a folder with other things in it. A disk mounted below the
 ///   library folder, removed with its mount point, looks exactly like a deletion:
 ///   they are hidden, the line says how many from where, and never that they were
-///   deleted, which Kinema cannot know.
+///   deleted, which Skrin cannot know.
 fn mark_missing(
     conn: &mut Connection,
     root_id: i64,
@@ -1440,5 +1464,14 @@ mod tests {
         let offline = scan_all(&mut conn).unwrap();
         assert_eq!(offline.files_missing, 0);
         assert!(offline.errors[0].starts_with("root unavailable"));
+    }
+
+    #[test]
+    fn a_clock_change_is_not_a_changed_file() {
+        assert!(super::same_time(1000, 1000));
+        assert!(super::same_time(1000, 1000 + 3600));
+        assert!(super::same_time(1000 + 3600, 1000));
+        assert!(!super::same_time(1000, 1000 + 7200));
+        assert!(!super::same_time(1000, 1001));
     }
 }

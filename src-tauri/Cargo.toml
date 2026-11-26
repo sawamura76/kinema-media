@@ -1,11 +1,11 @@
 [package]
 name = "kinema"
-version = "0.15.2"
+version = "0.22.0"
 description = "A local, serverless media library for movies, TV shows and music"
 authors = ["Basswaves"]
 edition = "2021"
 license = "MIT"
-repository = "https://github.com/Basswaves/kinema"
+repository = "https://github.com/sawamura76/kinema-media"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -33,9 +33,16 @@ lofty = "0.25.5"
 # NFO sidecars are XML. Event-based rather than deserialised into a struct:
 # the shape varies between MediaElch, tinyMediaManager and Kodi itself, and a
 # reader that ignores what it does not recognise survives all three.
-quick-xml = "0.38"
+quick-xml = "0.42"
 tauri-plugin-dialog = "2"
 tauri-plugin-http = "2"
+# The same crate tauri-plugin-http re-exports, named here only to switch on
+# `socks`: the proxy setting (net.rs) takes socks5:// addresses, Tor's among
+# them, which the plugin's build does not enable.
+reqwest = { version = "0.12", default-features = false, features = ["socks"] }
+# The update button checks a downloaded installer against the release's own
+# .sha256 (updates.rs). Already compiled in through other crates.
+sha2 = "0.10"
 # Pure Rust, MIT, no C library. The audio fingerprinting behind intro/credits
 # detection — and the reason a detector can live in this app at all rather than
 # being another installed tool. Decoding still needs ffmpeg (see ffmpeg.rs):
@@ -44,6 +51,8 @@ rusty-chromaprint = "0.3.0"
 # Decompresses IMDb's ratings file (imdb.rs). Already compiled in through the
 # PNG decoder Tauri uses, so naming it adds no new code to the build.
 flate2 = "1"
+# The chunks of a download as reqwest hands them over (imdb_titles.rs).
+bytes = "1"
 # The QR code on the SIMKL sign-in screen (simkl.rs), so a phone can scan it
 # from the sofa. Pure Rust, no image library: it writes SVG text.
 qrcode = { version = "0.14", default-features = false, features = ["svg"] }
@@ -83,6 +92,7 @@ tauri-plugin-single-instance = "2"
 # SystemInformation is capabilities.rs asking how much memory the PC has.
 # UI_Shell and UI_WindowsAndMessaging are display.rs hearing the screen change
 # mode and fitting the full-screen window to its new size.
+# Globalization is region.rs reading the region setting (the age rating's country).
 [target.'cfg(windows)'.dependencies]
 # Hearing WebView2's processes end (page_life.rs). The version Tauri's own
 # webview compiles in, so nothing new is built.
@@ -90,6 +100,7 @@ webview2-com = "0.38"
 windows-core = "0.61"
 windows = { version = "0.61", features = [
   "Win32_Foundation",
+  "Win32_Globalization",
   "Win32_Devices_Display",
   "Win32_Devices_FunctionDiscovery",
   "Win32_Devices_Properties",

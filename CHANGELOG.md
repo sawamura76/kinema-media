@@ -7,12 +7,367 @@ makes no stability promises.
 
 ## [Unreleased]
 
+## [0.21.1] — 2026-11-22
+
+### New
+
+- **The version is shown under the list in Settings**, on every page there (GitHub #27); it was only under Advanced → Updates. Searching Settings for "version" or "about" finds it.
+- **Change a library folder between Movies and TV** (Settings → Library, GitHub #26). **Make it TV** / **Make it Movies** sits beside Remove. The folder's files are read again under the new type straight away; what you watched, resume points and anything you matched or placed by hand stay as they are. Mouse, keyboard and remote.
+
 ### Changed
 
+- **Left and Right go on seeking while the film is paused** (GitHub #25). Pausing with Space, OK or a remote's pause key no longer moves onto the controls, so the arrows mean the same thing playing or paused, as in other players. Up or Down still brings the controls up with the ring on them, and OK plays again, even with Skip intro showing.
+- **Resolution → Auto never goes past the screen's own resolution** (GitHub #21). On Windows, a graphics driver can offer larger "virtual" resolutions (NVIDIA DSR, AMD VSR) that it draws big and shrinks to fit; Auto could switch to one for a 4K film, blacking out the screen for a picture with nothing more in it. It now stops at the resolution Windows recommends for the screen. Where the system does not say, nothing changes.
+
+### Fixed
+
+- A renamed or moved file that had not been matched yet kept what was read from its old name; it is now read again from the new one, as matched files already were. (The rule for "a person decided this" left such files out by accident.)
+
+## [0.21.0] — 2026-11-22
+
+### New
+
+- **Send Skrin's lookups through a proxy** (Settings → Privacy, off by default; asked for in Discussion #9). Give an HTTP(S) or SOCKS5 address and every lookup Skrin makes (TMDB, TVmaze, IMDb, OMDb, OpenSubtitles, SIMKL, Trakt, the update check, your own server) and every picture from the internet goes through it. If the proxy cannot be reached the lookup fails and says so; it never goes straight out instead. **Check** tries the address. Two things do not go through it, and the page says so: the YouTube trailer (it plays from YouTube itself) and winget's install of ffmpeg.
+- **Keep everything on this computer** (asked for in Discussion #9). A quiet
+  line on the first run, or a switch at the top of Settings → Privacy: Skrin
+  then looks nothing up online. Names are matched on this computer against
+  the list of films and shows IMDb publishes for everyone (about 240 MB to
+  download, 76 MB kept, again once a month); nothing about your library is
+  sent. Every other service stops, the check for new versions too; Trailer
+  (from YouTube), Find subtitles online, Install ffmpeg and More like this are
+  not shown, and pictures already on this device are shown, no new ones
+  fetched. IMDb's list and IMDb's ratings each have their own switch; with
+  both off nothing is downloaded at all and names come from the files.
+  "Remove pictures and details fetched online" (asks first) clears what came
+  from the internet before. SIMKL and Trakt are disconnected first. Switching
+  it off moves every title to TMDB by its IMDb number in one run, with its
+  pictures and details. Mouse, keyboard and remote; Settings search finds it.
+- **Seek previews on Android.** The picture above the seek bar where a held
+  or tapped Left/Right, a drag or the mouse points, as on a computer, filled
+  in while watching (never while the film drops frames; a film on a network
+  share gets the live picture only, so its bandwidth stays the film's). Made
+  with a software decoder, never the one the film plays on, and HDR films get
+  ordinary colours rather than washed-out ones. A box has little room, so they
+  are kept in up to a tenth of its free space (256 MB at most): the pictures of
+  the films watched longest ago go first. Settings → Advanced → Seek previews
+  says the space and deletes them. A file no software decoder on the device
+  takes gets no pictures, and plays as before.
+
+### Fixed
+
+- **Full screen no longer pauses the film when the screen already fits it.** Pressing F (or double clicking) used to pause the film for a moment every time, even when the screen did not need to change mode; it now pauses only when the screen is really about to be switched.
+- **Double click for full screen no longer pauses the film for a moment** (GitHub #24). A click on the picture now waits a quarter of a second for a second click before pausing; a double click only switches full screen.
+
+## [0.20.0] — 2026-11-21
+
+### New
+
+- **Fix subtitle timing automatically** (Windows and Linux). In the subtitle
+  menu, beside Earlier / Later: Skrin reads a few short stretches of the film
+  and compares when the subtitle shows its lines with when people speak (or
+  with a subtitle built into the film), then moves the subtitle and says what
+  it did — "Subtitles 2.5 s earlier — 7 of 8 checks agree", with **Undo**. A
+  subtitle made for a 25 fps release that drifts further off towards the end
+  is slowed to match too. When the checks do not agree, nothing moves and it
+  says so. Remembered for that file, like Earlier / Later. After a subtitle is
+  downloaded from OpenSubtitles (one not made for this exact file), the same
+  check runs quietly and only *offers* a fix when they are clearly off. Works
+  on subtitle files (SRT, ASS, VTT); the file itself is never changed, and
+  nothing leaves the computer. Mouse, keyboard and remote.
+- **Trailers play inside Skrin on Linux too.** YouTube's embedded player refused Skrin's own page there ("Error 153"), so the trailer always opened in the browser. Skrin now serves one small page on this computer only (`127.0.0.1`) that holds YouTube's official player, and the same trailer window shows it, with the same keys and mouse as on Windows. Any error from YouTube still opens the browser. Nothing new leaves the computer.
+- **Film and show pages, the later items.** *More like this*: TMDB's
+  recommendations that are in your library, in TMDB's order — and nothing at
+  all when none are. *Extras*: what is kept beside the files, the way Plex,
+  Jellyfin and Kodi keep them (`Extras`, `Featurettes`, `Behind The
+  Scenes`, `Deleted Scenes`, `Interviews`, `Scenes`, `Shorts`, `Other`
+  folders, or `name-featurette.mkv`, `-behindthescenes`, `-deleted`,
+  `-interview` files), played like a trailer; Skrin only reads them. A show's
+  page shows the poster of the season on screen. The **age rating** is now the
+  one for your own country (Windows' region setting, Linux's locale
+  territory, Android's language region), and none
+  when TMDB has none for it, instead of always the US one. **Theme music**,
+  off by default (Settings → Playback): a `theme.mp3` (or `theme-music/`,
+  `backdrops/theme.mp3`) in a show's or film's folder plays softly while its
+  page is open. Nothing is downloaded. Titles are fetched from TMDB once more
+  to bring the new fields, one at a time as before.
+
+- **Seek previews** on Windows and Linux: the seek bar shows a small picture
+  of where it points — the mouse over the bar, a drag, or Left/Right held on
+  a keyboard or a remote. Skrin makes the pictures while you watch, one for
+  every ten seconds of the film, quietly in the background and never while
+  the film drops frames; one you point at before it is made comes in a
+  fraction of a second. HDR films get proper SDR pictures, not washed-out
+  ones. They take about 10 KB each, stay on this computer (never beside your
+  videos) and go when the file leaves the library; Settings → Advanced →
+  Seek previews shows the space and deletes them. Android is to follow.
+
+## [0.19.0] — 2026-11-20
+
+### New
+
+- **Make previews for the whole library** (Windows and Linux; Settings →
+  Advanced → Seek previews, off by default). Skrin makes the seek-bar pictures
+  of every film and episode in the background, one file at a time, so they are
+  there before you watch. It stops for any film you play and carries on when it
+  ends, rests between pictures so the computer is never busy with it (one
+  decoding thread, longer rests, on a computer with two cores or fewer), picks
+  up where it stopped after a restart, shows "n of N files" and the space used,
+  and Off stops it. A share that does not answer is left for the next start.
+  The pictures are the same as watching makes, kept the same way.
+- **The volume goes to 200%**, as VLC's does, on Windows and Linux (#22, thanks
+  to Rengoku30). Above 100% the sound is made louder and held just below full
+  scale, so it never clips, with volume levelling on or off. Turning it up
+  or down with keys, the mouse wheel or a remote stops at 100% for a moment
+  before going on, and a click on the bar near 100% lands on 100%. Android
+  stays at 100%; sound sent untouched to a receiver is the receiver's to
+  turn up.
+
+- **Film and show details in your language** (#18, #19, thanks to IanBesky
+  and tomcik78): Settings → Language
+  & subtitles → Film and show details. Titles, descriptions and episode names
+  come from TMDB in the language you choose, and where TMDB has no
+  translation the English is shown instead of nothing. Posters lettered in
+  that language are preferred. Titles already in your library are fetched
+  again in the background; search still finds them by their English names.
+  English stays the default, and menus stay in English. On Android too.
+
+### Changed
+
+- **When Skrin switches the screen to the film's refresh rate or HDR**, the
+  notice now says the screen may go black for a moment, which is the screen
+  changing mode, not a fault (#21, thanks to SynapseScribe).
+
+### Fixed
+
+- **The volume bar could be covered by Skip intro**, so a click near 100%
+  skipped the intro instead.
+
+- **Resuming on Linux systems with an older mpv** (0.37, as on Linux Mint and
+  Ubuntu 24.04): a film watched part-way failed with "loadfile: invalid
+  parameter" and only played from the beginning. Skrin now uses the form of
+  the command that the installed mpv takes (#23, thanks to gingitsune182).
+
+## [0.18.0] — 2026-11-15
+
+### New
+
+- **Update with one press.** When a newer Skrin is out, Settings → Advanced
+  offers "Update to Skrin X". It downloads the new version from the GitHub
+  release, checks it against the release's checksum and opens the system's own
+  installer, which asks before anything changes: the setup on Windows (Skrin
+  closes so it can be replaced), the .deb or .rpm on Linux (asks for your
+  password, then "Restart Skrin"), the APK on Android (allow Skrin to install
+  apps the first time). Nothing is downloaded until you press it, and nothing
+  updates by itself. A copy that cannot update itself this way (the Windows
+  ZIP, the Linux folder download) keeps the download page.
+- **The seek bar shows how much of the film is loaded** ahead of the play
+  head, lighter than the part already played: mostly seen on a network share,
+  where it shows how far a seek can go without waiting.
+
+### Changed
+
+- **Skrin's own colours**: the orange of the icon replaces Kinema's red
+  throughout the app, and the icon and a white "Skrin" sit at the top left.
+
+## [0.17.0] — 2026-11-14
+
+**Kinema is now Skrin Media Player.** Only the name and the icon change. Your
+library, settings, watch history and sign-ins stay as they are, and so does an
+installed Android copy, which updates in place. Older entries below keep the
+name the app had then.
+
+### Changed
+
+- **The name is Skrin** ("Skrin Media Player"), with a new icon: a sleeve with a
+  disc half out of it. "Skrin" is Norwegian and Swedish for a small keepsake box.
+- **Installing Skrin over Kinema** on Windows (installer or winget) removes
+  Kinema's program files, Start-menu and desktop shortcuts and its Apps entry
+  first, then installs Skrin in its own folder. The library and settings are
+  kept, and "Open with" moves to Skrin by itself at its first start.
+- **On Linux** the `skrin` package replaces `kinema`: `sudo apt install
+  ./skrin-linux-amd64.deb` removes Kinema by itself; on Fedora use
+  `sudo dnf swap kinema ./skrin-linux-x86_64.rpm` (a plain `dnf install` would
+  put Skrin beside Kinema). The program is `/usr/bin/skrin`. A copy of the folder download added to the
+  app menu is renamed in the menu at its first start.
+- **Download names** are `skrin-…` (`skrin-windows-x64-setup.exe`,
+  `skrin-linux-amd64.deb`, `skrin-android.apk` and so on), the program is
+  `skrin.exe`, and the project lives at
+  [github.com/basswaves/skrin](https://github.com/basswaves/skrin). Older
+  copies still find updates there: GitHub forwards the old address.
+
+## [0.16.0] — 2026-11-14
+
+An outside review of the whole program led to most of this release: what
+Kinema says when something goes wrong now says what is true, secrets are kept
+safer, and the installers and the release itself are stricter.
+
+### Security
+
+- **Library safety copies no longer hold your sign-ins or keys.** SIMKL and
+  Trakt sign-ins, your TMDB and OMDb keys and your OpenSubtitles password are
+  left out of the copies Kinema makes of the library, and a copy that cannot be
+  cleaned is deleted. Restoring a copy means signing in again.
+- **Sign-ins and keys are sealed.** On Windows and Android the same nine
+  settings are now stored sealed by the system, and old plain values are sealed
+  the first time they are read. On Linux, which has no such store here, the
+  Kinema folder and the library are readable only by you.
+- **Android no longer lets the system back up Kinema's data.**
+- **A file that only points to an address** (a playlist or script named
+  `.mkv`) is no longer followed, so a downloaded file cannot make the player
+  contact an address of its own choosing.
+- **Page lookups give up after 30 seconds** and a service's "wait a long time"
+  answer fails plainly, so one stuck answer no longer stops every later lookup
+  until you restart. A damaged `.nfo` file with huge contents no longer slows
+  a scan, and an `.nfo` over 1 MB is left unread.
+
+### Added
+
+- **TMDB's credit in its own words**, with its logo, in Settings, the README
+  and the site.
+- **Every package carries the licence and notice**: the ZIP, the installer, the
+  `.deb` and the `.rpm`.
+- **Android: a film whose sound this device cannot play says so** and plays on
+  without it, instead of silence with no explanation. Sound in LPCM and some
+  AAC/MPEG inside `.m2ts` files now plays.
+- **Linux: when the system cannot decode a film's picture or sound** (for
+  example HEVC on a Fedora without the full codecs), the player says so rather
+  than showing nothing.
+
+### Changed
+
+- **Step down only counts what the graphics card caused.** A film faster than
+  the screen, or dropped frames from the decoder or from software decoding, no
+  longer lower later films for good. A step that did not help is put back, and
+  one level comes back after three clean films.
+- **A first scan with no internet blames the connection**, not your file
+  names. An answer from a service that Kinema cannot read is said plainly, and
+  never wipes a stored Rotten Tomatoes score.
+- **Two files that differ only by a country** (`A Show (US)` and `A Show (UK)`)
+  are kept as two rows in Needs attention.
+- **A tie between near names** is no longer settled by popularity unless the
+  winner's name is the file's name: a short film is no longer linked to a
+  longer title that only looks like it.
+- **Big libraries open faster.** A library of five thousand titles took ten seconds
+  or more to show Home; now about a second, even on a slow PC.
+- **Posters and backdrops are drawn from a screen-sized copy**, never the
+  original, so a huge picture beside a film cannot fill a small computer's
+  memory. Episode pictures are fetched only for episodes you have a file for.
+- **Text on a TV is never smaller than 12 px**, and the Light look keeps the
+  top bar readable over posters. On a very large window the text keeps growing.
+  Home's big title stops at three lines, and buttons use Kinema's own font.
+- **A mouse's side Back button and Alt+Left go back**, like Escape. After the
+  mouse wheel has moved the page, the next arrow key starts from what is on
+  screen.
+- **Windows: running the setup again over an installed Kinema updates it in
+  place**, keeping shortcuts and default-player choices. Uninstalling now also
+  clears the built-in browser's cache. The folder dialog says whether it wants
+  the movies or the TV folder.
+- **Android: the folder browser notices a permission you gave** when you come
+  back to the app, and says which films "All files access" adds.
+- **Settings: the chosen section stays in view** in a small window.
+- **Setup pages say what is true**: the intros page says Kinema's own finding
+  needs ffmpeg when none is installed, and the sound question shows what the
+  connected output takes untouched.
+- **What leaves your computer** lists the host a subtitle is downloaded from.
+- **Move to a new computer** carries the subtitle size and box for any screen.
+
+### Fixed
+
+- **When the screen cannot switch to a video's rate, the details panel says
+  so**: what Kinema asked for, that it was refused or another rate kept, how
+  many frames are left out, and what usually stands in the way (the TV input's
+  deep colour setting, the receiver's 4K signal setting, the cable). It also
+  says when the graphics driver lowered the link's colour format to fit a rate.
+  Before, only app.log said it. When Windows' older call refuses a mode, Kinema
+  now also asks as Windows' own display settings do.
+- **When Windows blocks sending sound untouched**, the details panel says so
+  instead of calling the decoded sound fine, and Settings gives the right way
+  to the "exclusive control" setting in Windows 11.
+- **A drive that stops answering no longer freezes the window.** Kinema says
+  "The drive this film is on is not answering" after 20 seconds, keys keep
+  working, and a second start no longer hangs behind it. Quitting no longer
+  waits long on such a drive.
+- **When progress cannot be saved, Kinema says so** (disk full, folder not
+  writable), keeps trying, and says when it works again. A library that is
+  read-only or cannot be opened gets one start-up message and nothing behind it.
+- **A damaged, empty or unreadable file is called that**, not "may have been
+  moved or deleted". The same on Android, where Media3's code names no longer
+  show. A file Kinema is not allowed to read says so.
+- **A file with no picture** starts at once instead of waiting 15 seconds.
+- **Anything saved while the clock ran a year ahead is set back to now**, so it
+  stops sitting first in Continue watching and the TMDB refresh comes on time.
+- **A FAT drive's files are not read again** when the clock moves an hour for
+  summer or winter.
+- **Linux: a file whose name is not valid text** is listed under "could not
+  read" with what to do, instead of being added and then not playing.
+- **Needs attention: searching no longer moves the ring to Ignore these**, so a
+  second OK cannot ignore files without asking.
+- **Badges and panels say only what is known.** No "UHD" for a file below 4K,
+  no Auro-3D from a name when the sound cannot hold it, "Dialogue lifted" only
+  when it was, "mono" for mono, no "SDR" tick or "0 Hz" before mpv has
+  answered, no "press f for full screen" where it is already, no faster-mode
+  hint for a screen that lacks one. Home's "could not be identified" count
+  leaves out matches that are only worth a second look.
+- **Version choice:** a tiny sample is never taken over the real picture beside
+  it.
+- **Your equipment** no longer lists one sound device twice.
+- **High contrast: the chosen season's name** is readable again.
+- **Android: Frame timing** is no longer offered, as it does nothing there.
+- **Installers and packages:** removing the rpm leaves no empty Kinema folders.
+  The README now says the Windows setup needs the internet once (for WebView2),
+  and its Fedora line skips optional extras.
+- **How releases are built (for contributors):** a release stops if its
+  version number does not match the program's, the tools it downloads while
+  building are checked against known checksums, and the Linux `.rpm` package is
+  installed and started on a clean Fedora test system before anything is
+  published.
+
+## [0.15.3] — 2026-11-12
+
+### Added
+
+- **Files and title** (#14). On a film's or show's page, choose which season
+  and numbers its files belong to, make one folder its own title, or unlink one
+  folder and decide later. Nothing on disk is renamed or moved.
+
+### Changed
+
+- **Skip intro shows up when the intro does.** For an intro that starts early it
+  is there from the first second; for one that starts later (after a recap or a
+  long cold open) it appears about eight seconds before. After ten seconds it
+  shrinks to a small mark so it does not sit on the picture, and grows again on
+  any key, touch or mouse move.
+- **A renamed or moved file keeps what you decided.** Rename a file or a folder,
+  or move it between library folders, and the next scan finds it again with its
+  match, season and numbers, resume point and everything else you set by hand.
+  Two files of exactly the same size and date are still not guessed apart.
+- **A library folder that moved to another drive letter or share keeps its
+  rows.** In Settings, a folder that cannot be found has an `It moved…` button;
+  point it at the new place and it asks first.
 - **A big library keeps only what is on screen.** Movies, See all and the
   other full grids draw the rows you see and a few around them, not every
   title at once, so a thousand films browse as lightly as a few hundred and
-  hold far fewer pictures in memory. Nothing looks different.
+  hold far fewer pictures in memory. Nothing looks different, and a mouse
+  wheel or the scroll bar moves the page as far as before.
+- **Linux: the page is drawn by the graphics card**, and falls back by itself
+  if pictures stop showing.
+
+### Fixed
+
+- **A full-screen window keeps its size when the screen changes mode.** After
+  Kinema switched a TV up to 4K or another refresh rate, the window could stay
+  at the old size.
+- **Putting the screen back no longer fails for ever** when the TV no longer
+  offers the mode that was saved.
+- **Intro scanning waits for a file that is still being copied** instead of
+  reading half of it.
+- **Linux: arrow keys and the mouse wheel over a big page of posters are
+  quick again.** Moving the ring or the pointer to another poster made the
+  page redraw every poster on it; on a two-core PC with a thousand films a
+  key press took about a quarter of a second. Now only what changed is drawn.
+- **Linux: the mouse reaches the player's controls** in every film again.
+- **A poster far larger than the screen** is no longer drawn at full size in a
+  grid, which could take a small PC's memory.
 
 ## [0.15.2] — 2026-11-08
 

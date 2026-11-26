@@ -48,6 +48,10 @@ interface FakeMpv {
   paused: boolean;
   position: number;
   volume: number;
+  /** mpv's own volume, 100 at most; `volume` from mpv() is the level heard. */
+  ownVolume: number;
+  boostDb: number | null;
+  af: string;
   mute: boolean;
   currentAo: string | null;
   commands: { name: string; args: unknown[] }[];
@@ -60,7 +64,11 @@ function mpv(page: Page): Promise<Omit<FakeMpv, 'commands'>> {
       path: f.path,
       paused: f.paused,
       position: f.position,
-      volume: f.volume,
+      // The level heard: mpv's own volume (100 at most), and the boost on top.
+      volume: f.boostDb === null ? f.volume : Math.round(f.volume * 10 ** (f.boostDb / 60)),
+      ownVolume: f.volume,
+      boostDb: f.boostDb,
+      af: f.af,
       mute: f.mute,
       currentAo: f.currentAo,
     };
@@ -324,16 +332,26 @@ test('watching keys: seeking, pausing, volume, stats and the transport row', asy
   await press(page, 'ArrowLeft');
   await expect.poll(async () => (await mpv(page)).position).toBeLessThan(before - 5);
 
-  // Space pauses and puts the ring on Play, so OK plays again.
+  // Space pauses and leaves the arrows seeking (GitHub #25): no ring on the
+  // controls, and Right still jumps ahead while paused.
   await press(page, 'Space');
   await expect.poll(async () => (await mpv(page)).paused).toBe(true);
-  await expect(osdFocused(page)).toBeAttached();
-  await expect.poll(() => focused(page)).toBe('Play');
+  await expect(osdFocused(page)).toHaveCount(0);
+  before = (await mpv(page)).position;
+  await press(page, 'ArrowRight');
+  await expect.poll(async () => (await mpv(page)).position).toBeGreaterThan(before + 9);
+  expect((await mpv(page)).paused).toBe(true);
+  await expect(osdFocused(page)).toHaveCount(0);
   // Paused, the controls stay up.
   await pause(page, 4000, 'time on purpose: paused, the controls must stay up past the hide delay');
   await expect(page.locator('.player.osd-hidden')).toHaveCount(0);
+  // OK plays again without the ring on Play, even with the intro's Skip showing.
   await press(page, 'Enter');
   await expect.poll(async () => (await mpv(page)).paused).toBe(false);
+  // Up still hands the arrows to the controls, with the ring on Pause.
+  await press(page, 'ArrowUp');
+  await expect(osdFocused(page)).toBeAttached();
+  await expect.poll(() => focused(page)).toBe('Pause');
   await press(page, 'Escape');
   await expect(osdFocused(page)).toHaveCount(0);
 
@@ -370,7 +388,7 @@ test('watching keys: seeking, pausing, volume, stats and the transport row', asy
   await expect.poll(async () => (await mpv(page)).position).toBeLessThan(before - 25);
   await remoteKey(page, 'MediaPause');
   await expect.poll(async () => (await mpv(page)).paused).toBe(true);
-  await expect.poll(() => focused(page)).toBe('Play');
+  await expect(osdFocused(page)).toHaveCount(0);
   await remoteKey(page, 'MediaPlay');
   await expect.poll(async () => (await mpv(page)).paused).toBe(false);
   await remoteKey(page, 'MediaPlayPause');
@@ -425,6 +443,87 @@ test('Skip intro, then the episodes either side, and resuming with Start over', 
   await expect.poll(async () => (await mpv(page)).path).toContain('S01E02');
   await remoteKey(page, 'MediaTrackPrevious');
   await expect.poll(async () => (await mpv(page)).path).toContain('S01E01');
+});
+
+test('the volume boost: to 200% by key and bar, kept across episodes, none for a receiver', async ({
+  page,
+}) => {
+  await play(page, 'series');
+  await expect.poll(async () => (await mpv(page)).path).toContain('S01E01');
+  const control = page.locator('.volume-control');
+
+  // Up past the film's own level is a boost, and the control says so.
+  await press(page, '0');
+  await expect.poll(async () => (await mpv(page)).volume).toBe(105);
+  await expect(page.locator('.volume-control.boosted')).toBeAttached();
+  await expect(control).toHaveAttribute('title', /held below clipping/);
+  // It stops at 200, however long the key is pressed.
+  await press(page, '0', 22);
+  await expect.poll(async () => (await mpv(page)).volume).toBe(200);
+  // The boost is a gain and a limiter after it, changed in place; mpv's own
+  // volume stays at 100.
+  const at200 = await mpv(page);
+  expect(at200.ownVolume).toBe(100);
+  expect(at200.boostDb).toBe(18.06);
+  expect(at200.af).toMatch(/volume@boost=volume=18\.06dB,alimiter=limit=0\.944:level=0/);
+  const rebuilt = await page.evaluate(() =>
+    (window as unknown as { __fakeMpv: FakeMpv }).__fakeMpv.commands.filter(
+      (c) => c.name === 'set' && c.args[0] === 'af'
+    ).length
+  );
+  expect(rebuilt).toBe(1);
+  await press(page, '-', 10);
+  await expect.poll(async () => (await mpv(page)).volume).toBe(150);
+  await expect.poll(() => call(page, '/src/metadata/api.ts', 'getSetting', 'volume')).toBe('150');
+
+  // The next episode plays at the same level.
+  await press(page, 'n');
+  await expect.poll(async () => (await mpv(page)).path).toContain('S01E02');
+  await expect.poll(async () => (await mpv(page)).volume).toBe(150);
+
+  // The bar is 0 at the bottom to 200 at the top: its middle is 100%.
+  await control.hover();
+  const hit = page.locator('.volume-hit');
+  await expect(hit).toBeVisible();
+  const box = await hit.boundingBox();
+  if (!box) throw new Error('no volume bar');
+  // Skip intro is up at this point of the episode: the pop-up is over it.
+  await expect(page.locator('.skip-button')).toBeVisible();
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await expect.poll(async () => (await mpv(page)).volume).toBe(100);
+  await expect(page.locator('.volume-control.boosted')).toHaveCount(0);
+  // At 100% there is no filter at all.
+  expect((await mpv(page)).af).not.toContain('alimiter');
+  await page.mouse.click(box.x + box.width / 2, box.y + 1);
+  await expect.poll(async () => (await mpv(page)).volume).toBe(200);
+  await expect.poll(() => call(page, '/src/metadata/api.ts', 'getSetting', 'volume')).toBe('200');
+
+  // Sound bitstreamed to a receiver: no boost is claimed, the keys leave it be.
+  await page.evaluate(() => {
+    const f = window as unknown as { __fakeMpv: { audioOutFormat: string } };
+    f.__fakeMpv.audioOutFormat = 'spdif-truehd';
+  });
+  await press(page, '-');
+  await expect(page.locator('.volume-control.receiver')).toBeAttached();
+  await expect(page.locator('.volume-control.boosted')).toHaveCount(0);
+  expect((await mpv(page)).volume).toBe(200);
+});
+
+test('resuming on mpv before 0.38, whose loadfile takes no playlist index', async ({ page }) => {
+  await play(page, 'series');
+  await expect.poll(async () => (await mpv(page)).path).toContain('S01E01');
+  await page.evaluate(() => {
+    (window as unknown as { __fakeMpv: { oldLoadfile: boolean } }).__fakeMpv.oldLoadfile = true;
+  });
+  await playheadTo(page, 600);
+  await expect.poll(async () => (await mpv(page)).position).toBeGreaterThan(600);
+  await press(page, 'n');
+  await expect.poll(async () => (await mpv(page)).path).toContain('S01E02');
+  await press(page, 'p');
+  await expect.poll(async () => (await mpv(page)).path).toContain('S01E01');
+  await expect(page.locator('.resume-toast')).toContainText('Resumed from 10:0');
+  expect((await mpv(page)).position).toBeGreaterThanOrEqual(600);
+  await expect(page.locator('.player-error')).toHaveCount(0);
 });
 
 test('Skip intro steps aside while Audio & subtitles is open, never over its rows', async ({ page }) => {
@@ -815,6 +914,38 @@ test('no audio description unless asked', async ({ page }) => {
   expect(await sets(page)).not.toContain('aid=3');
 });
 
+test('the volume rests at 100% on its way up, then goes on after a pause', async ({
+  page,
+}) => {
+  await play(page, 'series');
+  await expect.poll(async () => (await mpv(page)).path).toContain('S01E01');
+  await press(page, '-');
+  await expect.poll(async () => (await mpv(page)).volume).toBe(95);
+  // Keys that keep coming stop at the film's own level...
+  await press(page, '0', 4);
+  await expect.poll(async () => (await mpv(page)).volume).toBe(100);
+  // ...and after a pause the next one goes on into the boost.
+  await pause(page, 800, 'the rest at 100% lets the next step on after a pause');
+  await press(page, '0');
+  await expect.poll(async () => (await mpv(page)).volume).toBe(105);
+});
+
+test('the boost goes after volume levelling, with the limiter last', async ({ page }) => {
+  await play(page, 'series', async (p) => {
+    await call(p, '/src/metadata/api.ts', 'setSetting', 'sound_levelling', 'more');
+    await call(p, '/src/metadata/api.ts', 'setSetting', 'volume', '150');
+  });
+  await expect.poll(async () => (await mpv(page)).path).toContain('S01E01');
+  await expect.poll(async () => (await mpv(page)).volume).toBe(150);
+  const { af } = await mpv(page);
+  expect(af).toMatch(/^@kinema:lavfi=\[dynaudnorm[^\]]*\],@skrinboost:lavfi=\[volume@boost=volume=[\d.]+dB,alimiter/);
+  // Turned up with levelling on: the gain changes in place, levelling stays.
+  await pause(page, 800, 'one step on its own');
+  await press(page, '0');
+  await expect.poll(async () => (await mpv(page)).volume).toBe(155);
+  expect((await mpv(page)).af).toContain('dynaudnorm');
+});
+
 test('no levelling on a track that goes to the receiver untouched, and the panel says why', async ({
   page,
 }) => {
@@ -888,6 +1019,115 @@ test('subtitle lines and timing: formats, the separate file by language, earlier
   await expect
     .poll(() => call<string | null>(page, '/src/metadata/api.ts', 'getSetting', 'subtitle_delay'))
     .toBe('{}');
+});
+
+/** The timing checks the page asked for (mockBackend's sub_timing_check). */
+const timingChecks = (page: Page) =>
+  page.evaluate(
+    () => (window as unknown as { __subTimingChecks?: Record<string, unknown>[] }).__subTimingChecks ?? []
+  );
+
+test('fix subtitle timing automatically, by remote: said with how many agree, Undo, kept per file', async ({
+  page,
+}) => {
+  await play(page, 'series');
+  const panel = await openTrackPanel(page);
+  // A subtitle inside the film: the panel says the check is for files.
+  await pressInPanel(page, panel.locator('.track-option', { hasText: 'English · SDH · PGS' }));
+  await expect(panel.locator('.track-note', { hasText: 'Automatic timing works on subtitle files' })).toBeVisible();
+  await expect(panel.locator('.track-timing-fix')).toHaveCount(0);
+
+  // The separate file: the button is there, and OK runs the check.
+  await pressInPanel(page, panel.locator('.track-option', { hasText: 'Danish · separate file · SRT' }));
+  const fix = panel.locator('.track-timing-fix');
+  await pressInPanel(page, fix);
+  await expect(panel.locator('.track-timing-line')).toHaveText(
+    'Subtitles 2.34 s earlier — 7 of 8 checks agree, against the speech.'
+  );
+  await expect.poll(() => sets(page)).toContain('sub-delay=-2.340');
+  const [asked] = await timingChecks(page);
+  expect(asked).toMatchObject({ subtitle: 'C:/fixture/Example.Film.Danish.srt', duration: 1500 });
+  await expect(panel.locator('.track-delay-label', { hasText: 'Timing:' })).toHaveText('Timing: −2.34 s');
+  await expect
+    .poll(() => call<string | null>(page, '/src/metadata/api.ts', 'getSetting', 'subtitle_delay'))
+    .toMatch(/":-2340\}$/);
+
+  // Undo puts back what was there, and the ring lands on the button again.
+  const undo = panel.locator('.track-timing-undo');
+  await pressInPanel(page, undo);
+  await expect
+    .poll(async () => (await sets(page)).filter((x) => x.startsWith('sub-delay=')).at(-1))
+    .toBe('sub-delay=0.000');
+  await expect(undo).toHaveCount(0);
+  await expect(panel.locator('.track-timing-line')).toHaveText('Undone: the timing is as it was.');
+  await expect.poll(() => focused(page)).toBe('Fix timing automatically');
+});
+
+test('fix subtitle timing: a 25 fps subtitle is slowed, Reset clears it; unsure moves nothing', async ({
+  page,
+}) => {
+  await play(page, 'series', (p) => p.evaluate(() => localStorage.setItem('kinemaMockSubTiming', 'drift')));
+  let panel = await openTrackPanel(page);
+  await pressInPanel(page, panel.locator('.track-option', { hasText: 'Danish · separate file · SRT' }));
+  await pressInPanel(page, panel.locator('.track-timing-fix'));
+  await expect(panel.locator('.track-timing-line')).toContainText(
+    'Subtitles 1.2 s later, and slowed to match the film (made for 25 fps; the film is 23.976)'
+  );
+  await expect.poll(() => sets(page)).toContain('sub-speed=1.042709');
+  await expect
+    .poll(() => call<string | null>(page, '/src/metadata/api.ts', 'getSetting', 'subtitle_speed'))
+    .toMatch(/":1\.04270/);
+  // 0 puts both back.
+  const reset = panel.getByRole('button', { name: 'Subtitles at their own timing' });
+  const inRow = () => reset.evaluate((el) => !!el.closest('.track-delay')?.querySelector('.focused'));
+  for (let i = 0; i < 25 && !(await inRow()); i++) await press(page, 'ArrowUp');
+  for (let i = 0; i < 6 && !(await reset.evaluate((el) => el.classList.contains('focused'))); i++) {
+    await press(page, 'ArrowRight');
+  }
+  await press(page, 'Enter');
+  await expect
+    .poll(async () => (await sets(page)).filter((x) => x.startsWith('sub-speed=')).at(-1))
+    .toBe('sub-speed=1.000000');
+  await expect
+    .poll(() => call<string | null>(page, '/src/metadata/api.ts', 'getSetting', 'subtitle_speed'))
+    .toBe('{}');
+
+  // Unsure: nothing moves, and it says so.
+  await page.evaluate(() => localStorage.setItem('kinemaMockSubTiming', 'unsure'));
+  await press(page, 'Escape');
+  panel = await openTrackPanel(page);
+  const before = (await sets(page)).length;
+  await pressInPanel(page, panel.locator('.track-timing-fix'));
+  await expect(panel.locator('.track-timing-line')).toHaveText(
+    'Could not tell the timing for sure — nothing changed. Earlier and later still work.'
+  );
+  expect((await sets(page)).slice(before).filter((x) => x.startsWith('sub-'))).toEqual([]);
+  await expect(panel.locator('.track-timing-undo')).toHaveCount(0);
+});
+
+test('after a download not made for this file, a quiet check offers a fix and moves nothing until OK', async ({
+  page,
+}) => {
+  await play(page, 'series');
+  const panel = await openTrackPanel(page);
+  await pressInPanel(page, panel.locator('.track-online'));
+  await expect(panel.locator('.track-note', { hasText: 'Showing' })).toContainText('timed for this file');
+  // Made for this exact file: no check at all.
+  await pause(page, 600, 'a check would have answered by now');
+  expect(await timingChecks(page)).toEqual([]);
+
+  // Another one: checked quietly, offered, nothing moved yet.
+  await pressInPanel(page, panel.locator('.track-offer', { hasText: 'Example.Release.2' }));
+  const offer = panel.locator('.track-timing-offer');
+  await expect(offer).toHaveText('These subtitles look 2.3 s late. Fix the timing');
+  await expect(page.locator('.player-notice')).toHaveText(
+    'These subtitles look 2.3 s late. The subtitle menu can fix it.'
+  );
+  expect((await sets(page)).filter((x) => x.startsWith('sub-delay=')).at(-1)).toBe('sub-delay=0.000');
+  await pressInPanel(page, offer);
+  await expect.poll(() => sets(page)).toContain('sub-delay=-2.340');
+  await expect(offer).toHaveCount(0);
+  await expect(panel.locator('.track-timing-undo')).toBeVisible();
 });
 
 test('the chapter list by remote: the one playing marked, OK jumps there', async ({ page }) => {
@@ -1073,4 +1313,59 @@ test('a show’s chosen version carries to its next episode', async ({ page }) =
   // Next episode, by key: the 720p copy of S01E02, not the file listed first.
   await press(page, 'n');
   await expect.poll(async () => (await mpv(page)).path).toContain('S01E02.720p');
+});
+
+test('the seek bar shows what is loaded ahead, steadily, and only what the player says', async ({
+  page,
+}) => {
+  await play(page, 'film');
+  const bar = page.locator('input.player-seek');
+  const read = () =>
+    bar.evaluate((el) => ({
+      played: parseFloat((el as HTMLElement).style.getPropertyValue('--played')),
+      loaded: parseFloat((el as HTMLElement).style.getPropertyValue('--loaded')),
+      said: el.getAttribute('data-loaded'),
+      duration: (window as unknown as { __fakeMpv: { duration: number } }).__fakeMpv.duration,
+      position: (window as unknown as { __fakeMpv: FakeMpv }).__fakeMpv.position,
+    }));
+
+  await press(page, 'ArrowDown');
+  await expect(osdFocused(page)).toBeAttached();
+  // A minute ahead (the fake player's demuxer cache), drawn past the play head.
+  await expect.poll(async () => (await read()).said).not.toBeNull();
+  const first = await read();
+  expect(first.loaded).toBeGreaterThan(first.played);
+  expect(first.loaded).toBeCloseTo(((first.position + 60) / first.duration) * 100, 0);
+
+  // A local file that loads at once: the band never blinks off between reads.
+  for (let i = 0; i < 15; i++) {
+    const r = await read();
+    expect(r.said).not.toBeNull();
+    expect(r.loaded).toBeGreaterThan(r.played);
+    await pause(page, 200, 'sampling across several one-second reads');
+  }
+
+  // Loaded to the end: the band reaches the end of the bar.
+  await page.evaluate(() => {
+    (window as unknown as { __fakeMpv: { cacheAhead: number } }).__fakeMpv.cacheAhead = 1e6;
+  });
+  await expect.poll(async () => (await read()).loaded).toBe(100);
+});
+
+test('a player that says nothing about loading draws no loaded band', async ({ page }) => {
+  await play(page, 'film', async (p) => {
+    await p.evaluate(() => {
+      (window as unknown as { __fakeMpv: { cacheAhead: number | null } }).__fakeMpv.cacheAhead = null;
+    });
+  });
+  await press(page, 'ArrowDown');
+  await expect(osdFocused(page)).toBeAttached();
+  await pause(page, 2500, 'two reads of the loaded part');
+  const r = await page.locator('input.player-seek').evaluate((el) => ({
+    played: (el as HTMLElement).style.getPropertyValue('--played'),
+    loaded: (el as HTMLElement).style.getPropertyValue('--loaded'),
+    said: el.getAttribute('data-loaded'),
+  }));
+  expect(r.said).toBeNull();
+  expect(r.loaded).toBe(r.played);
 });

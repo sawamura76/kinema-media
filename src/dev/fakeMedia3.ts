@@ -6,7 +6,7 @@
  * a production build never contains.
  *
  * It answers the `plugin:media3|…` commands `Media3Plugin.kt` answers, and
- * says what happened as that plugin does — one `playback` event in Kinema's
+ * says what happened as that plugin does — one `playback` event in Skrin's
  * own terms, through a plugin listener — in the same order: `loaded` once
  * the file's tracks are known, `duration` each time the player is ready, `restarted` at
  * the first frame and after each seek, `position` four times a second while
@@ -34,17 +34,17 @@ export interface FakeMedia3State {
   commands: Array<{ name: string; args: Record<string, unknown> }>;
   /** The film's picture, as Media3 reports it once it has chosen the video. */
   video: { width: number; height: number; fps: number | null; hdr: boolean };
-  /** 0–100, and mute, as Kinema set them. */
+  /** 0–100, and mute, as Skrin set them. */
   volume: number;
   muted: boolean;
   /**
    * The sound goes to the receiver untouched once a file is open — set it to
-   * stand in for a box passing it through, where Kinema's volume does nothing.
+   * stand in for a box passing it through, where Skrin's volume does nothing.
    */
   untouched: boolean;
   /** Whether subtitles show; hiding them keeps the track chosen. */
   subtitlesShown: boolean;
-  /** The chosen audio and subtitle track, by Kinema's number; 0 for none. */
+  /** The chosen audio and subtitle track, by Skrin's number; 0 for none. */
   chosen: { audio: number; sub: number };
   /** Subtitle files handed over with the film or added since, as Media3 has them. */
   files: { uri: string; language: string | null; label: string | null; forced: boolean }[];
@@ -56,6 +56,12 @@ export interface FakeMedia3State {
    * that read its TV while it was off.
    */
   screenHdr: string[];
+  /**
+   * The film's sound, by name, when none of its tracks can play here: said
+   * with the tracks, as Media3Plugin.kt `soundLeftOut` does (a TrueHD-only
+   * film on a device that neither decodes it nor sends it on).
+   */
+  soundCannotPlay: string | null;
 }
 
 /** How long each fixture file runs. */
@@ -88,11 +94,12 @@ const state: FakeMedia3State = {
     { width: 3840, height: 2160, rate: 60 },
   ],
   screenHdr: ['HDR10', 'HLG'],
+  soundCannotPlay: null,
 };
 
 /**
  * The tracks every fixture file has, as Media3Plugin.kt reports them — in
- * Kinema's terms, with Media3's two-letter languages and what Media3 can say
+ * Skrin's terms, with Media3's two-letter languages and what Media3 can say
  * of a format: E-AC-3 with Atmos, but not which DTS-HD.
  */
 const TRACKS = [
@@ -200,7 +207,7 @@ export function open(args: Record<string, unknown>): null {
   state.ended = false;
   started = false;
   // The last film's choices are not this one's: Media3 picks its own until
-  // Kinema puts the remembered languages on.
+  // Skrin puts the remembered languages on.
   state.chosen = { audio: 1, sub: 0 };
   state.files = ((args.subtitles as Record<string, unknown>[] | undefined) ?? []).map((f) => ({
     uri: String(f.uri),
@@ -211,7 +218,11 @@ export function open(args: Record<string, unknown>): null {
   window.clearInterval(ticker);
   ticker = window.setInterval(tick, TICK_MS);
   window.setTimeout(() => {
-    if (state.path !== null) emit('loaded');
+    if (state.path === null) return;
+    if (state.soundCannotPlay !== null) {
+      emit('audio-fallback', { step: 2, format: state.soundCannotPlay, chosen: null });
+    }
+    emit('loaded');
   }, state.loadDelayMs / 2);
   ready(() => {
     if (!started) {
@@ -375,7 +386,7 @@ export function screen() {
   return { ...mode(state.screen), gdi_name: 'display 0', hdr: 'unknown', modes: state.modes.map(mode) };
 }
 
-/** Kinema asked for a mode, so `restoreMode` has something to undo. */
+/** Skrin asked for a mode, so `restoreMode` has something to undo. */
 let asked = false;
 
 export function setMode(args: Record<string, unknown>) {

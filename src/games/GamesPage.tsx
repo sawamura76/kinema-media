@@ -14,6 +14,7 @@ import TileGrid from '../ui/TileGrid';
 import { useFocusGroup } from '../ui/focusGroups';
 import { useLanding } from '../ui/focusStore';
 import { previewMusicCover } from '../music/api';
+import BoxArtCropper from './BoxArtCropper';
 import './games.css';
 
 const blank: Shortcut = { id: null, title: '', target: '', arguments: [], working_directory: '', artwork: null, platform: '', kind: 'game' };
@@ -114,11 +115,13 @@ function GamesManager({games,current,onSelect,onAdd,onEdit,onRemove,onClose}:{ga
 
 function GameEditor({ value, onClose, onSaved }: { value: Shortcut; onClose: () => void; onSaved: (id: number) => void }) {
   const [draft, setDraft] = useState(value);
+  const [cropping, setCropping] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const { ref, focusKey } = useFocusGroup('menu', { current: 'game-title' });
   useEffect(() => {
     const key = (event: KeyboardEvent) => {
+      if (cropping) return;
       if (event.key === 'Escape' || event.key === 'BrowserBack') {
         event.preventDefault();
         event.stopImmediatePropagation();
@@ -127,7 +130,7 @@ function GameEditor({ value, onClose, onSaved }: { value: Shortcut; onClose: () 
     };
     window.addEventListener('keydown', key, true);
     return () => window.removeEventListener('keydown', key, true);
-  }, [busy, onClose]);
+  }, [busy, onClose, cropping]);
   async function choose(kind: 'target' | 'artwork' | 'working_directory') {
     setError('');
     setBusy(true);
@@ -138,7 +141,7 @@ function GameEditor({ value, onClose, onSaved }: { value: Shortcut; onClose: () 
       if (typeof path !== 'string') return;
       if (kind === 'artwork') {
         const image = await previewMusicCover(path);
-        setDraft((before) => ({ ...before, artwork: image }));
+        setCropping(image);
       } else {
         setDraft((before) => ({ ...before, [kind]: path, title: before.title || (kind === 'target' ? path.split(/[/\\]/).pop()?.replace(/\.[^.]+$/, '') || '' : '') }));
       }
@@ -152,6 +155,7 @@ function GameEditor({ value, onClose, onSaved }: { value: Shortcut; onClose: () 
     catch (reason) { setError(String(reason)); }
     finally { setBusy(false); }
   }
+  if (cropping) return <BoxArtCropper path={cropping} onCancel={()=>{setCropping(null);returnFocusTo("game-choose-art");}} onUse={(artwork)=>{setDraft((before)=>({...before,artwork}));setCropping(null);returnFocusTo("game-choose-art");}}/>;
   return <FocusProvider value={focusKey}><div className="leave-backdrop">
     <div className="leave game-editor" ref={ref} role="dialog" aria-modal="true" aria-label="Game or app shortcut">
       <h2>{draft.id === null ? 'Add game or app' : 'Edit shortcut'}</h2>
@@ -164,7 +168,7 @@ function GameEditor({ value, onClose, onSaved }: { value: Shortcut; onClose: () 
         <label>Executable, shortcut, or launch link<FocusInput value={draft.target} onChange={(target) => setDraft({ ...draft, target })} placeholder="C:\Games\Game.exe or steam://rungameid/…" /></label>
         <FocusGroup kind="row" className="games-actions">
           <FocusButton disabled={busy} onSelect={() => void choose('target')}>Choose executable or shortcut</FocusButton>
-          <FocusButton disabled={busy} onSelect={() => void choose('artwork')}>Choose cover art</FocusButton>
+          <FocusButton focusKey="game-choose-art" disabled={busy} onSelect={() => void choose('artwork')}>Choose cover art</FocusButton>
         </FocusGroup>
         {draft.artwork && <img className="game-editor-cover" src={convertFileSrc(draft.artwork)} alt="Cover preview" />}
         {draft.artwork && <FocusButton onSelect={() => setDraft({ ...draft, artwork: null })}>Remove artwork</FocusButton>}

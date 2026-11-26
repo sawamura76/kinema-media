@@ -1,10 +1,10 @@
 /**
- * Settings → Advanced → Safety copies: the copies of the library Kinema keeps,
+ * Settings → Advanced → Safety copies: the copies of the library Kinema Media keeps,
  * and the way back to one.
  *
  * The copies are made without being asked (once a week, and before an upgrade),
  * so this is where their existence is made visible at all. Restoring closes
- * Kinema; the copy is put in place as it starts again (backup.rs).
+ * Kinema Media; the copy is put in place as it starts again (backup.rs).
  */
 import { useEffect, useState } from 'react';
 import ConfirmButton from './ConfirmButton';
@@ -47,9 +47,9 @@ export default function BackupSection() {
     <section className="settings-section">
       <h2>Safety copies</h2>
       <p className="settings-intro">
-        Once a week, and before every upgrade, Kinema keeps a copy of your library: what you have
-        watched, where you stopped and the matches you corrected by hand. Restoring one closes
-        Kinema; start it again and the library is as the copy was. What it replaces is kept here
+        Once a week, and before every upgrade, Kinema Media keeps a copy of your library: what you have
+        watched, where you stopped, corrected matches, music collections and game shortcuts. Artwork and media files are stored separately. Restoring one closes
+        Kinema Media; start it again and the library is as the copy was. What it replaces is kept here
         too.
       </p>
       {error && <p className="settings-warn">{error}</p>}
@@ -64,7 +64,7 @@ export default function BackupSection() {
           </span>
           <ConfirmButton
             className="btn-secondary"
-            confirmLabel="Close Kinema and restore this copy"
+            confirmLabel="Close Kinema Media and restore this copy"
             onConfirm={() => void restoreBackup(copy.name).catch((e) => setError(userError(e)))}
           >
             Restore

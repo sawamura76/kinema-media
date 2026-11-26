@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>How to Rip DVDs, Blu-rays and 4K Discs with MakeMKV: A Beginner's Guide</title>
 <meta name="description" content="A plain-English guide to ripping DVDs, Blu-rays and 4K UHD discs you own with MakeMKV: what you need, picking the right title, which tracks to keep, TV series, naming, and fixing common problems.">
-<link rel="canonical" href="https://basswaves.github.io/kinema/blu-ray.html">
+<link rel="canonical" href="https://skrin.org/blu-ray.html">
 <meta name="robots" content="index, follow, max-image-preview:large">
 <meta name="theme-color" content="#0a0a0c">
 <meta name="color-scheme" content="dark">
@@ -15,17 +15,17 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 
 <meta property="og:type" content="article">
-<meta property="og:site_name" content="Kinema">
+<meta property="og:site_name" content="Skrin">
 <meta property="og:title" content="How to rip your DVDs, Blu-rays and 4K discs: a plain-English guide">
 <meta property="og:description" content="Rip the discs you own with MakeMKV, keep the picture and sound as they are, and end up with a tidy film library.">
-<meta property="og:url" content="https://basswaves.github.io/kinema/blu-ray.html">
-<meta property="og:image" content="https://basswaves.github.io/kinema/img/og.jpg">
+<meta property="og:url" content="https://skrin.org/blu-ray.html">
+<meta property="og:image" content="https://skrin.org/img/og.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="How to rip your DVDs, Blu-rays and 4K discs: a plain-English guide">
 <meta name="twitter:description" content="Rip the discs you own with MakeMKV, keep the picture and sound as they are, and end up with a tidy film library.">
-<meta name="twitter:image" content="https://basswaves.github.io/kinema/img/og.jpg">
+<meta name="twitter:image" content="https://skrin.org/img/og.jpg">
 
 <script>document.documentElement.className+=" js"</script>
 <link rel="stylesheet" href="style.css">
@@ -40,8 +40,8 @@
 .page code{font-family:var(--mono);color:#fff;overflow-wrap:anywhere}
 .nw{white-space:nowrap}
 .lead{font-size:1.12rem;color:#cfcfd8!important}
-.answer{max-width:46rem;margin:26px 0 8px;padding:20px 22px 18px;background:linear-gradient(180deg,rgba(229,9,20,.13),rgba(229,9,20,.03) 70%),var(--card);border:1px solid rgba(229,9,20,.45);border-radius:var(--r)}
-.answer h2{margin:0 0 10px;font-size:1rem;font:600 .78rem var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--red-text)}
+.answer{max-width:46rem;margin:26px 0 8px;padding:20px 22px 18px;background:linear-gradient(180deg,rgba(255,90,0,.13),rgba(255,90,0,.03) 70%),var(--card);border:1px solid rgba(255,90,0,.45);border-radius:var(--r)}
+.answer h2{margin:0 0 10px;font-size:1rem;font:600 .78rem var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--accent-text)}
 .answer ol{margin:0;color:#e4e4ea}
 .answer li{margin:0 0 4px}
 .toc{max-width:46rem;margin:22px 0 0;padding:14px 18px;border:1px solid var(--line);border-radius:12px;background:var(--bg-2)}
@@ -70,34 +70,34 @@
 .ill text{font-family:var(--sans)}
 .ill .bx{fill:var(--card-2);stroke:var(--line-2);stroke-width:2}
 .ill .win{fill:var(--bg-2);stroke:var(--line-2);stroke-width:2}
-.ill .hi{fill:rgba(229,9,20,.14);stroke:var(--red);stroke-width:2}
+.ill .hi{fill:rgba(255,90,0,.14);stroke:var(--accent);stroke-width:2}
 .ill .ok{fill:rgba(82,201,150,.14);stroke:var(--green);stroke-width:2}
 .ill .ico{fill:none;stroke:var(--text);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round}
 .ill .icf{fill:none;stroke:var(--dim);stroke-width:1.5}
-.ill .red{fill:var(--red)}
-.ill .redl{fill:none;stroke:var(--red-text);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.ill .red{fill:var(--accent)}
+.ill .redl{fill:none;stroke:var(--accent-text);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
 .ill .ln{fill:none;stroke:var(--line-2);stroke-width:2}
 .ill .ar{fill:none;stroke:var(--muted);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
 .ill .t{fill:var(--text);font-size:19px;font-weight:700}
 .ill .tm{fill:var(--text);font-size:17px}
 .ill .m{fill:var(--muted);font-size:16px}
 .ill .d{fill:var(--dim);font-size:14px}
-.ill .r{fill:var(--red-text);font-size:16px;font-weight:700}
+.ill .r{fill:var(--accent-text);font-size:16px;font-weight:700}
 .ill .g{fill:var(--green);font-size:16px;font-weight:700}
 .ill .mo{font-family:var(--mono)}
 .ill .seg1{fill:#5a5a66}.ill .seg2{fill:#3f3f4a}.ill .seg3{fill:#71717e}.ill .seg4{fill:#2e2e37}
 .ill .segt{fill:#fff;font-size:15px;font-weight:700}
 .ill .bl{fill:#4a4a55}
-.ill .blm{fill:var(--red)}
+.ill .blm{fill:var(--accent)}
 .ill .chk{fill:var(--card-2);stroke:var(--muted);stroke-width:1.6}
-.ill .chk.on{fill:var(--red);stroke:var(--red)}
+.ill .chk.on{fill:var(--accent);stroke:var(--accent)}
 .ill .tick{fill:none;stroke:#fff;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
 .only-narrow{display:none}
 @media (max-width:620px){.only-wide{display:none}.only-narrow{display:block}.fig.narrow-max{max-width:24rem}}
 .steps{list-style:none;padding:0!important;margin:20px 0 0!important;max-width:none!important;display:grid;gap:26px;counter-reset:s}
 .steps>li{counter-increment:s;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,25rem);gap:20px 32px;align-items:start;padding:22px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);margin:0!important}
 .steps>li>div>h3{margin:0 0 8px;font-size:1.2rem;display:flex;gap:12px;align-items:center}
-.steps>li>div>h3::before{content:counter(s);flex:0 0 32px;height:32px;border-radius:9px;background:rgba(229,9,20,.14);border:1px solid rgba(229,9,20,.5);display:grid;place-items:center;font:700 .85rem var(--mono);color:var(--red-text)}
+.steps>li>div>h3::before{content:counter(s);flex:0 0 32px;height:32px;border-radius:9px;background:rgba(255,90,0,.14);border:1px solid rgba(255,90,0,.5);display:grid;place-items:center;font:700 .85rem var(--mono);color:var(--accent-text)}
 .steps p{margin:0 0 10px}
 .steps .fig{margin:0}
 @media (max-width:860px){.steps>li{grid-template-columns:1fr;padding:18px}.steps .fig{max-width:28rem}}
@@ -109,7 +109,7 @@
 .deep{max-width:52rem;margin-top:16px;border:1px solid var(--line);border-radius:var(--r);background:var(--bg-2)}
 .deep>summary{cursor:pointer;list-style:none;padding:18px 48px 18px 22px;font-weight:700;font-size:1.08rem;position:relative}
 .deep>summary::-webkit-details-marker{display:none}
-.deep>summary::after{content:"+";position:absolute;right:20px;top:12px;font:300 1.9rem/1 var(--sans);color:var(--red-text);transition:transform .2s}
+.deep>summary::after{content:"+";position:absolute;right:20px;top:12px;font:300 1.9rem/1 var(--sans);color:var(--accent-text);transition:transform .2s}
 .deep[open]>summary::after{transform:rotate(45deg)}
 .deep>div{padding:0 22px 20px}
 .deep h3:first-child{margin-top:4px}
@@ -125,13 +125,13 @@
   "@type": "Article",
   "headline": "How to rip your DVDs, Blu-rays and 4K discs: a plain-English guide",
   "description": "Rip DVDs, Blu-rays and 4K UHD discs you own with MakeMKV: what you need, picking the right title, which tracks to keep, TV series, naming, and fixing common problems.",
-  "url": "https://basswaves.github.io/kinema/blu-ray.html",
-  "image": "https://basswaves.github.io/kinema/img/og.jpg",
+  "url": "https://skrin.org/blu-ray.html",
+  "image": "https://skrin.org/img/og.jpg",
   "datePublished": "2026-10-23",
   "dateModified": "2026-10-24",
   "inLanguage": "en",
-  "author": {"@type": "Organization", "name": "Kinema", "url": "https://basswaves.github.io/kinema/"},
-  "publisher": {"@type": "Organization", "name": "Kinema", "url": "https://basswaves.github.io/kinema/"}
+  "author": {"@type": "Organization", "name": "Skrin", "url": "https://skrin.org/"},
+  "publisher": {"@type": "Organization", "name": "Skrin", "url": "https://skrin.org/"}
 }
 </script>
 <script type="application/ld+json">
@@ -167,8 +167,8 @@
     {"@type": "Question", "name": "What are forced subtitles?", "acceptedAnswer": {"@type": "Answer", "text": "Forced subtitles are the few lines meant to show even when subtitles are off, such as when a character speaks another language or a sign needs translating. MakeMKV can put them in a track of their own, marked forced only. Keep that track."}},
     {"@type": "Question", "name": "Should I compress my rips with HandBrake?", "acceptedAnswer": {"@type": "Answer", "text": "Only if you are short of space. Compressing takes hours per film, loses some detail, and can drop Dolby Vision and lossless sound unless set up carefully. Disk space is cheap compared with ripping a collection twice, so many people keep the remux."}},
     {"@type": "Question", "name": "Is ripping my own discs legal?", "acceptedAnswer": {"@type": "Answer", "text": "It depends on where you live. Copying discs you own for your own use is allowed in some countries and not in others, often because breaking the copy protection is not allowed. Check the rules where you live."}},
-    {"@type": "Question", "name": "Can Kinema play the disc or the BDMV folder directly?", "acceptedAnswer": {"@type": "Answer", "text": "A folder holding a disc's BDMV, and an .iso of a Blu-ray, play as one film: the main film, with chapters and the languages of the sound and subtitle tracks, but no disc menus. A .m2ts file also plays. A disc that is still encrypted is not played; Kinema says so. Folders and .iso images play on Windows and Linux, not yet on Android TV. An MKV from MakeMKV plays everywhere Kinema does, so it is the simplest choice."}},
-    {"@type": "Question", "name": "Why is my rip in Needs attention in Kinema?", "acceptedAnswer": {"@type": "Answer", "text": "Kinema was not sure enough which title the file is, and would rather ask than guess. The file name is almost always the reason."}}
+    {"@type": "Question", "name": "Can Skrin play the disc or the BDMV folder directly?", "acceptedAnswer": {"@type": "Answer", "text": "A folder holding a disc's BDMV, and an .iso of a Blu-ray, play as one film: the main film, with chapters and the languages of the sound and subtitle tracks, but no disc menus. A .m2ts file also plays. A disc that is still encrypted is not played; Skrin says so. Folders and .iso images play on Windows and Linux, not yet on Android TV. An MKV from MakeMKV plays everywhere Skrin does, so it is the simplest choice."}},
+    {"@type": "Question", "name": "Why is my rip in Needs attention in Skrin?", "acceptedAnswer": {"@type": "Answer", "text": "Skrin was not sure enough which title the file is, and would rather ask than guess. The file name is almost always the reason."}}
   ]
 }
 </script>
@@ -178,20 +178,20 @@
 
 <svg class="ill" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true" focusable="false">
   <symbol id="ic-disc" viewBox="0 0 60 60"><circle style="fill:none;stroke:var(--text);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round" cx="30" cy="30" r="25"/><circle style="fill:none;stroke:var(--dim);stroke-width:1.5" cx="30" cy="30" r="16"/><circle style="fill:none;stroke:var(--text);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round" cx="30" cy="30" r="6"/></symbol>
-  <symbol id="ic-app" viewBox="0 0 60 60"><rect style="fill:none;stroke:var(--text);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round" x="5" y="9" width="50" height="42" rx="5"/><path style="fill:none;stroke:var(--text);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round" d="M5 19H55"/><rect style="fill:var(--red)" x="11" y="25" width="8" height="5" rx="1"/><path style="fill:none;stroke:var(--dim);stroke-width:1.5" d="M23 27.5H48M23 35.5H44M23 43.5H40"/><rect style="fill:var(--red)" x="11" y="33" width="8" height="5" rx="1" opacity=".45"/></symbol>
-  <symbol id="ic-file" viewBox="0 0 60 60"><path style="fill:none;stroke:var(--text);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round" d="M13 5H37L48 16V55H13Z"/><path style="fill:none;stroke:var(--text);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round" d="M37 5V16H48"/><path style="fill:none;stroke:var(--red-text);stroke-width:2.5;stroke-linecap:round" d="M20 30H41M20 38H41M20 46H33"/></symbol>
+  <symbol id="ic-app" viewBox="0 0 60 60"><rect style="fill:none;stroke:var(--text);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round" x="5" y="9" width="50" height="42" rx="5"/><path style="fill:none;stroke:var(--text);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round" d="M5 19H55"/><rect style="fill:var(--accent)" x="11" y="25" width="8" height="5" rx="1"/><path style="fill:none;stroke:var(--dim);stroke-width:1.5" d="M23 27.5H48M23 35.5H44M23 43.5H40"/><rect style="fill:var(--accent)" x="11" y="33" width="8" height="5" rx="1" opacity=".45"/></symbol>
+  <symbol id="ic-file" viewBox="0 0 60 60"><path style="fill:none;stroke:var(--text);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round" d="M13 5H37L48 16V55H13Z"/><path style="fill:none;stroke:var(--text);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round" d="M37 5V16H48"/><path style="fill:none;stroke:var(--accent-text);stroke-width:2.5;stroke-linecap:round" d="M20 30H41M20 38H41M20 46H33"/></symbol>
   <symbol id="ic-folder" viewBox="0 0 60 60"><path style="fill:none;stroke:var(--text);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round" d="M5 15H23L28 20H55V49H5Z"/><path style="fill:none;stroke:var(--dim);stroke-width:1.5" d="M5 26H55"/></symbol>
-  <symbol id="ic-tv" viewBox="0 0 60 60"><rect style="fill:none;stroke:var(--text);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round" x="3" y="9" width="54" height="35" rx="4"/><path style="fill:none;stroke:var(--text);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round" d="M21 53H39M30 44V53"/><path style="fill:var(--red)" d="M25 18L39 26.5L25 35Z"/></symbol>
+  <symbol id="ic-tv" viewBox="0 0 60 60"><rect style="fill:none;stroke:var(--text);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round" x="3" y="9" width="54" height="35" rx="4"/><path style="fill:none;stroke:var(--text);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round" d="M21 53H39M30 44V53"/><path style="fill:var(--accent)" d="M25 18L39 26.5L25 35Z"/></symbol>
 </svg>
 
 <header class="top">
   <div class="wrap bar">
-    <a class="brand" href="./" aria-label="Kinema, back to the top">
-      <svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#0a0a0c" stroke="#26262c" stroke-width="10"/><rect x="102" y="104" width="104" height="304" rx="12" fill="#fff"/><g fill="#0a0a0c"><rect x="116" y="124" width="20" height="26" rx="4"/><rect x="116" y="192" width="20" height="26" rx="4"/><rect x="116" y="260" width="20" height="26" rx="4"/><rect x="116" y="328" width="20" height="26" rx="4"/><rect x="172" y="124" width="20" height="26" rx="4"/><rect x="172" y="192" width="20" height="26" rx="4"/><rect x="172" y="260" width="20" height="26" rx="4"/><rect x="172" y="328" width="20" height="26" rx="4"/></g><path d="M222 256 L342 104 L410 104 L290 256 L410 408 L342 408 Z" fill="#e50914"/></svg>
-      <span>Kinema</span>
+    <a class="brand" href="./" aria-label="Skrin, back to the top">
+      <svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#16171D" stroke="#26262c" stroke-width="10"/><circle cx="311" cy="256" r="104" fill="#FF5A00"/><rect x="97" y="140" width="210" height="232" rx="24" fill="#F3EBDD" stroke="#16171D" stroke-width="14"/></svg>
+      <span>Skrin</span>
     </a>
     <nav aria-label="Main">
-      <a href="./#why">Why Kinema</a>
+      <a href="./#why">Why Skrin</a>
       <a href="./#setup">Sets itself up</a>
       <a href="./#for-you">Is it for you?</a>
       <a href="./#faq">FAQ</a>
@@ -221,21 +221,21 @@
 
     <figure class="fig wide">
       <svg class="ill only-wide" viewBox="0 0 1000 170" role="img" aria-labelledby="flow-t">
-        <title id="flow-t">From disc to film library: the disc, MakeMKV copies it, an MKV file with nothing lost, a folder named Title (Year), and a player such as Kinema.</title>
+        <title id="flow-t">From disc to film library: the disc, MakeMKV copies it, an MKV file with nothing lost, a folder named Title (Year), and a player such as Skrin.</title>
         <g transform="translate(0,6)"><rect class="bx" width="160" height="150" rx="14"/><use href="#ic-disc" x="50" y="18" width="60" height="60"/><text class="t" x="80" y="108" text-anchor="middle">Your disc</text><text class="d" x="80" y="132" text-anchor="middle">DVD, Blu-ray, 4K</text></g>
         <g transform="translate(210,6)"><rect class="bx" width="160" height="150" rx="14"/><use href="#ic-app" x="50" y="18" width="60" height="60"/><text class="t" x="80" y="108" text-anchor="middle">MakeMKV</text><text class="d" x="80" y="132" text-anchor="middle">copies it</text></g>
         <g transform="translate(420,6)"><rect class="hi" width="160" height="150" rx="14"/><use href="#ic-file" x="50" y="18" width="60" height="60"/><text class="t" x="80" y="108" text-anchor="middle">An MKV file</text><text class="d" x="80" y="132" text-anchor="middle">nothing lost</text></g>
         <g transform="translate(630,6)"><rect class="bx" width="160" height="150" rx="14"/><use href="#ic-folder" x="50" y="18" width="60" height="60"/><text class="t" x="80" y="108" text-anchor="middle">A folder</text><text class="d" x="80" y="132" text-anchor="middle">Title (Year)</text></g>
-        <g transform="translate(840,6)"><rect class="bx" width="160" height="150" rx="14"/><use href="#ic-tv" x="50" y="18" width="60" height="60"/><text class="t" x="80" y="108" text-anchor="middle">Your player</text><text class="d" x="80" y="132" text-anchor="middle">Kinema, or another</text></g>
+        <g transform="translate(840,6)"><rect class="bx" width="160" height="150" rx="14"/><use href="#ic-tv" x="50" y="18" width="60" height="60"/><text class="t" x="80" y="108" text-anchor="middle">Your player</text><text class="d" x="80" y="132" text-anchor="middle">Skrin, or another</text></g>
         <path class="ar" d="M168 81H202M195 74L202 81L195 88M378 81H412M405 74L412 81L405 88M588 81H622M615 74L622 81L615 88M798 81H832M825 74L832 81L825 88"/>
       </svg>
       <svg class="ill only-narrow" viewBox="0 0 340 520" role="img" aria-labelledby="flow-n">
-        <title id="flow-n">From disc to film library: the disc, MakeMKV copies it, an MKV file with nothing lost, a folder named Title (Year), and a player such as Kinema.</title>
+        <title id="flow-n">From disc to film library: the disc, MakeMKV copies it, an MKV file with nothing lost, a folder named Title (Year), and a player such as Skrin.</title>
         <g><rect class="bx" width="340" height="80" rx="14"/><use href="#ic-disc" x="16" y="12" width="56" height="56"/><text class="t" x="92" y="36">Your disc</text><text class="m" x="92" y="60">DVD, Blu-ray, 4K</text></g>
         <g transform="translate(0,110)"><rect class="bx" width="340" height="80" rx="14"/><use href="#ic-app" x="16" y="12" width="56" height="56"/><text class="t" x="92" y="36">MakeMKV</text><text class="m" x="92" y="60">copies it</text></g>
         <g transform="translate(0,220)"><rect class="hi" width="340" height="80" rx="14"/><use href="#ic-file" x="16" y="12" width="56" height="56"/><text class="t" x="92" y="36">An MKV file</text><text class="m" x="92" y="60">nothing lost</text></g>
         <g transform="translate(0,330)"><rect class="bx" width="340" height="80" rx="14"/><use href="#ic-folder" x="16" y="12" width="56" height="56"/><text class="t" x="92" y="36">A folder</text><text class="m" x="92" y="60">Title (Year)</text></g>
-        <g transform="translate(0,440)"><rect class="bx" width="340" height="80" rx="14"/><use href="#ic-tv" x="16" y="12" width="56" height="56"/><text class="t" x="92" y="36">Your player</text><text class="m" x="92" y="60">Kinema, or another</text></g>
+        <g transform="translate(0,440)"><rect class="bx" width="340" height="80" rx="14"/><use href="#ic-tv" x="16" y="12" width="56" height="56"/><text class="t" x="92" y="36">Your player</text><text class="m" x="92" y="60">Skrin, or another</text></g>
         <path class="ar" d="M170 84V106M163 99L170 106L177 99M170 194V216M163 209L170 216L177 209M170 304V326M163 319L170 326L177 319M170 414V436M163 429L170 436L177 429"/>
       </svg>
     </figure>
@@ -483,7 +483,7 @@
     <p>Rename each file to the show's name with the season and episode number, such as <code>Example Show S01E01.mkv</code>.</p>
 
     <h2 id="names">Naming and folders</h2>
-    <p>Media players work out what a file is from its folder and file name. Name it badly, and the player shows the wrong poster or none. The layout below works in Kinema, Jellyfin, Plex and Kodi alike.</p>
+    <p>Media players work out what a file is from its folder and file name. Name it badly, and the player shows the wrong poster or none. The layout below works in Skrin, Jellyfin, Plex and Kodi alike.</p>
     <figure class="fig sm">
       <svg class="ill" viewBox="0 0 370 380" role="img" aria-labelledby="tree-t">
         <title id="tree-t">A folder tree. Films holds a folder per film, each named Title (Year) with one file of the same name inside. TV holds a folder per show, a folder per season, and files named Show S01E01.mkv.</title>
@@ -505,19 +505,19 @@
       <li>Two cuts of one film can sit in the same folder, for example <code>Example Film (2019) - Extended.mkv</code>.</li>
       <li>Keep films and series in separate top folders. Players handle them differently.</li>
     </ul>
-    <p>The year matters: it tells two films of the same name apart. The full rules, including what Kinema does with release-style names, are in <a href="file-names.html">How Kinema reads file names</a>.</p>
+    <p>The year matters: it tells two films of the same name apart. The full rules, including what Skrin does with release-style names, are in <a href="file-names.html">How Skrin reads file names</a>.</p>
 
     <h2 id="watch">Watching the result</h2>
-    <p>Any good player can play an MKV. Where they differ is how much of the disc's picture and sound reaches your screen and speakers. We make <a href="./">Kinema</a>, a free, open-source library and player for Windows, Linux and (early) Android TV, built for exactly these files:</p>
+    <p>Any good player can play an MKV. Where they differ is how much of the disc's picture and sound reaches your screen and speakers. We make <a href="./">Skrin</a>, a free, open-source library and player for Windows, Linux and (early) Android TV, built for exactly these files:</p>
     <ul>
       <li><b>Point it at your folder and it does the rest.</b> Posters, descriptions and where you stopped. Files it is not sure about wait in a Needs attention list instead of getting a wrong poster.</li>
-      <li><b>The sound reaches your receiver untouched.</b> Atmos, DTS:X and TrueHD go to an AV receiver as they are, when the receiver takes them. Kinema asks about this on the first run.</li>
+      <li><b>The sound reaches your receiver untouched.</b> Atmos, DTS:X and TrueHD go to an AV receiver as they are, when the receiver takes them. Skrin asks about this on the first run.</li>
       <li><b>Forced subtitles show with subtitles off</b>, in the language being spoken.</li>
       <li><b>It says what it is doing.</b> The film's page shows what the file holds (resolution, HDR format, the exact sound format), read from the file itself. Press <code>i</code> while playing to see what the picture and sound are doing.</li>
       <li><b>No server and no account.</b> One program on the computer connected to your TV.</li>
     </ul>
     <p>If you would rather stream to phones and other rooms from one server, Jellyfin and Plex do that. If you want a full media centre with add-ons, there is Kodi. All three play these files too.</p>
-    <p><a class="btn small primary" href="./#download">Download Kinema</a></p>
+    <p><a class="btn small primary" href="./#download">Download Skrin</a></p>
 
     <h2 id="trouble">When something goes wrong</h2>
     <dl class="trouble">
@@ -542,7 +542,7 @@
       <dt>The copy fails near the end of a large file.</dt>
       <dd>The output disk is full, or it is FAT32 and the file is over 4 GB. Use a disk with more room, formatted as exFAT, NTFS or ext4.</dd>
       <dt>The player shows the wrong film, or none.</dt>
-      <dd>Check the file and folder names against <a href="#names">Naming and folders</a>. Add the year. In Kinema, the Needs attention list lets you pick the right film by hand.</dd>
+      <dd>Check the file and folder names against <a href="#names">Naming and folders</a>. Add the year. In Skrin, the Needs attention list lets you pick the right film by hand.</dd>
     </dl>
 
     <h2 id="deep">For enthusiasts</h2>
@@ -552,13 +552,13 @@
       <div>
         <p>A 4K disc's picture is HDR10, and often Dolby Vision as well. Most Dolby Vision discs use <b>profile 7</b>: an HDR10 picture, the base layer, plus a second layer with the Dolby Vision information, the enhancement layer. MakeMKV keeps both in the MKV.</p>
         <p>The second layer comes in two kinds. A <b>MEL</b> (minimal enhancement layer) carries only the Dolby Vision instructions. A <b>FEL</b> (full enhancement layer) also carries picture data that adds to the base layer. Few devices outside disc players can use a FEL fully.</p>
-        <p>Where the device has no decoder for profile 7, Kinema plays the HDR10 base layer and says so in the playback details. It never claims a Dolby Vision picture it did not show. The film's page names the profile, and for profile 7 whether it is FEL or MEL. Those badges need ffmpeg, an optional extra installed separately (on Windows Kinema can do it with one press).</p>
+        <p>Where the device has no decoder for profile 7, Skrin plays the HDR10 base layer and says so in the playback details. It never claims a Dolby Vision picture it did not show. The film's page names the profile, and for profile 7 whether it is FEL or MEL. Those badges need ffmpeg, an optional extra installed separately (on Windows Skrin can do it with one press).</p>
       </div>
     </details>
     <details class="deep">
       <summary>HDR10+</summary>
       <div>
-        <p>HDR10+ is a rival to Dolby Vision, used on some discs. Its scene-by-scene information sits inside the video itself, so a remux keeps it with no extra step. Whether you see it depends on the TV and the player. Kinema's playback details name the file's HDR format, HDR10+ included.</p>
+        <p>HDR10+ is a rival to Dolby Vision, used on some discs. Its scene-by-scene information sits inside the video itself, so a remux keeps it with no extra step. Whether you see it depends on the TV and the player. Skrin's playback details name the file's HDR format, HDR10+ included.</p>
       </div>
     </details>
     <details class="deep">
@@ -583,14 +583,14 @@
           </svg>
         </figure>
         <p>A remux keeps everything and takes the most space. <a href="https://handbrake.fr/">HandBrake</a> can shrink a file to a fraction of the size by re-encoding it, but that always throws some detail away, takes hours per film, and can drop Dolby Vision and lossless sound unless you set it up with care. HandBrake does not read protected discs itself, so you would still rip with MakeMKV first.</p>
-        <p>Compress if space is the problem, for example films for a laptop. For a home cinema, many people keep the remux: disks are cheaper than ripping a collection twice. Kinema plays both.</p>
+        <p>Compress if space is the problem, for example films for a laptop. For a home cinema, many people keep the remux: disks are cheaper than ripping a collection twice. Skrin plays both.</p>
       </div>
     </details>
     <details class="deep">
       <summary>Backups</summary>
       <div>
         <p>A collection of remuxes takes days of ripping to build. Keep a second copy on another disk, ideally in another place. Two disks inside one computer, or a RAID, protect against one disk failing, not against a mistake, a theft or a fire.</p>
-        <p>If you want the whole disc, menus and all, MakeMKV's Backup button copies it unchanged into a folder (tick "Decrypt video files"). Kinema plays such a folder, or an <code>.iso</code> of a Blu-ray, as one film on Windows and Linux, without the menus. An MKV is still the simplest: it plays everywhere.</p>
+        <p>If you want the whole disc, menus and all, MakeMKV's Backup button copies it unchanged into a folder (tick "Decrypt video files"). Skrin plays such a folder, or an <code>.iso</code> of a Blu-ray, as one film on Windows and Linux, without the menus. An MKV is still the simplest: it plays everywhere.</p>
       </div>
     </details>
 
@@ -605,8 +605,8 @@
       <details><summary>What are forced subtitles?</summary><div class="a">Forced subtitles are the few lines meant to show even when subtitles are off, such as when a character speaks another language or a sign needs translating. MakeMKV can put them in a track of their own, marked forced only. Keep that track.</div></details>
       <details><summary>Should I compress my rips with HandBrake?</summary><div class="a">Only if you are short of space. Compressing takes hours per film, loses some detail, and can drop Dolby Vision and lossless sound unless set up carefully. Disk space is cheap compared with ripping a collection twice, so many people keep the remux.</div></details>
       <details><summary>Is ripping my own discs legal?</summary><div class="a">It depends on where you live. Copying discs you own for your own use is allowed in some countries and not in others, often because breaking the copy protection is not allowed. Check the rules where you live.</div></details>
-      <details><summary>Can Kinema play the disc or the BDMV folder directly?</summary><div class="a">A folder holding a disc's BDMV, and an .iso of a Blu-ray, play as one film: the main film, with chapters and the languages of the sound and subtitle tracks, but no disc menus. A .m2ts file also plays. A disc that is still encrypted is not played; Kinema says so. Folders and .iso images play on Windows and Linux, not yet on Android TV. An MKV from MakeMKV plays everywhere Kinema does, so it is the simplest choice.</div></details>
-      <details><summary>Why is my rip in Needs attention in Kinema?</summary><div class="a">Kinema was not sure enough which title the file is, and would rather ask than guess. The file name is almost always the reason; see <a href="file-names.html">How Kinema reads file names</a>.</div></details>
+      <details><summary>Can Skrin play the disc or the BDMV folder directly?</summary><div class="a">A folder holding a disc's BDMV, and an .iso of a Blu-ray, play as one film: the main film, with chapters and the languages of the sound and subtitle tracks, but no disc menus. A .m2ts file also plays. A disc that is still encrypted is not played; Skrin says so. Folders and .iso images play on Windows and Linux, not yet on Android TV. An MKV from MakeMKV plays everywhere Skrin does, so it is the simplest choice.</div></details>
+      <details><summary>Why is my rip in Needs attention in Skrin?</summary><div class="a">Skrin was not sure enough which title the file is, and would rather ask than guess. The file name is almost always the reason; see <a href="file-names.html">How Skrin reads file names</a>.</div></details>
     </div>
 
     <h2>Sources and further reading</h2>
@@ -620,29 +620,29 @@
       <li><a href="https://www.dvdcompare.net/">dvdcompare.net</a>, for the cuts and running times on a disc.</li>
       <li><a href="https://mkvtoolnix.download/">MKVToolNix</a>, for splitting or editing MKV files afterwards, and <a href="https://handbrake.fr/">HandBrake</a>, for compressing them.</li>
     </ul>
-    <p class="note">Last checked against MakeMKV 2.0.0, October 2026. If something here is wrong or out of date, please <a href="https://github.com/basswaves/kinema/discussions">tell us</a>.</p>
+    <p class="note">Last checked against MakeMKV 2.0.0, October 2026. If something here is wrong or out of date, please <a href="https://github.com/basswaves/skrin/discussions">tell us</a>.</p>
   </div>
 </main>
 
 <footer>
   <div class="wrap foot">
     <div>
-      <a class="brand" href="./"><svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#0a0a0c" stroke="#26262c" stroke-width="10"/><rect x="102" y="104" width="104" height="304" rx="12" fill="#fff"/><path d="M222 256 L342 104 L410 104 L290 256 L410 408 L342 408 Z" fill="#e50914"/></svg><span>Kinema</span></a>
+      <a class="brand" href="./"><svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#16171D" stroke="#26262c" stroke-width="10"/><circle cx="311" cy="256" r="104" fill="#FF5A00"/><rect x="97" y="140" width="210" height="232" rx="24" fill="#F3EBDD" stroke="#16171D" stroke-width="14"/></svg><span>Skrin</span></a>
       <p>A free local media library and video player. MIT licence. This page loads nothing from other sites and has no analytics.</p>
     </div>
     <div>
       <h4>Project</h4>
       <ul>
-        <li><a href="https://github.com/basswaves/kinema">Source on GitHub</a></li>
-        <li><a href="https://github.com/basswaves/kinema/releases/latest">Latest release</a></li>
-        <li><a href="https://github.com/basswaves/kinema/blob/master/CHANGELOG.md">Changelog</a></li>
-        <li><a href="https://github.com/basswaves/kinema/blob/master/docs/ROADMAP.md">Roadmap</a></li>
+        <li><a href="https://github.com/basswaves/skrin">Source on GitHub</a></li>
+        <li><a href="https://github.com/basswaves/skrin/releases/latest">Latest release</a></li>
+        <li><a href="https://github.com/basswaves/skrin/blob/master/CHANGELOG.md">Changelog</a></li>
+        <li><a href="https://github.com/basswaves/skrin/blob/master/docs/ROADMAP.md">Roadmap</a></li>
       </ul>
     </div>
     <div>
       <h4>Guides</h4>
       <ul>
-        <li><a href="file-names.html">How Kinema reads file names</a></li>
+        <li><a href="file-names.html">How Skrin reads file names</a></li>
         <li><a href="blu-ray.html">How to rip DVDs, Blu-rays and 4K discs</a></li>
         <li><a href="privacy.html">Privacy policy</a></li>
       </ul>
@@ -650,13 +650,13 @@
     <div>
       <h4>Help &amp; feedback</h4>
       <ul>
-        <li><a href="https://github.com/basswaves/kinema/discussions">Discussions</a></li>
-        <li><a href="https://github.com/basswaves/kinema/issues/new/choose">Report a bug or a device</a></li>
-        <li><a href="https://github.com/basswaves/kinema/blob/master/SECURITY.md">Security &amp; privacy</a></li>
-        <li><a href="https://github.com/basswaves/kinema/blob/master/CONTRIBUTING.md">Contributing</a></li>
+        <li><a href="https://github.com/basswaves/skrin/discussions">Discussions</a></li>
+        <li><a href="https://github.com/basswaves/skrin/issues/new/choose">Report a bug or a device</a></li>
+        <li><a href="https://github.com/basswaves/skrin/blob/master/SECURITY.md">Security &amp; privacy</a></li>
+        <li><a href="https://github.com/basswaves/skrin/blob/master/CONTRIBUTING.md">Contributing</a></li>
       </ul>
     </div>
-    <p class="legal">This product uses the TMDB API but is not endorsed or certified by TMDB. Kodi, Plex, Jellyfin, VLC, MPC-HC, MakeMKV, HandBrake, Dolby, Dolby Vision, Dolby Atmos, DTS and other names are trademarks of their respective owners; Kinema is not affiliated with or endorsed by any of them, and names them only to say what it works with or is compared to. Film posters and artwork in the screenshots belong to their owners.</p>
+    <p class="legal">This product uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB. Kodi, Plex, Jellyfin, VLC, MPC-HC, MakeMKV, HandBrake, Dolby, Dolby Vision, Dolby Atmos, DTS and other names are trademarks of their respective owners; Skrin is not affiliated with or endorsed by any of them, and names them only to say what it works with or is compared to. Film posters and artwork in the screenshots belong to their owners.</p>
   </div>
 </footer>
 </body>

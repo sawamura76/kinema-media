@@ -558,7 +558,7 @@ pub async fn music_match_album(
 }
 
 fn client() -> Result<reqwest::Client, String> {
-    reqwest::Client::builder()
+    crate::net::client(crate::net::Service::MusicMetadata)?
         .timeout(std::time::Duration::from_secs(12))
         .redirect(reqwest::redirect::Policy::none())
         .user_agent(concat!(

@@ -3,7 +3,7 @@
  * under them the buttons. It draws and reports; what each control does is the
  * player's (Player.tsx), passed in.
  */
-import { memo } from 'react';
+import { memo, useState, type CSSProperties } from 'react';
 import FocusButton from '../ui/FocusButton';
 import FocusGroup from '../ui/FocusGroup';
 import { formatTime } from '../ui/format';
@@ -22,6 +22,7 @@ import {
   SubtitlesIcon,
 } from './icons';
 import SeekBar from './SeekBar';
+import SeekPreviewPicture from './SeekPreviewPicture';
 import VolumeControl from './VolumeControl';
 
 interface Props {
@@ -32,6 +33,12 @@ interface Props {
    */
   visible: boolean;
   timePos: number | null;
+  /** The bar is being steered (keys, a remote, a drag): `timePos` is the target. */
+  scrubbing: boolean;
+  /** The library file playing, for its seek preview pictures; null outside the library. */
+  fileId: number | null;
+  /** Where the part loaded ahead of the play head ends (seconds), as the player reports it. */
+  loadedTo: number | null;
   duration: number | null;
   paused: boolean;
   /**
@@ -44,6 +51,8 @@ interface Props {
   hasChapters: boolean;
   showChapters: boolean;
   volume: number;
+  /** The top of the volume: 200 where the sound can be boosted, else 100. */
+  volumeMax: number;
   muted: boolean;
   /** Sound bitstreamed to a receiver: the volume here would do nothing. */
   receiver: boolean;
@@ -72,6 +81,9 @@ interface Props {
 
 function PlayerControls({
   timePos,
+  scrubbing,
+  fileId,
+  loadedTo,
   duration,
   paused,
   steps,
@@ -79,6 +91,7 @@ function PlayerControls({
   hasChapters,
   showChapters,
   volume,
+  volumeMax,
   muted,
   receiver,
   tv,
@@ -96,10 +109,23 @@ function PlayerControls({
   onVolumeSet,
   onToggleMute,
   onFullscreen,
-  // Read only by the comparison below.
-  visible: _visible,
+  visible,
 }: Props) {
   const progress = duration && timePos !== null ? (timePos / duration) * 100 : 0;
+  // The loaded band runs from the play head to here (ui.css, .player-seek).
+  const loaded = duration && loadedTo !== null ? Math.min(100, (loadedTo / duration) * 100) : progress;
+  /** Where the mouse is over the bar, in seconds; null when it is not. */
+  const [hoverAt, setHoverAt] = useState<number | null>(null);
+  // A seek being steered (keys, a remote, a drag) shows its target; else the
+  // mouse's point, while the bar can be seen — a pointer left resting on it
+  // when the bar faded is not a point any more.
+  const previewAt = scrubbing ? timePos : visible ? hoverAt : null;
+  const pointAt = (e: { clientX: number; currentTarget: HTMLElement }) => {
+    if (!duration) return;
+    const box = e.currentTarget.getBoundingClientRect();
+    if (box.width <= 0) return;
+    setHoverAt(Math.min(1, Math.max(0, (e.clientX - box.left) / box.width)) * duration);
+  };
 
   return (
     <div className="player-controls">
@@ -111,6 +137,7 @@ function PlayerControls({
           onRelease={onScrubRelease}
           onEnter={onSeekBarEnter}
         >
+          <SeekPreviewPicture fileId={fileId} at={previewAt} duration={duration} />
           <input
             className="player-seek"
             type="range"
@@ -118,7 +145,13 @@ function PlayerControls({
             max={100}
             step={0.05}
             value={progress}
+            style={
+              { '--played': `${progress}%`, '--loaded': `${Math.max(progress, loaded)}%` } as CSSProperties
+            }
+            data-loaded={loadedTo === null ? undefined : Math.round(loaded * 10) / 10}
             tabIndex={-1}
+            onMouseMove={pointAt}
+            onMouseLeave={() => setHoverAt(null)}
             onMouseDown={onDragStart}
             onChange={(e) => {
               const pct = Number(e.target.value);
@@ -226,6 +259,7 @@ function PlayerControls({
           </FocusButton>
           <VolumeControl
             level={volume}
+            max={volumeMax}
             muted={muted}
             receiver={receiver}
             onChange={onVolumeChange}

@@ -40,9 +40,21 @@ export interface FakeMpvState {
    * through `__fakeMpvWait`.
    */
   cacheBuffering: number | null;
+  /**
+   * Seconds loaded ahead of the play head (`demuxer-cache-duration`), for the
+   * seek bar's loaded band; null answers as a player that says nothing.
+   */
+  cacheAhead: number | null;
   /** Every command received, newest last, for assertions. */
   commands: Array<{ name: string; args: unknown[] }>;
   volume: number;
+  /**
+   * The volume's boost on the filter chain, in dB (`af` with
+   * `volume@boost`, changed in place by `af-command`); null without one.
+   */
+  boostDb: number | null;
+  /** mpv's `af` as last set. */
+  af: string;
   mute: boolean;
   subVisible: boolean;
   /** Set to e.g. 'spdif-truehd' to stand in for sound going to a receiver. */
@@ -53,6 +65,11 @@ export interface FakeMpvState {
    * does. Cleared once used.
    */
   failNextLoad: string | null;
+  /**
+   * Answer `loadfile` as mpv before 0.38 does: `<url> <flags> <options>`,
+   * no playlist index. Each form is refused by the other's mpv.
+   */
+  oldLoadfile: boolean;
   /**
    * What `current-ao` answers while a file is open. Null stands in for a
    * sound output that would not open — mpv then plays the film mute — so the
@@ -94,6 +111,7 @@ const state: FakeMpvState = {
   paused: false,
   eof: false,
   cacheBuffering: null,
+  cacheAhead: 60,
   speed: 1,
   loadDelayMs: 300,
   commands: [],
@@ -102,9 +120,12 @@ const state: FakeMpvState = {
   subVisible: true,
   audioOutFormat: 'float',
   failNextLoad: null,
+  oldLoadfile: false,
   currentAo: 'wasapi',
   fullscreen: true,
   extra: {},
+  boostDb: null,
+  af: '',
   audioDelay: 0,
   chapters: [],
 };
@@ -142,9 +163,20 @@ function seek(target: number): void {
   send({ event: 'playback-restart' });
 }
 
-/** Per-file options from `loadfile <path> <flags> <index> <options>`. */
+/**
+ * Per-file options from `loadfile <path> <flags> <index> <options>` (mpv 0.38
+ * on) or `loadfile <path> <flags> <options>` (before); the other form is
+ * refused, as the real one refuses it.
+ */
 function startOption(args: unknown[]): number | null {
-  const options = typeof args[3] === 'string' ? args[3] : '';
+  if (args.length > 2) {
+    const index = args[2];
+    const isIndex = typeof index === 'string' && /^-?\d+$/.test(index);
+    if (state.oldLoadfile ? args.length > 3 || isIndex : !isIndex) {
+      throw new Error("Failed to execute command 'loadfile': invalid parameter");
+    }
+  }
+  const options = String((state.oldLoadfile ? args[2] : args[3]) ?? '');
   const match = /(?:^|,)start=([\d.]+)/.exec(options);
   return match ? Number(match[1]) : null;
 }
@@ -193,7 +225,22 @@ export function command(name: string, args: unknown[]): null {
     }
     case 'set': {
       const [property, value] = args as [string, unknown];
+      if (property === 'af') {
+        state.af = String(value);
+        const db = /volume@boost=volume=(-?[\d.]+)dB/.exec(state.af);
+        state.boostDb = db ? Number(db[1]) : null;
+        break;
+      }
       setProperty(property, value);
+      break;
+    }
+    case 'af-command': {
+      const [label, cmd, value, target] = args as string[];
+      if (label !== 'skrinboost' || cmd !== 'volume' || target !== 'volume@boost' || state.boostDb === null) {
+        throw new Error('af-command: error running command');
+      }
+      state.boostDb = Number.parseFloat(value);
+      state.af = state.af.replace(/volume@boost=volume=-?[\d.]+dB/, `volume@boost=volume=${value}`);
       break;
     }
     case 'sub-add': {
@@ -321,6 +368,9 @@ export function getProperty(name: string): unknown {
       return state.cacheBuffering !== null;
     case 'cache-buffering-state':
       return state.cacheBuffering ?? 100;
+    case 'demuxer-cache-duration':
+      if (state.path === null || state.cacheAhead === null) throw new Error('property unavailable');
+      return state.cacheAhead;
     case 'sub-visibility':
       return state.subVisible;
     case 'volume':

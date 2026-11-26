@@ -25,6 +25,7 @@ import {
   measurePictures,
   probeLibrary,
   refreshImdbRatings,
+  refreshQueryStatistics,
   listUnparsed,
   saveParseResults,
   scanLibrary,
@@ -54,6 +55,8 @@ import {
   upgradeFallbackTitles,
 } from '../metadata/match';
 import { syncBuiltinKey } from '../metadata/builtinKey';
+import { refreshImdbTitles } from '../metadata/imdbOffline';
+import { offlineState } from '../net/offline';
 import { refreshTomatometer } from '../metadata/scores';
 import { applyMovedMatches } from '../metadata/moving';
 import { runWorthALook } from './worthALook';
@@ -78,7 +81,7 @@ export interface ScanStatus {
   stage: ScanStage;
   /** What it is working on right now — a count, or the title being matched. */
   detail: string;
-  /** It waited while Kinema was behind another app, and has just gone on. */
+  /** It waited while Skrin was behind another app, and has just gone on. */
   waited?: boolean;
 }
 
@@ -122,7 +125,7 @@ function emit(): void {
   for (const listener of listeners) listener();
 }
 
-/** How long a scan says it has just been waiting, once Kinema is back. */
+/** How long a scan says it has just been waiting, once Skrin is back. */
 const PICKED_UP_MS = 15_000;
 let pickedUp = false;
 let pickedUpTimer: ReturnType<typeof setTimeout> | null = null;
@@ -162,6 +165,28 @@ export function getLastScanSummary(): ScanSummary | null {
   return lastSummary;
 }
 
+/**
+ * A scan now, or as soon as the one running ends — for a change that only a
+ * scan from here on carries out (the details language: the running scan may
+ * be past the step that fetches titles again).
+ */
+export async function scanAfterThis(): Promise<ScanOutcome> {
+  const outcome = await runScanPipeline();
+  if (outcome.status !== 'skipped' || outcome.reason !== 'already-running') return outcome;
+  await new Promise<void>((resolve) => {
+    const off = subscribeScan(() => {
+      if (status !== null) return;
+      off();
+      resolve();
+    });
+    if (status === null) {
+      off();
+      resolve();
+    }
+  });
+  return runScanPipeline();
+}
+
 /** Live scan status, or null when idle. */
 export function useScanStatus(): ScanStatus | null {
   return useSyncExternalStore(subscribeScan, getScanStatus);
@@ -191,7 +216,7 @@ export async function parseBatchForLibrary(
 ): Promise<ParseResultPayload[]> {
   const payloads: ParseResultPayload[] = [];
   // A little at a time: a whole batch is most of a minute on a weak box, and a
-  // worker cannot be stopped when Kinema leaves the screen or a film opens.
+  // worker cannot be stopped when Skrin leaves the screen or a film opens.
   let done = 0;
   while (done < files.length) {
     await yieldToPlayback();
@@ -356,6 +381,13 @@ export async function runScanPipeline(): Promise<ScanOutcome> {
     // re-opens the refusals it could change, and they belong in this list.
     await yieldToPlayback();
     await syncBuiltinKey();
+    // IMDb's list for matching on this computer: only while its setting is
+    // on, and at most monthly (imdb_titles.rs). Usually nothing.
+    try {
+      await refreshImdbTitles();
+    } catch (e) {
+      errors.push(String(e));
+    }
     // In batches, until none is left that this scan has not tried. It used to
     // take the first 2,000 and stop: a bigger folder added at once had the
     // rest wait for the next launch. A file whose provider did not answer is
@@ -379,6 +411,17 @@ export async function runScanPipeline(): Promise<ScanOutcome> {
       unmatched += outcome.unmatched;
       errors.push(...outcome.errors);
     }
+    // Once the titles are linked, so the database chooses its indexes by
+    // them: statistics from before matching made Home take seconds on a big
+    // library. Usually nothing to do; a failure is only logged.
+    await refreshQueryStatistics().catch(() => undefined);
+
+    // Keep everything on this computer: the passes below that ask a service
+    // online are not run at all (net.rs refuses them anyway; skipped here so
+    // a scan does not report a refusal as a failure). Pictures beside the
+    // files are still found, and IMDb's ratings come while their switch is on.
+    const privacy = await offlineState();
+    const online = !privacy.offline;
 
     // Details before artwork. The details pass is what finds logos and cast
     // photos for titles matched before those were stored, and it used to run
@@ -386,17 +429,17 @@ export async function runScanPipeline(): Promise<ScanOutcome> {
     // next launch to be cached, and the UI fetched it from TMDB meanwhile.
     await yieldToPlayback();
     setStatus({ stage: 'details', detail: '' });
-    const details = await backfillTitleDetails();
+    const details = online ? await backfillTitleDetails() : { found: 0, none: 0, errors: [] };
     errors.push(...details.errors);
     // TMDB's data may be kept six months; anything older is fetched again,
     // a few titles per scan. Before artwork, so new image URLs are cached.
     await yieldToPlayback();
-    const refreshed = await refreshStaleTitles();
+    const refreshed = online ? await refreshStaleTitles() : { errors: [] as string[] };
     errors.push(...refreshed.errors);
     // Titles matched through a fallback get TMDB's pictures once a key works.
     // Before artwork, so their pictures are cached on this scan.
     await yieldToPlayback();
-    const upgraded = await upgradeFallbackTitles();
+    const upgraded = online ? await upgradeFallbackTitles() : { films: 0, shows: 0, left: 0, errors: [] };
     errors.push(...upgraded.errors);
     // Matches made by hand on another computer (Move to a new computer),
     // for files this scan found. Usually nothing.
@@ -405,7 +448,7 @@ export async function runScanPipeline(): Promise<ScanOutcome> {
     // Usually nothing: the file is fetched weekly at most.
     await yieldToPlayback();
     try {
-      await refreshImdbRatings();
+      if (online || privacy.imdbRatings) await refreshImdbRatings();
     } catch (e) {
       errors.push(String(e));
     }
@@ -413,7 +456,7 @@ export async function runScanPipeline(): Promise<ScanOutcome> {
     // daily budget of that key's lookups. A wrong key is worth saying; the
     // day's allowance running out is not a problem, only a pause.
     await yieldToPlayback();
-    const scores = await refreshTomatometer();
+    const scores = online ? await refreshTomatometer() : { stopped: null };
     if (scores.stopped && !/limit/i.test(scores.stopped)) errors.push(scores.stopped);
 
     // After matching and details: every artwork URL is known now, and
@@ -423,7 +466,7 @@ export async function runScanPipeline(): Promise<ScanOutcome> {
     // Pictures beside the files first: TMDB's are fetched only where none is.
     // Its failure costs only those pictures, never the run.
     await findLocalPictures().catch((e: unknown) => console.warn('local pictures:', e));
-    const art = await cacheArtwork();
+    const art = online ? await cacheArtwork() : { stored: 0, failed: 0 };
     if (art.failed > 0) errors.push(`${count(art.failed, 'artwork download')} failed`);
 
     // Once after an update that changed the matching rules: matches the old
@@ -431,7 +474,7 @@ export async function runScanPipeline(): Promise<ScanOutcome> {
     // Needs attention as "Worth a look" (worthALook.ts). Usually nothing to
     // do. After pictures, when browsing has all it needs, and before looking
     // inside files and finding intros, which can take many minutes on a first
-    // scan; what a closed Kinema left unread is picked up by the next scan.
+    // scan; what a closed Skrin left unread is picked up by the next scan.
     await yieldToPlayback();
     setStatus({ stage: 'rereading', detail: '' });
     await runWorthALook(roots, parseBatchForLibrary).catch((e: unknown) =>

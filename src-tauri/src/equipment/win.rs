@@ -125,7 +125,7 @@ pub(crate) fn signal_of(gdi_name: &str) -> Option<(u32, u32, f64)> {
     Some((signal.activeSize.cx, signal.activeSize.cy, rate))
 }
 
-fn active_config(
+pub(crate) fn active_config(
 ) -> windows::core::Result<(Vec<DISPLAYCONFIG_PATH_INFO>, Vec<DISPLAYCONFIG_MODE_INFO>)> {
     let (mut n_paths, mut n_modes) = (0u32, 0u32);
     unsafe { GetDisplayConfigBufferSizes(QDC_ONLY_ACTIVE_PATHS, &mut n_paths, &mut n_modes) }
@@ -225,6 +225,26 @@ pub(crate) fn hdr_state(p: &DISPLAYCONFIG_PATH_INFO) -> (HdrState, Option<u32>) 
 /// bits per channel. Vendor neutral — the same query as HDR. What says
 /// "HDR at 8 bits", which at 4K 60 Hz over HDMI 2.0 is a bandwidth limit
 /// rather than a setting anyone chose.
+/// The screen's own resolution, the one Windows marks "Recommended" — from
+/// the screen's description of itself. Larger modes in the list can be the
+/// graphics driver's own (NVIDIA DSR, AMD VSR: drawn larger, then shrunk to
+/// fit), which show nothing more. None when Windows does not say.
+pub(crate) fn preferred_of(p: &DISPLAYCONFIG_PATH_INFO) -> Option<(u32, u32)> {
+    let t = &p.targetInfo;
+    let mut info = DISPLAYCONFIG_TARGET_PREFERRED_MODE {
+        header: header::<DISPLAYCONFIG_TARGET_PREFERRED_MODE>(
+            DISPLAYCONFIG_DEVICE_INFO_GET_TARGET_PREFERRED_MODE,
+            t.adapterId,
+            t.id,
+        ),
+        ..Default::default()
+    };
+    if unsafe { DisplayConfigGetDeviceInfo(&mut info.header) } != 0 {
+        return None;
+    }
+    (info.width > 0 && info.height > 0).then_some((info.width, info.height))
+}
+
 pub(crate) fn link_of(p: &DISPLAYCONFIG_PATH_INFO) -> (Option<u32>, Option<String>) {
     let t = &p.targetInfo;
     let mut info2 = AdvancedColorInfo2 {
@@ -337,19 +357,22 @@ pub(crate) fn path_for(gdi_name: &str) -> Option<DISPLAYCONFIG_PATH_INFO> {
     if gdi_name.is_empty() {
         return None;
     }
-    active_paths().ok()?.into_iter().find(|p| {
-        let s = &p.sourceInfo;
-        let mut source = DISPLAYCONFIG_SOURCE_DEVICE_NAME {
-            header: header::<DISPLAYCONFIG_SOURCE_DEVICE_NAME>(
-                DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME,
-                s.adapterId,
-                s.id,
-            ),
-            ..Default::default()
-        };
-        (unsafe { DisplayConfigGetDeviceInfo(&mut source.header) } == 0)
-            && wide(&source.viewGdiDeviceName) == gdi_name
-    })
+    active_paths().ok()?.into_iter().find(|p| source_gdi(p).as_deref() == Some(gdi_name))
+}
+
+/// The GDI name (`\\.\DISPLAY1`) of a display path's source.
+pub(crate) fn source_gdi(p: &DISPLAYCONFIG_PATH_INFO) -> Option<String> {
+    let s = &p.sourceInfo;
+    let mut source = DISPLAYCONFIG_SOURCE_DEVICE_NAME {
+        header: header::<DISPLAYCONFIG_SOURCE_DEVICE_NAME>(
+            DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME,
+            s.adapterId,
+            s.id,
+        ),
+        ..Default::default()
+    };
+    (unsafe { DisplayConfigGetDeviceInfo(&mut source.header) } == 0)
+        .then(|| wide(&source.viewGdiDeviceName))
 }
 
 fn displays(outputs: &HashMap<String, OutputInfo>, problems: &mut Vec<String>) -> Vec<Display> {

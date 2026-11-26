@@ -1,7 +1,7 @@
 /**
  * Settings → Library: films and episodes here more than once (versions.rs).
  * Each is already one title with a Version choice beside Play; this is the
- * list, for anyone tidying a library. Kinema never deletes or moves a file.
+ * list, for anyone tidying a library. Skrin never deletes or moves a file.
  *
  * Always drawn, so Settings search lands on it; with nothing here twice it
  * says so. The versions' words need each file's facts, so they are read when
@@ -81,7 +81,7 @@ export default function DuplicatesSection() {
       <p className="settings-intro">
         {n === 1 ? 'One film or episode is' : `${n} films and episodes are`} in more than one
         file. Each is one title, with a Version choice beside Play that remembers what you pick.
-        Kinema never deletes a file: to tidy up, remove the copies you do not want from the folder.
+        Skrin never deletes a file: to tidy up, remove the copies you do not want from the folder.
       </p>
       <FocusButton className="btn-secondary" onSelect={() => setOpen((o) => !o)}>
         {open ? 'Hide the list' : 'Show the list'}

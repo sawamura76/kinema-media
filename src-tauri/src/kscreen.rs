@@ -6,11 +6,11 @@
 //! Reading: `kscreen-doctor -j`, libkscreen's own description of the
 //! configuration as JSON (its `ConfigSerializer`). Changing:
 //! `kscreen-doctor output.<name>.mode.<id>` and `output.<name>.hdr.enable` /
-//! `.disable` (Plasma 6), several in one call, applied together. Kinema runs
+//! `.disable` (Plasma 6), several in one call, applied together. Skrin runs
 //! the desktop's own program rather than speaking its internal D-Bus
 //! interface, which libkscreen does not promise to keep.
 //!
-//! Plasma may remember a change made this way as the screen's setup; Kinema
+//! Plasma may remember a change made this way as the screen's setup; Skrin
 //! putting the mode back when the film ends — or at the next launch after a
 //! crash — is what undoes it (display.rs).
 
@@ -39,7 +39,7 @@ pub fn is_plasma() -> bool {
 /// more if it crashed: Plasma 5.27's was seen to abort on its own heap
 /// corruption ("corrupted size vs. prev_size") now and then while a film
 /// was starting, and the same call a moment later worked. Asked at startup,
-/// one crash would otherwise leave Kinema unable to switch for the whole
+/// one crash would otherwise leave Skrin unable to switch for the whole
 /// session. Asking for a change twice is harmless: the same mode or HDR
 /// state set again is the same.
 fn run(args: &[String], limit: Duration) -> Result<String, String> {

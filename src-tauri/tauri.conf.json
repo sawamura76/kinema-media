@@ -2,7 +2,7 @@
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Kinema Media",
   "mainBinaryName": "kinema-media",
-  "version": "0.15.2",
+  "version": "0.22.0",
   "identifier": "local.brian.kinema-music",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -26,11 +26,13 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: asset: http://asset.localhost thumb: http://thumb.localhost https:; media-src 'self' asset: http://asset.localhost; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost; object-src 'none'; frame-src https://www.youtube-nocookie.com; base-uri 'self'; form-action 'none'",
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: asset: http://asset.localhost thumb: http://thumb.localhost https:; media-src 'self' blob: asset: http://asset.localhost; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost; object-src 'none'; frame-src https://www.youtube-nocookie.com http://127.0.0.1:*; base-uri 'self'; form-action 'none'",
       "devCsp": null,
       "assetProtocol": {
         "enable": true,
-        "scope": ["$APPDATA/artwork/*"]
+        "scope": [
+          "$APPDATA/artwork/*"
+        ]
       }
     }
   },

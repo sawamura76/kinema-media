@@ -1,5 +1,5 @@
 /**
- * The components of Kinema's own focus engine (focusStore.ts has the store,
+ * The components of Skrin's own focus engine (focusStore.ts has the store,
  * focusModel.ts the rules): a screen on it, and the area a subtree belongs to.
  */
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';

@@ -116,14 +116,14 @@ describe('a network drive’s refusal', () => {
     expect(describeError(`could not read smb://nas/films: ${smb('c000035c')}`)).toBe(
       'nas closed the connection. Try again.'
     );
-    expect(describeError(`Kinema could not ask nas for its shares: ${smb('c000006e')}`)).toMatch(
+    expect(describeError(`Skrin could not ask nas for its shares: ${smb('c000006e')}`)).toMatch(
       /^nas does not let that user sign in over the network/
     );
   });
 
   it('keeps the code of one it has no words for, for a report', () => {
     expect(describeError(`could not read smb://nas/films: ${smb('c0000999')}`)).toBe(
-      'nas refused with an error Kinema has no words for yet (code 0xc0000999). Try again, or send a report.'
+      'nas refused with an error Skrin has no words for yet (code 0xc0000999). Try again, or send a report.'
     );
   });
 });

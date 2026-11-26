@@ -28,17 +28,20 @@ const SERVICES: [&str; 2] = [SIMKL, TRAKT];
 
 /// Whether the services may be used at all in this process. A self-test runs
 /// on a copy of the library, tokens included, and a second process refreshing
-/// the same grant would cut the real Kinema's sign-in off.
+/// the same grant would cut the real Skrin's sign-in off.
 pub fn allowed() -> bool {
     crate::selftest::plan_path().is_none()
 }
 
 pub fn user_agent() -> String {
-    format!("kinema/{}", env!("CARGO_PKG_VERSION"))
+    format!("skrin/{}", env!("CARGO_PKG_VERSION"))
 }
 
-pub fn http() -> Option<tauri_plugin_http::reqwest::Client> {
-    tauri_plugin_http::reqwest::Client::builder()
+/// A client for SIMKL, Trakt or the user's own server; None when it cannot
+/// be made or Keep everything on this computer keeps the service off.
+pub fn http(service: crate::net::Service) -> Option<tauri_plugin_http::reqwest::Client> {
+    crate::net::client(service)
+        .ok()?
         .timeout(Duration::from_secs(20))
         .build()
         .ok()
@@ -55,7 +58,7 @@ const ACCESS: &str = "access_token";
 const REFRESH: &str = "refresh_token";
 /// When the access token runs out, in Unix seconds.
 const EXPIRES: &str = "access_expires_at";
-/// The account's name, to say who Kinema is connected as.
+/// The account's name, to say who Skrin is connected as.
 const USER: &str = "user";
 /// Set when the service refused the refresh token: the person has to connect
 /// again.
@@ -118,7 +121,7 @@ pub fn mark_needs_reconnect(conn: &Connection, service: &str, why: &str) -> Resu
     store(conn, &key(service, RECONNECT), "1")
 }
 
-/// Who Kinema is connected as, when the service said.
+/// Who Skrin is connected as, when the service said.
 pub fn save_user(conn: &Connection, service: &str, user: Option<&str>) -> Result<(), String> {
     match user {
         Some(name) => store(conn, &key(service, USER), name),
@@ -340,7 +343,7 @@ fn item_key(
     )
 }
 
-/// Something finished in Kinema, as `watch_history` holds it.
+/// Something finished in Skrin, as `watch_history` holds it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Finished {
     pub kind: String,
@@ -351,7 +354,7 @@ pub struct Finished {
     pub watched_at: i64,
 }
 
-/// Everything watched in Kinema, for the history sent at connect.
+/// Everything watched in Skrin, for the history sent at connect.
 pub fn finished_history(conn: &Connection) -> rusqlite::Result<Vec<Finished>> {
     let mut stmt = conn.prepare(
         "SELECT kind, imdb_id, tmdb_id, season, episode, updated_at
