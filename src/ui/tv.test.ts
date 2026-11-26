@@ -23,8 +23,8 @@ describe('device layout modes', () => {
 });
 
 it('clamps handheld scale and restores it for this device',async()=>{
- expect(clampHandheldScale(500)).toBe(150);expect(clampHandheldScale(NaN)).toBe(100);
+ expect(clampHandheldScale(500)).toBe(115);expect(clampHandheldScale(NaN)).toBe(100);
  state.settings.set('handheld_scale','125');await loadTvMode();
- expect(document.documentElement.style.setProperty).toHaveBeenCalledWith('--handheld-scale','1.25');
+ expect(document.documentElement.style.setProperty).toHaveBeenCalledWith('--handheld-scale','1.15');
  setHandheldScale(115);expect(state.settings.get('handheld_scale')).toBe('115');
 });

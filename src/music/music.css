@@ -245,3 +245,5 @@
 .music-library-group { margin:1.5rem 0 2.5rem; }
 .music-library-group > h2 { font-size:1.4rem; padding-bottom:.7rem; border-bottom:1px solid #ffffff28; margin:0 0 1rem; }
 .music-heading { margin-bottom:1.5rem; }
+
+@media(max-width:1000px){.music-player-video-style .player-buttons{grid-template-columns:minmax(0,1fr) auto auto;gap:.4rem}.music-player-video-style .player-group-right{min-width:0}}

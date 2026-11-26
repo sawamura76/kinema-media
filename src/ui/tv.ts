@@ -10,7 +10,7 @@ export type UiMode = 'pc' | 'tv' | 'handheld';
 let mode: UiMode = 'pc';
 let handheldScale = 100;
 export const HANDHELD_SCALE_KEY = 'handheld_scale';
-export const clampHandheldScale = (value: number) => Number.isFinite(value) ? Math.max(85, Math.min(150, Math.round(value / 5) * 5)) : 100;
+export const clampHandheldScale = (value: number) => Number.isFinite(value) ? Math.max(85, Math.min(115, Math.round(value / 5) * 5)) : 100;
 const listeners = new Set<() => void>();
 function apply() {
   document.documentElement.dataset.tv = mode === 'tv' ? 'on' : 'off';

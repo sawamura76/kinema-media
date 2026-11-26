@@ -5066,3 +5066,10 @@ kbd {
 :root[data-ui-mode='handheld'] .music-album-grid, :root[data-ui-mode='handheld'] .games-grid { grid-template-columns:repeat(auto-fill,minmax(165px,1fr)); }
 :root[data-ui-mode='handheld'] .music-page { padding-inline:1.25rem; }
 :root[data-ui-mode='handheld'] .music-viz-panel { width:min(25rem,92vw); }
+
+/* Round transport controls must not shrink horizontally or grow only vertically. */
+.player-buttons .icon-button {flex-shrink:0;aspect-ratio:1;box-sizing:border-box;min-width:2.75rem;min-height:2.75rem;}
+.player-buttons .play-button {min-width:3.5rem;min-height:3.5rem;}
+:root[data-ui-mode='handheld'] .player-buttons .icon-button {width:max(48px,2.75rem);height:max(48px,2.75rem);min-width:max(48px,2.75rem);min-height:max(48px,2.75rem);padding:0;}
+:root[data-ui-mode='handheld'] .player-buttons .play-button {width:max(48px,3.5rem);height:max(48px,3.5rem);min-width:max(48px,3.5rem);min-height:max(48px,3.5rem);}
+:root[data-ui-mode='handheld'] .floating-player button {min-height:0;aspect-ratio:1;}

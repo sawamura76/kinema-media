@@ -15,3 +15,7 @@ Latest-build hardware testing on the Ally is pending. Browser tests use mocks; n
 ## 0.22.1 correction
 
 Restored Kinema Media names, original Kinema K icons and red accent throughout the app. TV/Handheld primary navigation tabs now activate on controller/keyboard highlight. Bumpers switch tabs and retain menu focus without a deferred callback overriding subsequent input. PC arrows still require Enter. Upload remains on hold while these corrections are tested.
+
+## 0.22.2 correction
+
+Handheld scale is capped at 115%; older saved values are clamped when loaded. Circular transport buttons retain equal width and height and do not shrink into ovals. The narrow music transport layout reserves space for its right-hand controls. Controller mappings remain unchanged after the reported LB/RB issue was traced to Armoury Crate Auto mode. Added coverage for the actual browser Gamepad API polling path and held bumper presses.
