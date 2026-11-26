@@ -1144,11 +1144,12 @@ function TopNav({
       const start = at < 0 ? (direction < 0 ? 0 : -1) : at;
       const next = tabs[(start + direction + tabs.length) % tabs.length];
       returnFocusTo(navKey(next), 0);
-      onNavigate(next);
+      if (autoSwitch) focusTo(navKey(next));
+      else onNavigate(next);
     };
     window.addEventListener('keydown', bump, true);
     return () => window.removeEventListener('keydown', bump, true);
-  }, [active, onNavigate]);
+  }, [active, onNavigate, autoSwitch]);
 
   // A scan is the only long-running thing the app does on its own, so it says
   // so at the end of the bar rather than interrupting anything. Otherwise that
@@ -1168,7 +1169,8 @@ function TopNav({
             label={name === 'music' ? musicLanguage.t('music') : label}
             title={label}
             onHighlight={() => {
-              if (!autoSwitch || active === name || !['home','movies','tv','music','games'].includes(name)) return;
+              if (!autoSwitch || !['home','movies','tv','music','games'].includes(name)) return;
+              if (active === name && !document.querySelector('.music-detail-page')) return;
               returnFocusTo(navKey(name), 0);
               onNavigate(name);
             }}

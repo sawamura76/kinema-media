@@ -64,6 +64,14 @@ for(const mode of ['Handheld','TV']) test(`${mode}: highlighting primary tabs op
  await expect(page.locator('.top-nav .focused')).toHaveAttribute('aria-label','TV shows');
  await expect(page.locator('.top-nav .active')).toHaveAttribute('aria-label','TV shows');
  await page.screenshot({path:`work/top-nav-auto-${mode}.png`});
+ await page.locator('.top-nav').getByRole('button',{name:'Music',exact:true}).click();
+ await page.getByRole('button',{name:'Album',exact:true}).click();
+ await page.getByRole('button',{name:'First album Test artist',exact:true}).click();
+ await expect(page.locator('.music-album-detail')).toBeVisible();
+ for(let step=0;step<5&&await page.locator('.music-album-detail').count();step++)await page.keyboard.press('ArrowUp');
+ await expect(page.locator('.music-album-detail')).toHaveCount(0);
+ await expect(page.locator('.top-nav .focused')).toHaveAttribute('aria-label','Music');
+
 });
 test('PC arrows highlight tabs without opening them until Enter',async({page})=>{
  await page.locator('.top-nav').getByRole('button',{name:'Music',exact:true}).click();
