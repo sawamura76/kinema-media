@@ -5,7 +5,11 @@
     {
       "id": "tmdb",
       "name": "TMDB (The Movie Database)",
-      "hosts": ["api.themoviedb.org", "api.tmdb.org", "image.tmdb.org"],
+      "hosts": [
+        "api.themoviedb.org",
+        "api.tmdb.org",
+        "image.tmdb.org"
+      ],
       "sends": "The title and year read from a file or folder name (or an IMDb number written in one, or in an NFO beside the file), the TMDB number of a close candidate when asking for its other names, then the TMDB number of each match, and of an actor whose page you open or a title whose posters you list, with Kinema's key or yours. Pictures are asked for by their address.",
       "when": "When a scan finds a film or show that has not been matched yet, when a title's details are over six months old (TMDB's terms) or a running show's next episode has aired, when you open an actor's page (once a month at most) or a title's poster list, and when a poster or backdrop is first shown.",
       "stop": "No switch: TMDB is how Kinema knows what your films and shows are. A folder you remove is no longer looked up."
@@ -13,7 +17,10 @@
     {
       "id": "tvmaze",
       "name": "TVmaze",
-      "hosts": ["api.tvmaze.com", "static.tvmaze.com"],
+      "hosts": [
+        "api.tvmaze.com",
+        "static.tvmaze.com"
+      ],
       "sends": "A show's name read from its folder, or its IMDb or TheTVDB number, then that show's number to get its episodes and pictures.",
       "when": "When a scan finds a TV show that has not been matched yet, or new episodes of one.",
       "stop": "No switch: it is used for TV shows only, and a TV folder you remove is no longer looked up."
@@ -21,7 +28,10 @@
     {
       "id": "wikidata",
       "name": "Wikidata and Wikipedia",
-      "hosts": ["www.wikidata.org", "en.wikipedia.org"],
+      "hosts": [
+        "www.wikidata.org",
+        "en.wikipedia.org"
+      ],
       "sends": "A film's title and year read from its file name.",
       "when": "Only for films, and only when no TMDB key works, as a fallback. Never pictures.",
       "stop": "Stops by itself as soon as a TMDB key works."
@@ -29,7 +39,9 @@
     {
       "id": "omdb",
       "name": "OMDb (Rotten Tomatoes scores)",
-      "hosts": ["www.omdbapi.com"],
+      "hosts": [
+        "www.omdbapi.com"
+      ],
       "sends": "A film's IMDb number and your own OMDb key.",
       "when": "Only if you typed in an OMDb key, at most 500 lookups a day.",
       "stop": "Empty the OMDb key in Settings, Posters & ratings.",
@@ -39,7 +51,9 @@
     {
       "id": "imdb",
       "name": "IMDb ratings file",
-      "hosts": ["datasets.imdbws.com"],
+      "hosts": [
+        "datasets.imdbws.com"
+      ],
       "sends": "Nothing about your library: Kinema downloads the ratings file IMDb publishes for everyone and keeps only the rows for your titles.",
       "when": "The first time, then when the file is over 30 days old, or a week after a new title joined the library.",
       "stop": "No switch: nothing of yours is sent."
@@ -47,7 +61,9 @@
     {
       "id": "theintrodb",
       "name": "TheIntroDB",
-      "hosts": ["api.theintrodb.org"],
+      "hosts": [
+        "api.theintrodb.org"
+      ],
       "sends": "The TMDB number of what you are playing, with the season and episode for a show.",
       "when": "When you play an episode or film whose intro or credits are not known, at most once a month for each.",
       "stop": "Look up TheIntroDB, in Settings, Skipping intros.",
@@ -57,7 +73,9 @@
     {
       "id": "introdb_app",
       "name": "IntroDB",
-      "hosts": ["api.introdb.app"],
+      "hosts": [
+        "api.introdb.app"
+      ],
       "sends": "The IMDb number of what you are playing, with the season and episode for a show.",
       "when": "When you play something whose intro or credits are still not known, at most once a month for each.",
       "stop": "Look up IntroDB, in Settings, Skipping intros.",
@@ -67,7 +85,9 @@
     {
       "id": "opensubtitles",
       "name": "OpenSubtitles",
-      "hosts": ["api.opensubtitles.com"],
+      "hosts": [
+        "api.opensubtitles.com"
+      ],
       "sends": "The title's numbers, season and episode, a fingerprint of the video file (not the file itself), the languages you want, and your sign-in if you added one. The subtitle is then downloaded from the address OpenSubtitles gives.",
       "when": "Only when you ask for subtitles, and for forced subtitles by themselves if you switched that on.",
       "stop": "Do not ask; forced subtitles are switched off in Settings, Language & subtitles.",
@@ -77,7 +97,9 @@
     {
       "id": "simkl",
       "name": "SIMKL",
-      "hosts": ["api.simkl.com"],
+      "hosts": [
+        "api.simkl.com"
+      ],
       "sends": "The films and episodes you finish (their numbers and when), and at connect what you had already watched. Nothing is read back.",
       "when": "Only while SIMKL is connected.",
       "stop": "Disconnect, in Settings, Keep track of what I watch.",
@@ -87,7 +109,9 @@
     {
       "id": "trakt",
       "name": "Trakt",
-      "hosts": ["api.trakt.tv"],
+      "hosts": [
+        "api.trakt.tv"
+      ],
       "sends": "The films and episodes you finish, at connect what the account lacks, and where you stopped something part-way. Where you stopped elsewhere is read back to resume here.",
       "when": "Only while Trakt is connected; resume points when a title's page or Home's Continue row is shown.",
       "stop": "Disconnect, in Settings, Keep track of what I watch. The switch “Continue where you stopped on another device” is there too.",
@@ -115,7 +139,9 @@
     {
       "id": "youtube",
       "name": "YouTube (trailers)",
-      "hosts": ["www.youtube-nocookie.com"],
+      "hosts": [
+        "www.youtube-nocookie.com"
+      ],
       "sends": "The trailer's YouTube number, and Kinema's own page address (http://tauri.localhost) as the page it plays for, which YouTube requires. YouTube's player then runs as on any website: once a trailer plays, YouTube stores data on this device and may show an ad. Kinema does not block ads. On Android the YouTube app gets the number instead.",
       "when": "Only when you press Trailer on a title with no trailer file beside it. A trailer file always plays first, and nothing goes to YouTube for it.",
       "stop": "Do not press Trailer, or put the trailer file beside the film. Where YouTube refuses, the trailer opens in your browser instead."
@@ -123,27 +149,102 @@
     {
       "id": "github",
       "name": "GitHub (new versions)",
-      "hosts": ["api.github.com"],
+      "hosts": [
+        "api.github.com"
+      ],
       "sends": "An ordinary request for the number of Kinema's latest release. Nothing about you or your library.",
       "when": "Once each time Kinema starts.",
       "stop": "Look for new versions, in Settings, Advanced.",
       "section": "advanced",
       "state": "updates"
+    },
+    {
+      "id": "theaudiodb",
+      "name": "TheAudioDB (music artwork)",
+      "hosts": [
+        "www.theaudiodb.com",
+        "theaudiodb.com",
+        "r2.theaudiodb.com"
+      ],
+      "sends": "Album artist names for artist photos and biographies; album artist and album title for missing covers, with the public free API key. Image requests use returned artwork addresses. No audio, file paths or listening history is sent.",
+      "when": "When artist artwork is first shown or manually refreshed, and when you choose Find missing album art or Download artist slideshow art in Settings > Library. Cached images work offline.",
+      "stop": "Choose Album background in Visualizer > Art to avoid slideshow artist lookups. Bulk searches run only when requested and can be cancelled in Settings > Library; closing Kinema stops them."
+    },
+    {
+      "id": "music-match",
+      "name": "MusicBrainz / Cover Art Archive (music matching)",
+      "hosts": ["musicbrainz.org", "coverartarchive.org", "archive.org", "*.archive.org"],
+      "sends": "Album and artist names, the selected album folder name as a search hint, and track count. Release IDs are used to fetch track lists and cover art. Full paths and audio stay local.",
+      "when": "When you run Auto Music Match or search or select a release in Manual Match.",
+      "stop": "Use Edit Tags for local editing."
+    },
+    {
+      "id": "musicbrainz-art",
+      "name": "MusicBrainz / Cover Art Archive",
+      "hosts": [
+        "musicbrainz.org",
+        "coverartarchive.org",
+        "archive.org",
+        "*.archive.org"
+      ],
+      "sends": "Album artist and album title when searching for a missing cover. The matched release-group ID and image address are used to download the cover. No audio files, file paths or listening history is uploaded.",
+      "when": "Only when you choose Find missing album art, for albums without a usable local cover that TheAudioDB could not fill. Exact matches only; downloaded images are cached locally.",
+      "stop": "Do not start the missing-art search, or cancel it in Settings > Library. Existing artwork is kept and music files are not modified."
+    },
+    {
+      "id": "music-biographies",
+      "name": "English Wikipedia (artist biographies)",
+      "hosts": [
+        "en.wikipedia.org"
+      ],
+      "sends": "Artist names for English biographies. No audio files, file paths or listening history.",
+      "when": "When artist metadata has no English biography. Summaries are cached offline.",
+      "stop": "Do not open uncached artist pages or start an artist artwork refresh."
     }
   ],
   "links": {
     "intro": "Some buttons open a web page in your browser. Kinema itself sends nothing to these; your browser does, as with any link.",
     "hosts": [
-      { "host": "www.themoviedb.org", "for": "getting a free TMDB key" },
-      { "host": "www.omdbapi.com", "for": "getting a free OMDb key" },
-      { "host": "simkl.com", "for": "SIMKL's sign-in and developer pages" },
-      { "host": "trakt.tv", "for": "Trakt's sign-in page" },
-      { "host": "auth.trakt.tv", "for": "Trakt's sign-in page" },
-      { "host": "app.trakt.tv", "for": "Trakt's developer page" },
-      { "host": "github.com", "for": "Kinema's release page, Skiptro's page, and reporting a bug" },
-      { "host": "basswaves.github.io", "for": "Kinema's website and its guides, such as how file names are read" },
-      { "host": "ffmpeg.org", "for": "downloading ffmpeg by hand" },
-      { "host": "www.youtube.com", "for": "trailers" }
+      {
+        "host": "www.themoviedb.org",
+        "for": "getting a free TMDB key"
+      },
+      {
+        "host": "www.omdbapi.com",
+        "for": "getting a free OMDb key"
+      },
+      {
+        "host": "simkl.com",
+        "for": "SIMKL's sign-in and developer pages"
+      },
+      {
+        "host": "trakt.tv",
+        "for": "Trakt's sign-in page"
+      },
+      {
+        "host": "auth.trakt.tv",
+        "for": "Trakt's sign-in page"
+      },
+      {
+        "host": "app.trakt.tv",
+        "for": "Trakt's developer page"
+      },
+      {
+        "host": "github.com",
+        "for": "Kinema's release page, Skiptro's page, and reporting a bug"
+      },
+      {
+        "host": "basswaves.github.io",
+        "for": "Kinema's website and its guides, such as how file names are read"
+      },
+      {
+        "host": "ffmpeg.org",
+        "for": "downloading ffmpeg by hand"
+      },
+      {
+        "host": "www.youtube.com",
+        "for": "trailers"
+      }
     ]
   },
   "local": "Folders on your own network are read where they are, and the player streams from Kinema on this device only. Neither leaves your home network."

@@ -666,7 +666,11 @@ const prefs = new Map<number, TitlePrefs>();
 const dismissed = new Map<number, number>();
 // `kinemaMockLook` ('full' | 'light'): the Look setting from the start, for the
 // screenshot flows (e2e/screens.e2e.ts), which compare both looks.
+const mockVideoCollections = [{ id: 1, name: 'Movies', kind: 'movies' }, { id: 2, name: 'TV shows', kind: 'tv' }];
+const mockVideoRoots: Record<number, number> = {};
 const settings = new Map<string, string>([['tmdb_api_key', 'fixture']]);
+if (localStorage.getItem('kinemaMockUiMode')) settings.set('ui_mode', localStorage.getItem('kinemaMockUiMode')!);
+if (localStorage.getItem('kinemaMockSetupDone') === '1') settings.set('setup_pages', 'done');
 {
   const look = typeof localStorage !== 'undefined' ? localStorage.getItem('kinemaMockLook') : null;
   if (look) settings.set('look', look);
@@ -941,6 +945,8 @@ function emitEvent(event: string, payload: unknown): null {
   }
   return null;
 }
+let floatingPlayer = false;
+let floatingKind: string | null = null;
 
 /** How many listeners each event has — for checking that nothing leaks. */
 export function listenerCounts(): Record<string, number> {
@@ -1636,8 +1642,117 @@ const MOCK_QR =
 const num = (args: Args, key: string) => Number(args[key]);
 
 let mockFullscreen = false;
+let mockArtProgress = { kind:'',images:0,running:false,total:0,checked:0,found:0,unmatched:0,errors:0,cancelled:false,current:'',last_error:null };
+let mockArtCancel = false;
+async function mockFindArt(kind: 'albums' | 'artists') {
+  mockArtCancel=false;
+  mockArtProgress={...mockArtProgress,kind,running:true,total:kind==='artists'?1:2,checked:0,found:0,images:0,cancelled:false,current:'Test artist'};
+  emitEvent('music-album-art-progress',mockArtProgress);
+  await new Promise((resolve)=>setTimeout(resolve,600));
+  let found=0;
+  if(!mockArtCancel) {
+    if(kind==='artists') { localStorage.setItem('kinemaMockArtistGallery',JSON.stringify(Array.from({length:6},(_,i)=>`C:/mock/artist-photo-${i}.jpg`)));found=1; }
+    else if(!localStorage.getItem('kinemaMockMusicArtwork')) {
+      for(const key of ['kinemaMockMusicFirstArtwork','kinemaMockMusicSecondArtwork']) if(!localStorage.getItem(key)){localStorage.setItem(key,'C:/mock/found-cover.jpg');found++;}
+    }
+  }
+  mockArtProgress={...mockArtProgress,running:false,checked:mockArtCancel?0:mockArtProgress.total,found,images:kind==='artists'&&!mockArtCancel?6:0,cancelled:mockArtCancel,current:''};
+  emitEvent('music-album-art-progress',mockArtProgress);return mockArtProgress;
+}
+
+function mockTagMatch(ids: unknown) {
+  return { album: 'Matched Album', artist: 'Matched Artist', cover: null, tracks: (ids as number[]).map((id) => ({
+    id, album: 'Matched Album', album_artist: 'Matched Artist', artist: 'Matched Artist',
+    year: '1998', title: 'Matched Song ' + id, track: String(id), disc: '1', genre: null,
+  })) };
+}
+
+let mockCollections: import('../music/api').MusicCollection[] = JSON.parse(localStorage.getItem('kinemaMockCollections') ?? '[{"id":1,"name":"Music"}]');
+const mockRootCollections: Record<number, number> = { 1: 1 };
+
+interface MockGame {
+  id: number; title: string; target: string; arguments: string[]; working_directory: string;
+  artwork: string | null; platform: string; kind: string;
+}
+let mockGames: MockGame[] = JSON.parse(localStorage.getItem('kinemaMockGames') ?? '[]') as MockGame[];
 
 const handlers: Record<string, Handler> = {
+  music_match_album: ({ ids }) => mockTagMatch(ids),
+  music_search_releases: () => [{ id: 'test-release', album: 'Matched Album', artist: 'Matched Artist', date: '1998', country: 'JP', description: 'Original edition', track_count: 2 }],
+  music_use_release: ({ ids }) => {
+    const draft = mockTagMatch(ids);
+    return { album: draft.album, artist: draft.artist, tracks: [], draft };
+  },
+  music_save_tags: ({ patches }) => {
+    const updated = Object.fromEntries((patches as { id: number }[]).map(({ id, ...fields }) => [id, fields]));
+    localStorage.setItem('kinemaMockSavedTags', JSON.stringify(updated));
+    return { added: 0, updated: Object.keys(updated).length, unchanged: 0, missing: 0, errors: [] };
+  },
+  music_collection_preferences: ({ preferences }) => {
+    const value = preferences as import('../music/api').MusicCollection;
+    mockCollections = mockCollections.map((item) => item.id === value.id ? { ...item, ...value } : item);
+    localStorage.setItem('kinemaMockCollections', JSON.stringify(mockCollections));
+    return null;
+  },
+  visualization_media: ({ kind, path }) => ({ images: kind === 'images' ? ['C:/custom/one.jpg', 'C:/custom/two.jpg'] : [], video: kind === 'video' ? path : null }),
+  music_collection_media: ({ id }) => {
+    const collection = mockCollections.find((item) => item.id === id);
+    return { images: collection?.background_kind === 'images' ? ['C:/custom/one.jpg', 'C:/custom/two.jpg'] : [],
+      video: collection?.background_kind === 'video' ? collection.background_path : null };
+  },
+  music_preview_cover: () => 'C:/mock/game-cover.jpg',
+  video_collections: () => {
+    const roots = [{ id: 1, kind: 'tv' }, ...addedRoots].filter((root) => root.kind === 'movies' || root.kind === 'tv');
+    const movieRoot = addedRoots.find((root) => root.kind === 'movies')?.id ?? -1;
+    return { collections: mockVideoCollections, roots: roots.map((root) => ({ root_id: root.id, collection_id: mockVideoRoots[root.id] ?? (root.kind === 'movies' ? 1 : 2) })),
+      titles: titles.map((title) => ({ title_id: title.id, collection_id: title.kind === 'movie' ? mockVideoRoots[movieRoot] ?? 1 : mockVideoRoots[1] ?? 2 })) };
+  },
+  video_add_collection: ({ name, kind }) => {
+    const id = Math.max(...mockVideoCollections.map((item) => item.id)) + 1;
+    mockVideoCollections.push({ id, name: String(name), kind: String(kind) }); return id;
+  },
+  video_assign_root: ({ rootId, collectionId }) => { mockVideoRoots[Number(rootId)] = Number(collectionId); return null; },
+  game_shortcuts: () => mockGames,
+  game_save: ({ shortcut }) => {
+    const value = shortcut as MockGame;
+    const id = value.id ?? Math.max(0, ...mockGames.map((item) => item.id)) + 1;
+    mockGames = [...mockGames.filter((item) => item.id !== id), { ...value, id }];
+    return id;
+  },
+  game_remove: ({ id }) => { mockGames = mockGames.filter((item) => item.id !== id); return null; },
+  game_launch: ({ id }) => { localStorage.setItem('kinemaMockLaunchedGame', String(id)); return null; },
+  music_album_art_status:()=>mockArtProgress,
+  music_find_album_art:()=>mockFindArt('albums'),
+  music_find_artist_art:()=>mockFindArt('artists'),
+  music_cancel_album_art:()=>{mockArtCancel=true;return null;},
+  music_add_collection: ({ name }) => {
+    if (mockCollections.some((item) => item.name.toLowerCase() === String(name).toLowerCase())) throw new Error('A collection with that name already exists.');
+    const id = Math.max(...mockCollections.map((item) => item.id)) + 1;
+    mockCollections = [...mockCollections, { id, name: String(name) }];
+    return id;
+  },
+  music_move_root: ({ id, collectionId }) => {
+    mockRootCollections[Number(id)] = Number(collectionId);
+    return null;
+  },
+  music_library: () => ({ collections: mockCollections,
+    collection_tracks: (localStorage.getItem('kinemaMockMusicGrid') ? Array.from({ length: 20 }, (_, index) => index + 1) : [1, 2, 3]).map((track_id) => ({ track_id, collection_id: mockRootCollections[1] })),
+    roots: JSON.parse(localStorage.getItem('kinemaMockMusicRoots') || (localStorage.getItem('kinemaMockMusic') ? '[{"id":1,"path":"C:/Music"}]' : '[]')).map((root: { id: number; path: string }) => ({ ...root, collection_id: mockRootCollections[root.id] ?? 1 })), tracks: localStorage.getItem('kinemaMockMusic') ? (localStorage.getItem('kinemaMockMusicGrid') ? Array.from({ length: 20 }, (_, n) => n + 1) : [1, 2, 3]).map((id) => {
+    const ja = localStorage.getItem('kinemaMockMusicJapanese') === '1';
+    const extended = localStorage.getItem('kinemaMockMusicExtendedPaths') === '1';
+    const grid = localStorage.getItem('kinemaMockMusicGrid') === '1';
+    const saved = JSON.parse(localStorage.getItem('kinemaMockSavedTags') || '{}')[id] || {};
+    const mp3 = localStorage.getItem('kinemaMockMp3') === '1';
+    return { id, path: mp3 ? 'C:/Music/First album/Song ' + id + '.mp3' : extended ? `\\\\?\\C:\\Music\\Song ${id}.flac` : ja ? `C:/音楽/曲${id}.flac` : `C:/Music/Song ${id}.flac`, title: ja ? ['夜に駆ける', 'カタカナ', '花'][id - 1] : `Song ${id}`, artist: grid ? `Artist ${String(id).padStart(2, '0')}` : ja ? 'テストアーティスト' : 'Test artist', album_artist: grid ? `Artist ${String(id).padStart(2, '0')}` : ja ? 'テストアーティスト' : 'Test artist', album: grid ? `Album ${String(id).padStart(2, '0')}` : ja ? '日本語のアルバム' : id === 3 ? 'Second album' : 'First album', track: id, disc: 1, duration: 180, genre: 'Electronic', year: 2026, artwork: (id === 3 ? localStorage.getItem('kinemaMockMusicSecondArtwork') : localStorage.getItem('kinemaMockMusicFirstArtwork')) || localStorage.getItem('kinemaMockMusicArtwork') || null, missing: false, ...saved };
+  }) : [] }),
+  music_artist_art: ({ artist }) => { if (localStorage.getItem('kinemaMockArtOffline')) throw new Error('offline'); return { artist, gallery: JSON.parse(localStorage.getItem('kinemaMockArtistGallery') || '[]'), background: localStorage.getItem('kinemaMockArtistBackground'), thumb: localStorage.getItem('kinemaMockArtistThumb'), source: 'TheAudioDB', biography_en: localStorage.getItem('kinemaMockArtistBio') || 'Test artist biography from the local artwork cache.', biography_ja: localStorage.getItem('kinemaMockArtistBioJa') }; },
+  music_visualizer_frame: () => { const quiet = localStorage.getItem('kinemaMockMusicRms') === '-inf'; return { ready: true, error: localStorage.getItem('kinemaMockPcmError'), left: Array.from({ length: 1024 }, (_, n) => quiet ? 128 : Math.round(128 + Math.sin(n * .09) * 70)), right: Array.from({ length: 1024 }, (_, n) => quiet ? 128 : Math.round(128 + Math.sin(n * .09) * 70)) }; },
+  mini_player_sync: ({ kind }) => { floatingKind = kind as string | null; if (!kind && floatingPlayer) { floatingPlayer = false; emitEvent('floating-player', false); } return floatingPlayer; },
+  mini_player_restore: () => { floatingPlayer = false; emitEvent('floating-player', false); return null; },
+  'plugin:window|start_dragging': () => null,
+  music_scan: async () => { if (localStorage.getItem('kinemaMockMusicScanDelay')) { await new Promise((resolve) => setTimeout(resolve, 800)); localStorage.setItem('kinemaMockMusicGrid', '1'); } return { added: 0, updated: 0, unchanged: 3, missing: 0, errors: [] }; },
+  music_add_root: ({ path, collectionId }) => { const roots = JSON.parse(localStorage.getItem('kinemaMockMusicRoots') || '[{"id":1,"path":"C:/Music"}]'); mockRootCollections[2] = Number(collectionId) || 1; roots.push({ id: 2, path, collection_id: Number(collectionId) || 1 }); localStorage.setItem('kinemaMockMusicRoots', JSON.stringify(roots)); return null; },
+  music_remove_root: ({ id }) => { const roots = JSON.parse(localStorage.getItem('kinemaMockMusicRoots') || '[{"id":1,"path":"C:/Music"}]') as {id:number;path:string}[]; localStorage.setItem('kinemaMockMusicRoots', JSON.stringify(roots.filter((r) => r.id !== id))); return null; },
   // library
   // An empty library has no folder until one is added; its first scan then
   // finds the fixture, as a real first run would.
@@ -2612,6 +2727,7 @@ export function installMockBackend(): void {
     settings,
     files,
     listenerCounts,
+    minimizePlayer: () => { if (floatingKind && !floatingPlayer) { floatingPlayer = true; emitEvent('floating-player', true); } },
     storage,
     looseProgress,
     /** A second Kinema passing a video on (opened.rs `EVENT`). */
@@ -2624,3 +2740,5 @@ export function installMockBackend(): void {
   };
   document.title = 'Kinema (mock backend)';
 }
+
+

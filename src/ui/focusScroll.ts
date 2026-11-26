@@ -217,6 +217,17 @@ export function barBottom(page: HTMLElement): number {
   return bottom;
 }
 
+/** Space above an overlaid player bar, measured from the page's own top. */
+function visibleHeight(page: HTMLElement): number {
+  const top = page.getBoundingClientRect().top;
+  let height = page.clientHeight;
+  for (const bar of page.querySelectorAll<HTMLElement>('[data-sticky-bottom]')) {
+    const rect = bar.getBoundingClientRect();
+    if (rect.height > 0) height = Math.min(height, Math.max(0, rect.top - top));
+  }
+  return height;
+}
+
 /**
  * Where `el` starts on the page, measured from the page's own top, so a
  * glide under way does not change the answer.
@@ -276,13 +287,14 @@ function remPx(): number {
  * under the bar — and `leaf` kept in its rail with the next card in sight.
  */
 export function lineUp(anchor: HTMLElement, leaf: HTMLElement, duration: number): void {
+  if (leaf.closest('[data-sticky-bottom]')) return;
   const page = pageOf(leaf);
   if (page) {
     const rem = remPx();
     const bar = barBottom(page);
     const top = contentTop(anchor, page);
     const leafBottom = contentTop(leaf, page) + leaf.offsetHeight;
-    const room = page.clientHeight - BOTTOM_GAP_REM * rem;
+    const room = visibleHeight(page) - BOTTOM_GAP_REM * rem;
     const highest = bar + LINE_GAP_REM * rem;
     const heading = headingBefore(anchor, page);
     let from = top;
@@ -334,11 +346,12 @@ function alongTrack(leaf: HTMLElement, page: HTMLElement | null, duration: numbe
  * window's bottom (a long overview on a small window).
  */
 export function toTop(leaf: HTMLElement, duration: number): void {
+  if (leaf.closest('[data-sticky-bottom]')) return;
   const page = pageOf(leaf);
   if (!page) return;
   // A sticky bar (the top bar, a title page's Back) is where it is drawn,
   // not where it sits on the page: for it, the very top.
-  const room = page.clientHeight - BOTTOM_GAP_REM * remPx();
+  const room = visibleHeight(page) - BOTTOM_GAP_REM * remPx();
   const bottom = leaf.closest('[data-sticky-top]') ? 0 : contentTop(leaf, page) + leaf.offsetHeight;
   glide(page, 'y', Math.max(0, bottom - room), duration);
   alongTrack(leaf, page, duration);
@@ -357,10 +370,11 @@ export function pageToTop(node: HTMLElement): void {
  * all, so the page stayed down for good (found on the box, round 7 F6).
  */
 export function backToTop(leaf: HTMLElement, duration: number): void {
+  if (leaf.closest('[data-sticky-bottom]')) return;
   if (leaf.closest('[data-scroll="nearest"]')) return;
   const page = readablePage(leaf);
   if (!page) return;
-  const room = page.clientHeight - BOTTOM_GAP_REM * remPx();
+  const room = visibleHeight(page) - BOTTOM_GAP_REM * remPx();
   const bottom = leaf.closest('[data-sticky-top]') ? 0 : contentTop(leaf, page) + leaf.offsetHeight;
   const to = Math.max(0, bottom - room);
   if (to < settled(page, 'y') - 0.5) glide(page, 'y', to, duration);

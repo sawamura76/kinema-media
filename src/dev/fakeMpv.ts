@@ -150,7 +150,8 @@ function startOption(args: unknown[]): number | null {
 }
 
 function loadfile(args: unknown[]): void {
-  const path = String(args[0]);
+  // The native Windows engine strips Rust's extended-length path prefix.
+  const path = String(args[0]).replace(/^\\\\\?\\UNC\\/i, '\\\\').replace(/^\\\\\?\\/, '');
   const start = startOption(args);
 
   // The outgoing file keeps reporting until the new one is open — the
@@ -302,6 +303,7 @@ export function setProperty(name: string, value: unknown): null {
  * does for a property that does not exist — callers are written to expect it.
  */
 export function getProperty(name: string): unknown {
+  if (name === 'af-metadata/kinema-viz/lavfi.astats.Overall.RMS_level') return localStorage.getItem('kinemaMockMusicRms') ?? '-18';
   switch (name) {
     case 'path':
       return state.path;

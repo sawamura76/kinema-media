@@ -32,7 +32,11 @@ export interface SettingEntry {
 const programs = (can: Capabilities) => can.runs_programs;
 
 export const SETTINGS_INDEX: SettingEntry[] = [
+  { section: 'visualizations', label: 'Visualizations', about: 'music slideshow image duration preset rotation time blend crossfade performance battery fps controls background' },
+  { section: 'controls', label: 'Navigation & controls', about: 'mouse back forward side buttons remote controller keyboard CEC navigation music video movie floating mini player always on top minimize resize' },
   // Library
+  { section: 'library', label: 'Music folders', about: 'audio music folder add scan rescan remove songs albums artists' },
+  { section: 'subtitles', label: 'Music interface language', about: 'music English Japanese 日本語 display language' },
   {
     section: 'library',
     label: 'Folders',
@@ -55,8 +59,8 @@ export const SETTINGS_INDEX: SettingEntry[] = [
   {
     section: 'playback',
     label: 'Where Kinema is used',
-    about: 'TV mode desk window full screen F11 bigger text',
-    values: ['At a desk', 'On a TV'],
+    about: 'PC TV handheld mode desk window full screen F11 bigger text touch controls',
+    values: ['PC', 'TV', 'Handheld'],
     when: (can) => can.windowed,
   },
   {
@@ -385,3 +389,4 @@ export function searchSettings(query: string, can: Capabilities | null): Setting
   });
   return scored.sort((a, b) => b.score - a.score || a.order - b.order).map((s) => s.match);
 }
+

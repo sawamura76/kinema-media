@@ -269,3 +269,12 @@ measurement, not by copying.
 The `.nfo` format read and written by `src-tauri/src/nfo.rs` is the de facto
 interop format used by Kodi, MediaElch and tinyMediaManager. It is a convention,
 not a specification, and no code from any of those projects is used.
+
+
+## Personal music build: Butterchurn
+
+Butterchurn 2.6.7 and fourteen presets from butterchurn-presets 2.4.7, by Jordan Berg and the credited preset authors (Geiss, Flexi, Martin, Suksma, Hexcollie, Shifter, Mig, Cope and collaborators), are included under the MIT license. Preset names preserve author credits. Full notices are in BUTTERCHURN-LICENSES.txt. Preset equations were compiled to static JavaScript functions for the existing Content Security Policy. Sources: https://github.com/jberg/butterchurn and https://github.com/jberg/butterchurn-presets.
+
+Music artist photos/fanart are obtained from TheAudioDB on artist-name lookups and cached for personal offline use. The service is credited in the music pages; no artwork is bundled in the clean app archive. https://www.theaudiodb.com/
+
+The two newer EEL presets were obtained from the official upstream commit recorded in src/music/presetSources/manifest.json and converted at build time with milkdrop-eel-parser 0.0.4 (MIT). This parser is not included in the running application.

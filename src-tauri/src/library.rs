@@ -256,6 +256,14 @@ fn merge_roots(conn: &mut rusqlite::Connection, path: &str, kind: &str, name: Op
         ));
     }
 
+    let mut collection_ids = Vec::new();
+    if kind == "movies" || kind == "tv" {
+        for root in &inside {
+            let id: i64 = conn.query_row("SELECT COALESCE((SELECT collection_id FROM video_collection_roots WHERE root_id=?1),?2)", params![root.id,if kind == "movies" {1} else {2}], |r|r.get(0)).map_err(to_string_err)?;
+            if !collection_ids.contains(&id) { collection_ids.push(id); }
+        }
+        if collection_ids.len() > 1 { return Err("These folders belong to different collections. Assign them to the same collection before merging.".into()); }
+    }
     let tx = conn.transaction().map_err(to_string_err)?;
     tx.execute(
         "INSERT INTO library_roots (path, kind, added_at, name) VALUES (?1, ?2, ?3, ?4)",
@@ -272,6 +280,9 @@ fn merge_roots(conn: &mut rusqlite::Connection, path: &str, kind: &str, name: Op
     )
     .map_err(to_string_err)?;
     let new_id = tx.last_insert_rowid();
+    if let Some(collection_id) = collection_ids.first() {
+        tx.execute("INSERT INTO video_collection_roots(root_id,collection_id) VALUES (?1,?2)",params![new_id,collection_id]).map_err(to_string_err)?;
+    }
     for root in &inside {
         tx.execute(
             "UPDATE media_files SET root_id = ?1 WHERE root_id = ?2",
@@ -680,5 +691,18 @@ mod tests {
         let media2 = comparable(r"D:\Media2");
         assert!(!is_within(&media2, &media));
         assert!(!is_within(&media, &media2));
+    }
+
+    #[test]
+    fn merging_folders_preserves_collection_and_refuses_mixed_assignments() {
+        let mut conn=library();
+        conn.execute("DELETE FROM library_roots WHERE id=3",[]).unwrap();
+        conn.execute("INSERT INTO video_collections(id,name,kind) VALUES(3,'Anime TV','tv')",[]).unwrap();
+        conn.execute("INSERT INTO video_collection_roots(root_id,collection_id) VALUES(1,3)",[]).unwrap();
+        assert!(merge_roots(&mut conn,r"D:\Media","tv",None).unwrap_err().contains("different collections"));
+        conn.execute("INSERT INTO video_collection_roots(root_id,collection_id) VALUES(2,3)",[]).unwrap();
+        let id=merge_roots(&mut conn,r"D:\Media","tv",None).unwrap();
+        assert_eq!(conn.query_row("SELECT collection_id FROM video_collection_roots WHERE root_id=?1",[id],|r|r.get::<_,i64>(0)).unwrap(),3);
+        assert_eq!(conn.query_row("SELECT COUNT(*) FROM media_files WHERE root_id=?1",[id],|r|r.get::<_,i64>(0)).unwrap(),2);
     }
 }

@@ -15,12 +15,14 @@ import { loadLook } from './ui/lightLook';
 import { loadContrast } from './ui/contrast';
 import { loadTvMode, setTvMode, useTvMode } from './ui/tv';
 import './App.css';
+import { useGamepadNavigation } from './music/gamepad';
 
 /**
  * Browse is the whole app now. Library management lives in its Settings screen,
  * with the stage-by-stage developer tools folded in behind a disclosure there.
  */
 export default function App() {
+  useGamepadNavigation();
   const tv = useTvMode();
   const showShortcuts = useShortcutsOpen();
   // Kinema's own folder browser, where the system has no picker (folders.ts).

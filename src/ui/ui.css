@@ -2924,6 +2924,12 @@ button.cast-member {
   cursor: default;
 }
 
+/* Keep the original top/bottom flex layout while retaining the controls
+   across mini-player switches. A hidden wrapper must still remain hidden. */
+.full-player-ui:not([hidden]) {
+  display: contents;
+}
+
 /*
  * Black until the file's first frame is up — the one opaque surface the
  * player is allowed. The window is transparent so mpv can render behind the
@@ -4758,3 +4764,18 @@ kbd {
 :root[data-look='light'] .see-all-card.focused:hover {
   outline: var(--focus-ring) solid #fff;
 }
+
+/* Collection controls share the movie/TV folder assignments, never metadata franchises. */
+.video-collection-bar { margin:.5rem 0 1.3rem; }
+.video-collection-actions { display:flex; gap:.75rem; align-items:center; flex-wrap:wrap; margin:.6rem 0; }
+.video-collection-actions label, .video-root-collection { display:flex; gap:.6rem; align-items:center; flex-wrap:wrap; }
+.video-collection-actions select, .video-root-collection select { color-scheme:dark; background:#24222e; color:#f6f3ff; border:1px solid #635c77; border-radius:.5rem; padding:.65rem; font:inherit; max-width:100%; }
+.video-collection-actions input { font:inherit; color:#f6f3ff; background:#24222e; padding:.65rem; border:1px solid #635c77; border-radius:.5rem; }
+.settings-roots > li { flex-wrap:wrap; }
+:root[data-ui-mode='handheld'] { font-size:18px; --gutter:1.25rem; --focus-ring:4px; --safe-top:0rem; }
+:root[data-ui-mode='handheld'] .top-nav { overflow-x:auto; gap:.4rem; padding-inline:1rem; }
+:root[data-ui-mode='handheld'] .top-nav > * { flex-shrink:0; }
+:root[data-ui-mode='handheld'] button, :root[data-ui-mode='handheld'] select, :root[data-ui-mode='handheld'] input:not([type='range']) { min-height:44px; }
+:root[data-ui-mode='handheld'] .music-album-grid, :root[data-ui-mode='handheld'] .games-grid { grid-template-columns:repeat(auto-fill,minmax(165px,1fr)); }
+:root[data-ui-mode='handheld'] .music-page { padding-inline:1.25rem; }
+:root[data-ui-mode='handheld'] .music-viz-panel { width:min(25rem,92vw); }

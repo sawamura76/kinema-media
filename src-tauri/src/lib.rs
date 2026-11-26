@@ -14,6 +14,8 @@ mod detect;
 mod disc;
 mod display;
 mod engine;
+#[cfg(target_os = "windows")]
+mod portable_mpv;
 mod equipment;
 mod ffmpeg;
 mod ffmpeg_install;
@@ -30,6 +32,15 @@ mod metadata;
 mod import_watched;
 mod moving;
 mod my_list;
+mod music;
+mod hub;
+mod video_collections;
+mod music_art;
+mod music_match;
+mod music_tags;
+mod album_art;
+mod music_pcm;
+mod mini_window;
 mod versions;
 #[cfg(target_os = "linux")]
 mod desktop;
@@ -141,6 +152,8 @@ fn open_library(app: &tauri::AppHandle) -> Result<(), String> {
         eprintln!("could not start the log in {}: {e}", dir.display());
     }
     log!("--- Kinema {} started ---", env!("CARGO_PKG_VERSION"));
+    #[cfg(target_os = "windows")]
+    if let Err(error) = portable_mpv::prepare() { log!("playback: {error}"); }
     log!("capabilities: {:?}", capabilities::current());
     webkit_drawing::say_choice();
     if let Err(e) = util::keep_private(&dir) {
@@ -323,6 +336,8 @@ pub fn run() {
     }
 
     share_logins::register(places::register(engine::register(builder)))
+        .manage(mini_window::Floating::default())
+        .on_window_event(mini_window::on_event)
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_http::init())
@@ -330,6 +345,7 @@ pub fn run() {
             thumbs::serve(context.app_handle().clone(), request, responder)
         })
         .setup(|app| {
+            mini_window::watch(app.handle().clone());
             if let Err(message) = open_library(app.handle()) {
                 // Release builds set `windows_subsystem = "windows"`, so there
                 // is no console: returning this error would abort the process
@@ -419,6 +435,35 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            music_art::music_artist_art,
+            album_art::music_find_album_art,
+            album_art::music_find_artist_art,
+            album_art::music_cancel_album_art,
+            album_art::music_album_art_status,
+            music_pcm::music_visualizer_frame,
+            mini_window::mini_player_sync,
+            mini_window::mini_player_restore,
+            video_collections::video_collections,
+            video_collections::video_add_collection,
+            video_collections::video_assign_root,
+            hub::music_collection_preferences,
+            hub::music_collection_media,
+            hub::visualization_media,
+            hub::game_shortcuts,
+            hub::game_save,
+            hub::game_remove,
+            hub::game_launch,
+            music::music_library,
+            music::music_add_root,
+            music::music_add_collection,
+            music::music_move_root,
+            music::music_remove_root,
+            music::music_scan,
+            music_match::music_match_album,
+            music_match::music_search_releases,
+            music_match::music_use_release,
+            music_tags::music_save_tags,
+            music_tags::music_preview_cover,
             updates::latest_release,
             engine::mpv_started,
             engine::mpv_give_back,

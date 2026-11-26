@@ -108,3 +108,5 @@ export const FullscreenIcon = () => (
     <path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" />
   </Icon>
 );
+
+export const CloseIcon = () => <Icon><path d="m6 6 12 12M18 6 6 18" /></Icon>;

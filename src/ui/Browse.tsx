@@ -1,3 +1,8 @@
+import CollectionLayout, { type CollectionItem } from './CollectionLayout';
+import LibraryIcon from './LibraryIcon';
+import FocusSelect from './FocusSelect';
+import { useOutsideDismiss } from './useOutsideDismiss';
+import { VIDEO_COLLECTIONS_CHANGED, useVideoCollections, selectedVideoCollection, filterCollectionTitles, type VideoKind, type VideoCollections } from '../library/videoCollections';
 /**
  * The browsing shell: home, search and detail, plus handoff to the player.
  *
@@ -7,7 +12,7 @@
  */
 import { describeError, userError } from './errors';
 import { scanBarWords } from '../library/scanWords';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import Home, { HERO_PLAY_FOCUS_KEY } from './Home';
 import { SCAN_OK_KEY } from './HomeNotices';
 import TitleDetailView from './TitleDetail';
@@ -15,8 +20,9 @@ import CardGrid from './CardGrid';
 import FocusButton from './FocusButton';
 import Settings, { type SettingsTarget } from './Settings';
 import { SETUP_PAGES_KEY } from './SetupPages';
-import { currentFocusKey, returnFocusTo } from './focus';
+import { currentFocusKey, returnFocusTo, focusTo } from './focus';
 import { back, current, navigate, open, replace, type Entry } from './history';
+import { useMouseNavigation } from './useMouseNavigation';
 import { useFocusGroup, useNavGroup } from './focusGroups';
 import { FocusScreen } from './focusEngine';
 import { navFocus, navFocused, useLanding } from './focusStore';
@@ -79,15 +85,25 @@ import { isPlaySomethingKey, type Pool } from './somethingPick';
 import { registerSelfTestPlay, runSelfTest, selfTestPlan } from '../selftest';
 import { startEngine } from '../player/engine';
 import './ui.css';
+import MusicPage from '../music/MusicPage';
+import GamesPage from '../games/GamesPage';
+import MusicBar from '../music/MusicBar';
+import MusicNowPlaying from '../music/MusicNowPlaying';
+import FloatingMusic from '../music/FloatingMusic';
+import { useFloatingPlayer } from '../player/floating';
+import { useMusicPlayer } from '../music/useMusicPlayer';
+import { useMusicLanguage } from '../music/language';
 
 /** The nav entries, in order. Detail and player are reached, not navigated to. */
-type NavTarget = 'home' | 'movies' | 'tv' | 'library' | 'search' | 'settings';
+type NavTarget = 'home' | 'movies' | 'tv' | 'music' | 'games' | 'library' | 'search' | 'settings';
 
 /** The top bar, in order. Movies and TV shows open the whole shelf as a grid. */
 const NAV_ITEMS: [NavTarget, string][] = [
   ['home', 'Home'],
   ['movies', 'Movies'],
   ['tv', 'TV shows'],
+  ['music', 'Music'],
+  ['games', 'Games'],
   // Everything else — Videos folders, and later Folders and Playlists — is a
   // tile on this page, so the bar never grows again (LOCAL-MEDIA.md, decision 1).
   ['library', 'Library'],
@@ -99,7 +115,9 @@ const NAV_ITEMS: [NavTarget, string][] = [
 type View =
   // `section` opens Settings on the review queue, or on the TMDB key field,
   // from the notices on Home.
-  | { name: 'home' | 'library' | 'search' | 'settings'; section?: SettingsTarget }
+  | { name: 'home' | 'games' | 'library' | 'search' | 'settings'; section?: SettingsTarget }
+  | { name: 'music'; musicTab?: 'Queue' }
+  | { name: 'music-player' }
   // One Videos folder, from a tile on the Library page.
   | { name: 'videos'; root: LibraryRoot }
   // Library → Playlists, and one playlist (PlaylistsPages.tsx).
@@ -124,6 +142,12 @@ const GRID_FOCUS_KEY = 'grid-view';
 
 export default function Browse() {
   const [titles, setTitles] = useState<Title[]>([]);
+  const videoCollections = useVideoCollections(titles);
+  const [collectionSelection, setCollectionSelection] = useState(() => ({ movies: selectedVideoCollection('movies'), tv: selectedVideoCollection('tv') }));
+  const chooseVideoCollection = (kind: VideoKind, id: number) => {
+    setCollectionSelection((current) => ({ ...current, [kind]: id }));
+    localStorage.setItem('kinema.collection.' + kind, String(id));
+  };
   /**
    * Whether the library has been read at least once. Until it has, "no
    * titles" means "not asked yet", not "empty" — and Home must not show the
@@ -140,7 +164,11 @@ export default function Browse() {
     const opened = launchRequest();
     return opened ? [home, { view: { name: 'player', target: opened.target }, returnFocus: null }] : [home];
   });
+  useMouseNavigation(stack, setStack);
   const view = current(stack);
+  const music = useMusicPlayer(view.name === 'player');
+  const [musicHomeVisit, setMusicHomeVisit] = useState(0);
+  const floating = useFloatingPlayer(view.name === 'player' ? 'video' : music.active ? 'music' : null);
   /**
    * Kinema was started to play a file: when it is done — it ends, or Back —
    * Kinema closes rather than showing Home (LOCAL-MEDIA.md, decision 2).
@@ -206,6 +234,7 @@ export default function Browse() {
   const [hasUpdate, setHasUpdate] = useState(false);
   /** The setup pages are up on Home (SetupPages.tsx). */
   const [setupOpen, setSetupOpen] = useState(false);
+  const [setupDone, setSetupDone] = useState(false);
   /** Whether a launch has looked for setup pages left unfinished. */
   const setupLooked = useRef(false);
 
@@ -308,6 +337,7 @@ export default function Browse() {
       ]);
       setRoots((shown) => keepSame(shown, folders, (r) => r.id));
       if (setupState === 'open') setSetupOpen(true);
+      if (setupState === 'done') setSetupDone(true);
       // A title with no files left is not watchable — unlinking a wrong match
       // leaves the cached title row behind, and it should not show up as a
       // card that plays nothing.
@@ -339,6 +369,12 @@ export default function Browse() {
     }
   }, []);
 
+  useEffect(() => {
+    const changed = () => { void load(); };
+    window.addEventListener(VIDEO_COLLECTIONS_CHANGED, changed);
+    return () => window.removeEventListener(VIDEO_COLLECTIONS_CHANGED, changed);
+  }, [load]);
+
   const openSetup = useCallback(() => {
     setSetupOpen(true);
     void setSetting(SETUP_PAGES_KEY, 'open').catch((e) => console.warn('setup pages:', e));
@@ -346,6 +382,7 @@ export default function Browse() {
 
   const closeSetup = useCallback(() => {
     setSetupOpen(false);
+    setSetupDone(true);
     void setSetting(SETUP_PAGES_KEY, 'done').catch((e) => console.warn('setup pages:', e));
   }, []);
 
@@ -653,11 +690,14 @@ export default function Browse() {
   /** Resolve a grid's stored ids, keeping the order the rail had them in. */
   const gridTitles = useMemo(() => {
     if (view.name !== 'grid') return [];
-    if (view.kind) return titles.filter((t) => t.kind === view.kind);
+    if (view.kind) {
+      const kind = view.kind === 'movie' ? 'movies' : 'tv';
+      return filterCollectionTitles(titles.filter((t) => t.kind === view.kind), videoCollections.library, collectionSelection[kind]);
+    }
     if (!view.titleIds) return [];
     const byId = new Map(titles.map((t) => [t.id, t]));
     return view.titleIds.map((id) => byId.get(id)).filter((t): t is Title => t !== undefined);
-  }, [view, titles]);
+  }, [view, titles, videoCollections.library, collectionSelection]);
 
   // Play something: on Home from the whole library, on a grid from what it
   // shows. S does the same as the button.
@@ -715,6 +755,7 @@ export default function Browse() {
   if (view.name === 'player') {
     return (
       <Player
+        mini={floating}
         target={view.target}
         onPlayTarget={playOn}
         // Back to the page Play was pressed on. Home re-reads the library
@@ -725,11 +766,15 @@ export default function Browse() {
     );
   }
 
+  if (view.name === 'music-player') {
+    return <><div hidden={floating}><MusicNowPlaying suspended={floating} player={music} onClose={goBack} onQueue={() => openView({ name: 'music', musicTab: 'Queue' })} /></div>{floating && <FloatingMusic player={music} />}</>;
+  }
+
   // Where Home shows its notices: titles there, and no setup pages over them.
   const scanTroubleOnHome = view.name === 'home' && titles.length > 0 && !setupOpen;
 
   return (
-    <div className="browse" ref={shellRef}>
+    <><div className="browse" ref={shellRef} style={floating ? { display: 'none' } : undefined} inert={floating}>
         <TopNav
           active={
             view.name === 'grid' && view.kind
@@ -743,6 +788,7 @@ export default function Browse() {
           reviewCount={reviewCount}
           hasUpdate={hasUpdate}
           onNavigate={(target) => {
+            if (target === 'music') setMusicHomeVisit((visit) => visit + 1);
             const next: View =
               target === 'movies'
                 ? { name: 'grid', heading: 'Movies', kind: 'movie' }
@@ -780,6 +826,8 @@ export default function Browse() {
             onPlay={(title) => void playTitle(title)}
             onRemoveResumable={(item) => void removeResumable(item)}
             onFirstScan={firstScan}
+            setupDone={setupDone}
+            onSkipSetup={() => { closeSetup(); openView({ name: 'music' }); }}
             hasVideos={roots.some((r) => r.kind === 'videos' && r.file_count > 0)}
             folders={{
               count: roots.length,
@@ -839,6 +887,7 @@ export default function Browse() {
           />
         )}
 
+        {view.name === 'games' && <FocusScreen><GamesPage /></FocusScreen>}
         {view.name === 'library' && (
           <FocusScreen>
           <LibraryPage
@@ -851,6 +900,8 @@ export default function Browse() {
           />
           </FocusScreen>
         )}
+
+        {view.name === 'music' && <FocusScreen key={`music:${view.musicTab ?? 'Artists'}:${musicHomeVisit}`}><MusicPage player={music} initialTab={view.musicTab} onManage={() => openView({ name: 'settings', section: 'music' })} /></FocusScreen>}
 
         {view.name === 'folders' && (
           <FocusScreen>
@@ -910,6 +961,14 @@ export default function Browse() {
           <FocusScreen key={view.heading}>
           <GridView
             heading={view.heading}
+            collection={view.kind ? {
+              scope: view.kind === 'movie' ? 'movies' : 'tv',
+              items: videoSidebarItems(view.kind, videoCollections.library, titles),
+              selected: collectionSelection[view.kind === 'movie' ? 'movies' : 'tv'],
+              title: videoCollections.library?.collections.find((item) => item.id === collectionSelection[view.kind === 'movie' ? 'movies' : 'tv'])?.name ?? view.heading,
+              onSelect: (id) => chooseVideoCollection(view.kind === 'movie' ? 'movies' : 'tv', id),
+              onManage: () => openView({ name: 'settings', section: view.kind === 'movie' ? 'movies-collections' : 'tv-collections' }),
+            } : undefined}
             titles={gridTitles}
             // A whole shelf from the top bar has the bar for getting away;
             // a See-all grid was reached from a rail and goes back to it.
@@ -1009,6 +1068,7 @@ export default function Browse() {
         )}
 
         {leaving && <LeaveDialog onClose={() => setLeaving(false)} />}
+        <MusicBar player={music} onQueue={() => openView({ name: 'music', musicTab: 'Queue' })} onFullscreen={() => openView({ name: 'music-player' })} />
         {/* The menu on cards (cardMenuStore.ts), over whichever screen the card is on. */}
         <CardMenuHost
           onPlay={(title) => void playTitle(title)}
@@ -1024,7 +1084,7 @@ export default function Browse() {
             onClose={() => setSomething(null)}
           />
         )}
-    </div>
+    </div>{floating && <FloatingMusic player={music} />}</>
   );
 }
 
@@ -1045,6 +1105,7 @@ function TopNav({
   hasUpdate: boolean;
   onNavigate: (target: NavTarget) => void;
 }) {
+  const musicLanguage = useMusicLanguage();
   // A row landing on the open section (NAV-MAP, agreed 2026-10-11): Up from
   // Home's Play, from Settings' list or a section's first row is the section
   // you are in, not the button last used or the one nearest.
@@ -1064,15 +1125,17 @@ function TopNav({
     <FocusProvider value={focusKey}>
       {/* `data-sticky-top`: what the one scroll rule keeps clear (focusScroll.ts). */}
       <nav className="top-nav" ref={ref} data-sticky-top="">
-        <span className="brand">Kinema</span>
+        <span className="brand">Kinema Media</span>
         {NAV_ITEMS.map(([name, label]) => (
           <FocusButton
             key={name}
             focusKey={navKey(name)}
-            className={active === name ? 'active' : ''}
+            className={(active === name ? 'active ' : '') + (['library','search','settings'].includes(name) ? 'nav-icon ' : '') + (name === 'library' ? 'nav-tools-start' : '')}
+            label={name === 'music' ? musicLanguage.t('music') : label}
+            title={label}
             onSelect={() => onNavigate(name)}
           >
-            {label}
+            {name === 'library' ? <LibraryIcon name="folder" /> : name === 'search' ? <LibraryIcon name="search" /> : name === 'settings' ? <LibraryIcon name="settings" /> : name === 'music' ? musicLanguage.t('music') : name === 'tv' ? 'TV' : label}
             {name === 'settings' && reviewCount > 0 && (
               <span className="nav-badge" aria-label={`${reviewCount} to review`}>
                 {reviewCount}
@@ -1115,133 +1178,74 @@ function TopNav({
  * always follows pressing "See all" on a card that is now unmounted, which is
  * the silent dead end in docs/GOTCHAS.md.
  */
-function GridView({
-  heading,
-  titles,
-  showBack,
-  onSelect,
-  onBack,
-  onPlaySomething,
-  onNewCollection,
-}: {
+function GridView({ heading, collection, titles, showBack, onSelect, onBack, onPlaySomething, onNewCollection }: {
   heading: string;
-  titles: Title[];
-  showBack: boolean;
-  onSelect: (title: Title) => void;
-  onBack: () => void;
-  onPlaySomething: () => void;
-  /** A whole shelf's: a smart collection made from it (CollectionPage.tsx). */
-  onNewCollection?: () => void;
+  collection?: { scope: 'movies' | 'tv'; items: CollectionItem[]; selected: number; title: string; onSelect: (id: number) => void; onManage: () => void };
+  titles: Title[]; showBack: boolean; onSelect: (title: Title) => void; onBack: () => void;
+  onPlaySomething: () => void; onNewCollection?: () => void;
 }) {
-  // The page: its heading row, the order row and the cards, one above the other.
-  const { ref, focusKey } = useNavGroup(
-    { kind: 'column' },
-    { focusKey: GRID_FOCUS_KEY }
-  );
-
-  const [arrangement, setArrangement] = useState<GridArrangement>({
-    sort: 'added',
-    unwatched: false,
-    reversed: false,
-  });
+  const [arrangement, setArrangement] = useState<GridArrangement>({ sort: 'added', unwatched: false, reversed: false });
+  const [filters, setFilters] = useState(false);
+  const [dense, setDense] = useState(() => localStorage.getItem('kinema.media.compactPosters') === 'yes');
   useEffect(() => {
     let live = true;
-    void getSetting(gridSettingKey(heading))
-      .then((raw) => live && setArrangement(parseGridSetting(raw)))
-      .catch(() => undefined);
-    return () => {
-      live = false;
-    };
+    void getSetting(gridSettingKey(heading)).then((raw) => { if (live) setArrangement(parseGridSetting(raw)); }).catch(() => undefined);
+    return () => { live = false; };
   }, [heading]);
   const arrange = (next: GridArrangement) => {
     setArrangement(next);
-    void setSetting(gridSettingKey(heading), formatGridSetting(next)).catch((e) => console.warn('grid: could not remember the order', e));
+    void setSetting(gridSettingKey(heading), formatGridSetting(next)).catch((error) => console.warn('grid: could not save order',error));
   };
-  const shown = useMemo(
-    () => arrangeGrid(titles, arrangement.sort, arrangement.unwatched, arrangement.reversed),
-    [titles, arrangement]
-  );
+  const shown = useMemo(() => arrangeGrid(titles, arrangement.sort, arrangement.unwatched, arrangement.reversed), [titles, arrangement]);
   const entries = useMemo(() => shown.map((title) => ({ title })), [shown]);
-
-  // Land on the first title, not on Back or the sort buttons above it.
   const first = shown[0] ? `grid:${shown[0].id}` : GRID_FOCUS_KEY;
-  useLanding(titles.length > 0 || shown.length === 0 ? first : null);
+  useLanding(first);
+  const closeFilters = () => { setFilters(false); returnFocusTo('grid-filter-toggle'); };
+  useOutsideDismiss(filters, '.library-filters', closeFilters);
+  useEffect(() => {
+    if (!filters) return;
+    const back = (event: KeyboardEvent) => {
+      if (['Escape','Backspace','BrowserBack'].includes(event.key)) { event.preventDefault(); event.stopImmediatePropagation(); setFilters(false); returnFocusTo('grid-filter-toggle'); }
+    };
+    window.addEventListener('keydown',back,true); return () => window.removeEventListener('keydown',back,true);
+  }, [filters]);
+  const content = (toggle: ReactNode) => <LibraryGridArea>{(ref) =>
+    <div className={'search collection-video' + (dense ? ' library-dense' : '')} ref={ref}>
+      <FocusGroup kind="row" className="library-toolbar">
+        {toggle}
+        {showBack && <FocusButton className="back-button" onSelect={onBack}>← Back</FocusButton>}
+        <div className="library-title"><h2 className="grid-heading">{collection?.title ?? heading}</h2><span className="muted">{shown.length} {collection?.scope === 'tv' ? 'shows' : collection?.scope === 'movies' ? 'movies' : 'titles'}</span></div>
+        <label className="library-sort-label">Sort <FocusSelect label={collection?.scope === 'movies' ? 'Sort movies by' : collection?.scope === 'tv' ? 'Sort TV by' : 'Sort library by'} value={arrangement.sort} choices={GRID_SORTS.map((item) => ({ value: item.value, label: item.label }))} onChange={(sort) => arrange({ ...arrangement, sort: sort as GridArrangement['sort'], reversed: false })} /></label>
+        <div className="library-filters">
+          <FocusButton focusKey="grid-filter-toggle" className="library-icon-button" label="Filters" expanded={filters} pressed={arrangement.unwatched} controls="library-filter-menu" onSelect={() => { setFilters(!filters); if (!filters) requestAnimationFrame(() => focusTo('grid-unwatched')); }}><LibraryIcon name="filter" /></FocusButton>
+          {filters && <FocusGroup kind="menu" className="library-filter-menu" role="menu" aria-label="Library filters">
+            <FocusButton focusKey="grid-unwatched" label="Unwatched only" pressed={arrangement.unwatched} onSelect={() => { arrange({ ...arrangement, unwatched: !arrangement.unwatched }); requestAnimationFrame(() => focusTo('grid-unwatched')); }}>{arrangement.unwatched ? '✓ ' : ''}Unwatched only</FocusButton>
+            <FocusButton label="Reverse sort order" pressed={arrangement.reversed} onSelect={() => arrange({ ...arrangement, reversed: !arrangement.reversed })}>{arrangement.reversed ? '✓ ' : ''}Reverse sort order</FocusButton>
+            <FocusButton disabled={!titles.length} onSelect={() => { closeFilters(); onPlaySomething(); }}>Play something</FocusButton>
+            {onNewCollection && <FocusButton disabled={!titles.length} onSelect={() => { closeFilters(); onNewCollection(); }}>Save filter</FocusButton>}
+          </FocusGroup>}
+        </div>
+        <FocusButton className="library-icon-button" label={dense ? 'Use large posters' : 'Use compact posters'} pressed={dense} onSelect={() => { setDense(!dense); localStorage.setItem('kinema.media.compactPosters',dense ? 'no' : 'yes'); }}><LibraryIcon name="grid" /></FocusButton>
+      </FocusGroup>
+      {titles.length === 0 && <p className="muted">Nothing here yet. Add folders in Manage collections.</p>}
+      {titles.length > 0 && shown.length === 0 && <p className="muted">Everything here has been watched. Switch off “Unwatched only” in Filters to see it all.</p>}
+      <CardGrid name="grid" entries={entries} onSelect={onSelect} fromAboveFirst />
+    </div>
+  }</LibraryGridArea>;
+  return collection ? <CollectionLayout scope={collection.scope} items={collection.items} selected={collection.selected} onSelect={collection.onSelect} onManage={collection.onManage} mainFocus={GRID_FOCUS_KEY}>{content}</CollectionLayout> : content(null);
+}
 
-  return (
-    <FocusProvider value={focusKey}>
-      <div className="search" ref={ref}>
-        <FocusGroup kind="row" className="grid-head">
-          {showBack && (
-            <FocusButton className="back-button" onSelect={onBack}>
-              ← Back
-            </FocusButton>
-          )}
-          <h2 className="grid-heading">
-            {heading} <span className="muted">{shown.length}</span>
-          </h2>
-          {/* Within what this page shows: a genre, a collection, a shelf. */}
-          {titles.length > 0 && (
-            <FocusButton
-              focusKey="grid-play-something"
-              className="btn-secondary grid-something"
-              onSelect={onPlaySomething}
-            >
-              Play something
-            </FocusButton>
-          )}
-          {onNewCollection && titles.length > 0 && (
-            <FocusButton
-              focusKey="grid-new-collection"
-              className="btn-secondary"
-              onSelect={onNewCollection}
-            >
-              New collection
-            </FocusButton>
-          )}
-        </FocusGroup>
-        {/* A row landing on the order in use (NAV-MAP, agreed 2026-10-11):
-            Up from the first row of films is the order you chose. */}
-        <FocusGroup
-          kind="row"
-          current={`grid-sort:${arrangement.sort}`}
-          className="grid-controls choice-options"
-          role="group"
-          aria-label="Order"
-        >
-          {GRID_SORTS.map((s) => (
-            <FocusButton
-              key={s.value}
-              focusKey={`grid-sort:${s.value}`}
-              className={`choice ${arrangement.sort === s.value ? 'chosen' : ''}`}
-              title={arrangement.sort === s.value ? 'Press again to flip the order' : undefined}
-              onSelect={() =>
-                arrange({
-                  ...arrangement,
-                  sort: s.value,
-                  reversed: arrangement.sort === s.value ? !arrangement.reversed : false,
-                })
-              }
-            >
-              {s.label}
-              {arrangement.sort === s.value && (arrangement.reversed ? ' ↑' : ' ↓')}
-            </FocusButton>
-          ))}
-          <FocusButton
-            focusKey="grid-unwatched"
-            className={`choice grid-filter ${arrangement.unwatched ? 'chosen' : ''}`}
-            onSelect={() => arrange({ ...arrangement, unwatched: !arrangement.unwatched })}
-          >
-            {arrangement.unwatched ? '✓ ' : ''}Unwatched only
-          </FocusButton>
-        </FocusGroup>
-        {titles.length === 0 && <p className="muted">Nothing here yet.</p>}
-        {titles.length > 0 && shown.length === 0 && (
-          <p className="muted">Everything here has been watched. Switch off “Unwatched only” to see it all.</p>
-        )}
-        <CardGrid name="grid" entries={entries} onSelect={onSelect} fromAboveFirst />
-      </div>
-    </FocusProvider>
-  );
+/** Register the poster pane under the sidebar layout's provider, not beside it. */
+function LibraryGridArea({ children }: { children: (ref: RefObject<HTMLDivElement | null>) => ReactNode }) {
+  const { ref, focusKey } = useNavGroup({ kind: 'column', current: 'grid-cards', remember: true }, { focusKey: GRID_FOCUS_KEY });
+  return <FocusProvider value={focusKey}>{children(ref)}</FocusProvider>;
+}
+
+function videoSidebarItems(kind: 'movie' | 'series', library: VideoCollections | null, titles: Title[]): CollectionItem[] {
+  const rootKind = kind === 'movie' ? 'movies' : 'tv';
+  const available = titles.filter((title) => title.kind === kind);
+  const collections = library?.collections.filter((item) => item.kind === rootKind) ?? [{ id: kind === 'movie' ? 1 : 2, name: kind === 'movie' ? 'Movies' : 'TV shows' }];
+  return [{ id: 0, name: kind === 'movie' ? 'All movies' : 'All TV', count: available.length }, ...collections.map((item) => ({ id: item.id, name: item.name, count: filterCollectionTitles(available,library,item.id).length }))];
 }
 
 /**

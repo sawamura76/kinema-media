@@ -10,9 +10,9 @@
 //!
 //! What is written, all under `HKCU\Software`:
 //!
-//!  * `Classes\Kinema.Video` — how a video is opened with Kinema: the program
+//!  * `Classes\KinemaMusic.Video` — how a video is opened with Kinema: the program
 //!    with the file after it, and its icon.
-//!  * `Classes\.mkv\OpenWithProgids\Kinema.Video` and the same for every
+//!  * `Classes\.mkv\OpenWithProgids\KinemaMusic.Video` and the same for every
 //!    other extension the library scans — Kinema in each type's "Open with".
 //!  * `Classes\Applications\kinema.exe` — Kinema's name in those lists.
 //!  * `Kinema\Capabilities` and `RegisteredApplications\Kinema` — Kinema in
@@ -31,9 +31,10 @@
 use serde::Serialize;
 
 /// The name Windows lists Kinema under in Default apps.
-const APP: &str = "Kinema";
+const APP: &str = "Kinema Music"; // Stable registration identity.
+const DISPLAY_NAME: &str = "Kinema Media";
 /// How a video opened with Kinema is described to Windows.
-const PROG_ID: &str = "Kinema.Video";
+const PROG_ID: &str = "KinemaMusic.Video";
 
 #[derive(Serialize)]
 pub struct PlayerOffer {
@@ -66,9 +67,9 @@ fn offer_values(base: &str, exe: &str, exe_name: &str, extensions: &[&str]) -> V
         value(prog.clone(), None, "Video"),
         value(format!(r"{prog}\DefaultIcon"), None, icon.clone()),
         value(format!(r"{prog}\shell\open\command"), None, command.clone()),
-        value(app.clone(), Some("FriendlyAppName"), APP),
+        value(app.clone(), Some("FriendlyAppName"), DISPLAY_NAME),
         value(format!(r"{app}\shell\open\command"), None, command),
-        value(caps.clone(), Some("ApplicationName"), APP),
+        value(caps.clone(), Some("ApplicationName"), DISPLAY_NAME),
         value(
             caps.clone(),
             Some("ApplicationDescription"),
@@ -455,19 +456,19 @@ mod tests {
             values.iter().any(|v| v.key == key && v.name.as_deref() == name && v.data == data)
         };
         assert!(has(
-            r"Software\Classes\Kinema.Video\shell\open\command",
+            r"Software\Classes\KinemaMusic.Video\shell\open\command",
             None,
             r#""C:\Kinema\kinema.exe" "%1""#
         ));
-        assert!(has(r"Software\Classes\.mkv\OpenWithProgids", Some("Kinema.Video"), ""));
-        assert!(has(r"Software\Classes\.mp4\OpenWithProgids", Some("Kinema.Video"), ""));
-        assert!(has(r"Software\Kinema\Capabilities\FileAssociations", Some(".mkv"), "Kinema.Video"));
+        assert!(has(r"Software\Classes\.mkv\OpenWithProgids", Some("KinemaMusic.Video"), ""));
+        assert!(has(r"Software\Classes\.mp4\OpenWithProgids", Some("KinemaMusic.Video"), ""));
+        assert!(has(r"Software\Kinema Music\Capabilities\FileAssociations", Some(".mkv"), "KinemaMusic.Video"));
         assert!(has(
             r"Software\RegisteredApplications",
-            Some("Kinema"),
-            r"Software\Kinema\Capabilities"
+            Some("Kinema Music"),
+            r"Software\Kinema Music\Capabilities"
         ));
-        assert!(has(r"Software\Classes\Applications\kinema.exe", Some("FriendlyAppName"), "Kinema"));
+        assert!(has(r"Software\Classes\Applications\kinema.exe", Some("FriendlyAppName"), "Kinema Media"));
     }
 
     /// The real calls, on a scratch key of this account that names no type
@@ -492,12 +493,12 @@ mod tests {
         .unwrap();
         let mut names = registry::value_names(&format!(r"{base}\Classes\.mkv\OpenWithProgids"));
         names.sort();
-        assert_eq!(names, ["Kinema.Video", "Other.Player"]);
+        assert_eq!(names, ["KinemaMusic.Video", "Other.Player"]);
 
         offer::remove(&base, "kinema.exe");
         assert!(!offer::is_offered(&base));
-        assert!(!offer::exists(&format!(r"{base}\Classes\Kinema.Video")));
-        assert!(!offer::exists(&format!(r"{base}\Kinema")));
+        assert!(!offer::exists(&format!(r"{base}\Classes\KinemaMusic.Video")));
+        assert!(!offer::exists(&format!(r"{base}\Kinema Music")));
         assert!(!offer::exists(&format!(r"{base}\Classes\.mp4")));
         assert!(registry::read(&format!(r"{base}\Classes\.mkv\OpenWithProgids"), Some("Other.Player"))
             .is_some());

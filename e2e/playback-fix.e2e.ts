@@ -1,0 +1,20 @@
+import {test,expect} from '@playwright/test';
+test('audio X stops playback and closes its bar in browse and full-screen modes',async({page})=>{
+  await page.addInitScript(()=>{localStorage.setItem('kinemaMockMusic','1');localStorage.setItem('kinema.music.language','en');});
+  await page.goto('/');
+  await page.getByRole('button',{name:'Music',exact:true}).click();
+  await page.getByRole('button',{name:'Album',exact:true}).click();
+  await page.getByRole('button',{name:'First album Test artist',exact:true}).click();
+  await page.getByRole('button',{name:'▶ Play',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Pause music',exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Close music player',exact:true}).click();
+  await expect(page.locator('.music-player')).toHaveCount(0);
+  await expect.poll(()=>page.evaluate(()=>(window as unknown as {__fakeMpv:{path:string|null}}).__fakeMpv.path)).toBeNull();
+  await page.getByRole('button',{name:'▶ Play',exact:true}).click();
+  await page.getByRole('button',{name:'Open full-screen music',exact:true}).click();
+  await expect(page.locator('.music-now-playing')).toBeVisible();
+  await page.getByRole('button',{name:'Close music player',exact:true}).click();
+  await expect(page.locator('.music-now-playing')).toHaveCount(0);
+  await expect(page.locator('.music-player')).toHaveCount(0);
+  await expect.poll(()=>page.evaluate(()=>(window as unknown as {__fakeMpv:{path:string|null}}).__fakeMpv.path)).toBeNull();
+});

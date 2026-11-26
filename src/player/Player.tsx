@@ -64,8 +64,11 @@ import { useVolume } from './useVolume';
 import { VOLUME_STEP, wheelVolumeSteps } from './volume';
 import { nameOf, noteFirstFrame, targetFor } from '../library/opened';
 import { isSoundLostNotice } from './soundWatch';
+import FloatingPlayer from './FloatingPlayer';
+import { restoreFloating } from './floating';
 
 interface Props {
+  mini?: boolean;
   target: PlaybackTarget;
   onExit: () => void;
   onPlayTarget: (target: PlaybackTarget) => void;
@@ -82,7 +85,7 @@ function Landing() {
 /** How long a notice about the sound stays on screen. */
 const AUDIO_NOTICE_MS = 12000;
 
-export default function Player({ target, onExit, onPlayTarget }: Props) {
+export default function Player({ target, onExit, onPlayTarget, mini = false }: Props) {
   const tv = useTvMode();
   const { session, dispatch, sessionRef, fail } = usePlaybackSession(target.path);
   /** Waiting for data, said once it has lasted (buffering.ts). */
@@ -372,8 +375,8 @@ export default function Player({ target, onExit, onPlayTarget }: Props) {
   // ---- keyboard -----------------------------------------------------------
   usePlayerKeys({
     togglePauseByKey,
-    toggleFullscreen,
-    backOut,
+    toggleFullscreen: mini ? restoreFloating : toggleFullscreen,
+    backOut: mini ? restoreFloating : backOut,
     exit,
     seekRelative,
     showOsd,
@@ -381,7 +384,7 @@ export default function Player({ target, onExit, onPlayTarget }: Props) {
     performSkip,
     upNext,
     steps,
-    osdFocus,
+    osdFocus: mini || osdFocus,
     enterOsdFocus,
     leaveOsdFocus,
     showTracks,
@@ -420,7 +423,7 @@ export default function Player({ target, onExit, onPlayTarget }: Props) {
   const audioTracks = tracks.filter((t) => t.type === 'audio');
 
   return (
-    <FocusScreen keys={osdFocus}>
+    <FocusScreen keys={osdFocus && !mini}>
     <Landing />
     <NavParent value={PLAYER_SHELL_KEY}>
     <div
@@ -433,7 +436,7 @@ export default function Player({ target, onExit, onPlayTarget }: Props) {
       onClick={(e) => {
         if (
           (e.target as HTMLElement).closest(
-            'button, input, .volume-control, .track-panel, .up-next, .stats-panel'
+            'button, input, .volume-control, .track-panel, .up-next, .stats-panel, .floating-player'
           )
         )
           return;
@@ -443,15 +446,15 @@ export default function Player({ target, onExit, onPlayTarget }: Props) {
       onDoubleClick={(e) => {
         if (
           (e.target as HTMLElement).closest(
-            'button, input, .volume-control, .track-panel, .up-next, .stats-panel'
+            'button, input, .volume-control, .track-panel, .up-next, .stats-panel, .floating-player'
           )
         )
           return;
-        void toggleFullscreen();
+        if (mini) void restoreFloating(); else void toggleFullscreen();
       }}
     >
       {!session.frameShown && <div className="player-cover" aria-hidden="true" />}
-
+      <div hidden={mini} inert={mini} className="full-player-ui">
       <div className="player-top">
         <FocusButton className="back-button" label="Back" title="Back" onSelect={() => void exit()}>
           ← Back
@@ -579,6 +582,9 @@ export default function Player({ target, onExit, onPlayTarget }: Props) {
         onToggleMute={toggleMute}
         onFullscreen={onFullscreen}
       />
+      </div>
+      {mini && <FloatingPlayer video title={`${target.label}${target.episodeName ? ` · ${target.episodeName}` : ''}`} paused={paused} loading={!session.frameShown} error={error} volume={muted ? 0 : volume} receiver={receiver}
+        onPause={() => { void togglePause(); }} onPrevious={() => { void seekRelative(-10); }} onNext={() => { void seekRelative(10); }} onVolume={(value) => setVolumeLevel(value)} />}
     </div>
     </NavParent>
     </FocusScreen>

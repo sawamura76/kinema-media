@@ -1,3 +1,5 @@
+import VideoCollectionBar, { VideoRootCollection } from './VideoCollectionBar';
+import { VIDEO_COLLECTIONS_CHANGED, useVideoCollections, selectedVideoCollection } from '../library/videoCollections';
 /**
  * Settings — the user-facing half of what used to be the Library dev tab.
  *
@@ -18,6 +20,9 @@ import { userError } from './errors';
 import { scanTrouble, unreachableFolders } from './scanTrouble';
 import { scanStageWords, scanWords } from '../library/scanWords';
 import LanguageSection from './LanguageSection';
+import VisualizationSettings from './VisualizationSettings';
+import NavigationSettings from './NavigationSettings';
+import MusicFolderSettings, { MusicLanguageSettings } from './MusicSettings';
 import ChoiceRow, { LandLeftmost } from './ChoiceRow';
 import { getVersion } from '@tauri-apps/api/app';
 import { availableUpdate, UPDATE_CHECK_KEY, type Release } from './updates';
@@ -63,7 +68,7 @@ import { useNavGroup } from './focusGroups';
 import { useLanding } from './focusStore';
 import { pageToTop } from './focusScroll';
 import FocusGroup, { FocusProvider } from './FocusGroup';
-import { setTvMode, useTvMode } from './tv';
+import { setUiMode, useUiMode, useTvMode } from './tv';
 import { setLook, useLook, type LookSetting } from './lightLook';
 import { highContrast, setContrast } from './contrast';
 import {
@@ -244,7 +249,7 @@ const TMDB_KEY_INPUT_KEY = 'settings-tmdb-key';
 const FFMPEG_INPUT_KEY = 'settings-ffmpeg';
 
 /** Where Home's notices can open Settings: the review queue, the TMDB key or ffmpeg. */
-export type SettingsTarget = 'review' | 'tmdb-key' | 'ffmpeg' | 'picture' | 'videos' | 'folders';
+export type SettingsTarget = 'review' | 'tmdb-key' | 'ffmpeg' | 'picture' | 'videos' | 'folders' | 'music' | 'movies-collections' | 'tv-collections';
 
 /** Add movies folder, where Home's "Add another folder" lands. */
 const ADD_MOVIES_KEY = 'settings:add-movies';
@@ -347,12 +352,21 @@ export default function Settings({
           ? FFMPEG_INPUT_KEY
           : openSection === 'videos'
             ? ADD_VIDEOS_KEY
+            : openSection === 'music'
+              ? 'music-collection-picker'
+            : openSection === 'movies-collections'
+              ? 'settings-movies-collections'
+            : openSection === 'tv-collections'
+              ? 'settings-tv-collections'
             : openSection === 'folders'
               ? ADD_MOVIES_KEY
               : `settings-nav:${section}`
   );
 
   const [roots, setRoots] = useState<LibraryRoot[]>([]);
+  const videoCollections = useVideoCollections(roots);
+  const [movieCollection, setMovieCollection] = useState(() => selectedVideoCollection('movies') || 1), [tvCollection, setTvCollection] = useState(() => selectedVideoCollection('tv') || 2);
+  const uiMode = useUiMode();
   // Sign-ins kept for network shares Kinema opens itself (Android).
   const [logins, setLogins] = useState<ShareLogin[]>([]);
   const needsReview = useReviewCount();
@@ -496,6 +510,12 @@ export default function Settings({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void refresh();
   }, [refresh]);
+  useEffect(() => {
+    const changed = () => { void refresh(); };
+    window.addEventListener(VIDEO_COLLECTIONS_CHANGED, changed);
+    return () => window.removeEventListener(VIDEO_COLLECTIONS_CHANGED, changed);
+  }, [refresh]);
+
 
   // Keys live in the database in app data, never in the repo.
   useEffect(() => {
@@ -907,6 +927,11 @@ export default function Settings({
               <>
                 <section className="settings-section">
                   <h2>Folders</h2>
+                  <h3>Movie collections</h3>
+                  <VideoCollectionBar kind="movies" library={videoCollections.library} value={movieCollection} onChange={setMovieCollection} />
+                  <h3>TV collections</h3>
+                  <VideoCollectionBar kind="tv" library={videoCollections.library} value={tvCollection} onChange={setTvCollection} />
+                  {videoCollections.error && <p role="alert" className="settings-error">{videoCollections.error}</p>}
                   <p className="settings-intro">
                     Where Kinema finds your movies and TV shows. It checks them every time it
                     starts, so Scan now is only needed for files added while Kinema is open.
@@ -925,6 +950,7 @@ export default function Settings({
                             {root.path}
                           </span>
                           <span className="muted">{count(root.file_count, 'file')}</span>
+                          <VideoRootCollection root={root} library={videoCollections.library} />
                           {away.includes(root.path) ? (
                             // Two buttons in one row: a group, so a remote
                             // moves between them (GOTCHAS, "Two focusables").
@@ -1044,6 +1070,8 @@ export default function Settings({
                   </p>
                 </section>
 
+                <MusicFolderSettings />
+
                 {can?.network_shares && logins.length > 0 && (
                   <section className="settings-section">
                     <h2>Saved network logins</h2>
@@ -1130,15 +1158,16 @@ export default function Settings({
                   <ChoiceRow
                     label="Where Kinema is used"
                     choices={[
-                      { value: 'desk', label: 'At a desk' },
-                      { value: 'tv', label: 'On a TV' },
+                      { value: 'pc', label: 'PC' },
+                      { value: 'tv', label: 'TV' },
+                      { value: 'handheld', label: 'Handheld' },
                     ]}
-                    value={tvMode ? 'tv' : 'desk'}
-                    onChange={(v) => setTvMode(v === 'tv')}
-                    note="On a TV, Kinema fills the whole screen, with bigger text and a margin that keeps clear of the edges some TVs cut off. At a desk it runs in a window and its text grows with the window."
+                    value={uiMode}
+                    onChange={setUiMode}
+                    note="PC uses the normal windowed layout. TV fills the screen with larger text and safe screen margins. Handheld fills the screen with larger touch targets, readable text, and fewer tiles across. Changes save on this device."
                     hint={
                       <>
-                        Switch between them any time with <kbd>F11</kbd>, or{' '}
+                        Toggle TV and PC with <kbd>F11</kbd>, or{' '}
                         <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>T</kbd>.
                       </>
                     }
@@ -1584,6 +1613,9 @@ export default function Settings({
               </>
             )}
 
+            {shown === 'visualizations' && <VisualizationSettings />}
+            {shown === 'controls' && <NavigationSettings />}
+
             {shown === 'subtitles' && (
               <>
                 <section className="settings-section">
@@ -1593,6 +1625,7 @@ export default function Settings({
                   <ForcedSubtitleRows onError={setError} />
                   <AccessibleTrackRows onError={setError} />
                 </section>
+                <MusicLanguageSettings />
                 <OpenSubtitlesSection />
               </>
             )}

@@ -7,7 +7,7 @@ use rusqlite::Connection;
 use std::path::Path;
 
 /// The schema this build understands. Bump it with every new `SCHEMA_V*`.
-pub const SCHEMA_VERSION: i64 = 39;
+pub const SCHEMA_VERSION: i64 = 43;
 
 /// What can go wrong opening the library.
 ///
@@ -965,6 +965,70 @@ const SCHEMA_V39: &str = r#"
 ALTER TABLE media_files ADD COLUMN placed_from TEXT;
 "#;
 
+const SCHEMA_V40: &str = r#"
+CREATE TABLE music_roots (id INTEGER PRIMARY KEY, path TEXT NOT NULL UNIQUE);
+CREATE TABLE music_tracks (
+ id INTEGER PRIMARY KEY, root_id INTEGER NOT NULL REFERENCES music_roots(id) ON DELETE CASCADE,
+ path TEXT NOT NULL UNIQUE, size_bytes INTEGER NOT NULL, modified_at INTEGER NOT NULL,
+ title TEXT NOT NULL, artist TEXT NOT NULL, album_artist TEXT NOT NULL, album TEXT NOT NULL,
+ track INTEGER NOT NULL DEFAULT 0, disc INTEGER NOT NULL DEFAULT 0,
+ duration REAL NOT NULL DEFAULT 0, genre TEXT NOT NULL DEFAULT '', year INTEGER,
+ artwork TEXT, missing INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX music_album ON music_tracks(album_artist, album, disc, track);
+INSERT OR REPLACE INTO settings(key,value) VALUES ('update_check','off');
+"#;
+
+const SCHEMA_V41: &str = r#"
+CREATE TABLE music_collections (
+ id INTEGER PRIMARY KEY,
+ name TEXT NOT NULL COLLATE NOCASE UNIQUE CHECK(length(trim(name)) BETWEEN 1 AND 100)
+);
+INSERT INTO music_collections(id,name) VALUES (1,'Music');
+ALTER TABLE music_roots ADD COLUMN collection_id INTEGER NOT NULL DEFAULT 1;
+CREATE TRIGGER music_root_collection_insert BEFORE INSERT ON music_roots
+WHEN NOT EXISTS(SELECT 1 FROM music_collections WHERE id=NEW.collection_id)
+BEGIN SELECT RAISE(ABORT,'Unknown music collection'); END;
+CREATE TRIGGER music_root_collection_update BEFORE UPDATE OF collection_id ON music_roots
+WHEN NOT EXISTS(SELECT 1 FROM music_collections WHERE id=NEW.collection_id)
+BEGIN SELECT RAISE(ABORT,'Unknown music collection'); END;
+CREATE TRIGGER music_collection_in_use BEFORE DELETE ON music_collections
+WHEN EXISTS(SELECT 1 FROM music_roots WHERE collection_id=OLD.id)
+BEGIN SELECT RAISE(ABORT,'Music collection still contains folders'); END;
+CREATE INDEX music_root_collection ON music_roots(collection_id);
+"#;
+
+const SCHEMA_V42: &str = r#"
+ALTER TABLE music_collections ADD COLUMN default_sort TEXT NOT NULL DEFAULT 'artist';
+ALTER TABLE music_collections ADD COLUMN background_kind TEXT NOT NULL DEFAULT 'artist';
+ALTER TABLE music_collections ADD COLUMN background_path TEXT NOT NULL DEFAULT '';
+CREATE TABLE game_shortcuts (
+ id INTEGER PRIMARY KEY,
+ title TEXT NOT NULL,
+ target TEXT NOT NULL,
+ arguments TEXT NOT NULL DEFAULT '[]',
+ working_directory TEXT NOT NULL DEFAULT '',
+ artwork TEXT,
+ platform TEXT NOT NULL DEFAULT '',
+ kind TEXT NOT NULL DEFAULT 'game'
+);
+"#;
+
+const SCHEMA_V43: &str = r#"
+CREATE TABLE video_collections (
+ id INTEGER PRIMARY KEY,
+ name TEXT NOT NULL COLLATE NOCASE,
+ kind TEXT NOT NULL CHECK(kind IN ('movies','tv')),
+ UNIQUE(kind,name)
+);
+INSERT INTO video_collections(id,name,kind) VALUES(1,'Movies','movies'),(2,'TV shows','tv');
+CREATE TABLE video_collection_roots (
+ root_id INTEGER PRIMARY KEY REFERENCES library_roots(id) ON DELETE CASCADE,
+ collection_id INTEGER NOT NULL REFERENCES video_collections(id) ON DELETE RESTRICT
+);
+CREATE INDEX video_roots_collection ON video_collection_roots(collection_id);
+"#;
+
 /// How long a statement waits for the write lock before giving up.
 ///
 /// Load-bearing from the moment there is more than one connection. SQLite
@@ -1193,7 +1257,7 @@ pub(crate) const MIGRATIONS: [&str; SCHEMA_VERSION as usize] = [
     SCHEMA_V20, SCHEMA_V21, SCHEMA_V22, SCHEMA_V23, SCHEMA_V24, SCHEMA_V25,
     SCHEMA_V26, SCHEMA_V27, SCHEMA_V28, SCHEMA_V29, SCHEMA_V30, SCHEMA_V31,
     SCHEMA_V32, SCHEMA_V33, SCHEMA_V34, SCHEMA_V35, SCHEMA_V36, SCHEMA_V37, SCHEMA_V38,
-    SCHEMA_V39,
+    SCHEMA_V39, SCHEMA_V40, SCHEMA_V41, SCHEMA_V42, SCHEMA_V43,
 ];
 
 /// Bring the database up to [`SCHEMA_VERSION`].

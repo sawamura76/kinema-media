@@ -1,3 +1,4 @@
+import { useOutsideDismiss } from '../ui/useOutsideDismiss';
 /**
  * The file's chapters, as a list in the player (PLAN phase 2): the one
  * playing marked, OK jumps to the one under the ring. Only when the file has
@@ -30,6 +31,7 @@ export default function ChapterPanel({
   onJump: (chapter: Chapter) => void;
   onClose: () => void;
 }) {
+  useOutsideDismiss(true, '.chapter-panel', onClose);
   const current = chapterAt(chapters, timePos);
   // A closed menu, as Audio & subtitles is (docs/GOTCHAS.md): the ring stays
   // in the list, Back closes it, and it opens on the chapter playing.

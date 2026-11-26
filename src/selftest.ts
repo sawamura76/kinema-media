@@ -23,6 +23,7 @@ import {
   currentMonitor,
   getCurrentWindow,
   PhysicalPosition,
+  LogicalSize,
   primaryMonitor,
 } from '@tauri-apps/api/window';
 import {
@@ -177,6 +178,14 @@ async function refetchTitle(titleId: number): Promise<number> {
 }
 
 const CALLABLE: Record<string, (...args: never[]) => Promise<unknown>> = {
+  minimizeWindow: () => getCurrentWindow().minimize(),
+  setWindowTop: (on: boolean) => getCurrentWindow().setAlwaysOnTop(on),
+  restoreFloating: () => invoke('mini_player_restore'),
+  resizeFloating: (width: number, height: number) => getCurrentWindow().setSize(new LogicalSize(width, height)),
+  floatingSnapshot: async () => {
+    const win = getCurrentWindow();
+    return { size: await win.innerSize(), position: await win.outerPosition(), top: await win.isAlwaysOnTop(), resizable: await win.isResizable(), fullscreen: await win.isFullscreen(), minimized: await win.isMinimized(), mini: !!document.querySelector('.floating-player'), clock: await mpvGet('time-pos', 'double').catch(() => null) };
+  },
   // A library built from nothing: a folder added as Settings adds it, and a
   // whole scan — so a plan on an empty copy checks the library side end to end:
   // `runScanPipeline` is the app's own scan → parse → match → details →

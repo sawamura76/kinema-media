@@ -1,3 +1,4 @@
+import { useOutsideDismiss } from '../ui/useOutsideDismiss';
 /**
  * "Stats for nerds": what the pipeline is actually doing, as the engine says
  * it (mpv's properties, or Media3's own facts).
@@ -20,6 +21,7 @@ export default function StatsPanel({
   dialog: boolean;
   onClose: () => void;
 }) {
+  useOutsideDismiss(true, '.stats-panel', onClose);
   // A closed menu, like Audio & subtitles: Down from a group reaches the next
   // group, never the player's controls. Left open to them, the next group and
   // Pause were both "below", and while the panel was still scrolling the last

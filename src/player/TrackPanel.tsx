@@ -1,3 +1,4 @@
+import { useOutsideDismiss } from '../ui/useOutsideDismiss';
 /**
  * The audio and subtitle panel in the player.
  */
@@ -218,6 +219,7 @@ export default function TrackPanel({
   // the controls behind it; Up on the top goes round to the bottom and back;
   // Back closes it (Player.tsx).
   const { ref, focusKey } = useFocusGroup<HTMLElement>('menu', { focusKey: TRACK_PANEL_KEY });
+  useOutsideDismiss(true, '.track-panel', onClose);
   const audioLines = describeTracks(audioTracks);
   const subLines = describeTracks(subTracks);
   const seconds = onSecond ? secondChoices(subTracks, subVisible ? sid : null) : [];

@@ -18,7 +18,11 @@ export default function SeekBar({
   onRelease,
   onEnter,
   children,
+  focusKey = PLAYER_SEEK_KEY,
+  label = 'Position',
 }: {
+  focusKey?: string;
+  label?: string;
   progress: number;
   onScrub: (dir: 1 | -1, repeat: boolean) => void;
   onRelease: () => void;
@@ -26,7 +30,7 @@ export default function SeekBar({
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const { focused, props } = useNavLeaf(PLAYER_SEEK_KEY, ref, {
+  const { focused, props } = useNavLeaf(focusKey, ref, {
     on: true,
     onSelect: onEnter,
     onArrow: (arrow, event) => {
@@ -51,7 +55,7 @@ export default function SeekBar({
       {...props}
       className={`player-seek-wrap ${focused ? 'focused' : ''}`}
       role="slider"
-      aria-label="Position"
+      aria-label={label}
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={Math.round(progress)}

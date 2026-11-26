@@ -1,85 +1,92 @@
-/**
- * Smart collections (library/collections.ts, CollectionPage.tsx): the
- * ready-made rails on Home only when the library has titles for them, and a
- * collection of one's own made, kept and deleted by keyboard alone.
- * Against `dev:mock` with `kinemaMockTraits` (mockBackend.ts `title_traits`).
- */
-import { expect, test, type Page } from '@playwright/test';
-import { focused, press } from './kb';
-
-async function open(page: Page): Promise<void> {
-  await page.addInitScript(() => {
-    localStorage.removeItem('kinemaMockSystem');
-    localStorage.setItem('kinemaMockTraits', '1');
-  });
+import { test, expect } from '@playwright/test';
+test('collections isolate browsing, remember selection, and preserve playback', async ({ page }) => {
+  await page.addInitScript(() => { localStorage.setItem('kinemaMockMusic','1'); localStorage.setItem('kinema.music.language','en'); });
   await page.goto('/');
-  await expect.poll(() => focused(page)).toContain('Play');
-}
-
-const railHeadings = (page: Page) =>
-  page.locator('.home .rail-heading').evaluateAll((els) => els.map((e) => e.textContent?.trim() ?? ''));
-
-/** Press `key` until the ring is on `name`, at most `times`. */
-async function moveTo(page: Page, key: string, name: RegExp, times = 8): Promise<void> {
-  for (let i = 0; i < times && !name.test((await focused(page)) ?? ''); i++) await press(page, key);
-  expect(await focused(page)).toMatch(name);
-}
-
-test('ready-made collections show only where the library has two titles for them', async ({ page }) => {
-  await open(page);
-  await expect.poll(() => railHeadings(page)).toContain('Dolby Atmos');
-  const headings = await railHeadings(page);
-  expect(headings).toContain('4K');
-  // One Dolby Vision title, one HDR10+ title: a card each, not a shelf.
-  expect(headings).not.toContain('Dolby Vision');
-  expect(headings).not.toContain('HDR10+');
-  const atmos = page.locator('.rail', { has: page.locator('.rail-heading', { hasText: /^Dolby Atmos/ }) });
-  // In the library's order; the two titles are what matters.
-  const names = await atmos.locator('.card-title').allInnerTexts();
-  expect(names.sort()).toEqual(['Example Film', 'Example Saga']);
+  await page.locator('.top-nav').getByRole('button',{name:'Music',exact:true}).click();
+  await page.getByRole('button',{name:'Album',exact:true}).click();
+  await page.getByRole('button',{name:'First album Test artist'}).click();
+  await page.getByRole('button',{name:'▶ Play',exact:true}).click();
+  await page.locator('.top-nav').getByRole('button',{name:'Music',exact:true}).click();
+  await page.getByRole('button',{name:'Artist',exact:true}).click();
+  const sidebar=page.locator('.collection-sidebar');
+  await sidebar.getByRole('button',{name:'Manage collections',exact:true}).click();
+  const manager=page.locator('.music-folder-settings');
+  await manager.getByRole('button',{name:'Add collection',exact:true}).click();
+  await manager.getByLabel('Collection name').fill('Christmas Music');
+  await manager.getByRole('button',{name:'Create',exact:true}).click();
+  await page.locator('.top-nav').getByRole('button',{name:'Music',exact:true}).click();
+  await expect(sidebar.getByRole('button',{name:'Christmas Music (0)',exact:true})).toHaveAttribute('aria-pressed','true');
+  await expect(page.locator('.music-album-tile')).toHaveCount(0);
+  await expect(page.getByRole('button',{name:'Pause music',exact:true})).toBeVisible();
+  await sidebar.getByRole('button',{name:'Music (3)',exact:true}).click();
+  await expect(page.locator('.music-album-tile')).toHaveCount(1);
+  await sidebar.getByRole('button',{name:'Manage collections',exact:true}).click();
+  await page.getByRole('combobox',{name:'Collection for C:/Music',exact:true}).selectOption('2');
+  await page.locator('.top-nav').getByRole('button',{name:'Music',exact:true}).click();
+  await expect(page.locator('.music-album-tile')).toHaveCount(0);
+  await sidebar.getByRole('button',{name:'Christmas Music (3)',exact:true}).click();
+  await expect(page.locator('.music-album-tile')).toHaveCount(1);
+  await expect(page.getByRole('button',{name:'Pause music',exact:true})).toBeVisible();
 });
 
-test('a collection of ones own, made, kept and deleted by keyboard', async ({ page }) => {
-  await open(page);
-  await page.getByRole('button', { name: 'TV shows' }).first().click();
-  await expect(page.locator('.search .card')).toHaveCount(2);
-  // From the first card: Up is the order row, Up again the head.
-  await press(page, 'ArrowUp', 2);
-  await moveTo(page, 'ArrowRight', /^New collection/);
-  await press(page, 'Enter');
 
-  // Lands on the first measured choice; only what the library has is offered.
-  await expect(page.getByRole('heading', { name: /New collection/ })).toBeVisible();
-  await expect.poll(() => focused(page)).toMatch(/^4K/);
-  await expect(page.getByRole('button', { name: /Dolby Vision profile 7/ })).toBeVisible();
-  await expect(page.getByRole('button', { name: /DTS:X/ })).toHaveCount(0);
-  // Shows, as the shelf it came from: two; with 4K, only the saga.
-  await expect(page.locator('.collection-page .card')).toHaveCount(2);
-  await press(page, 'Enter');
-  await expect(page.locator('.collection-page .card')).toHaveCount(1);
-  await expect(page.locator('.collection-page .card-title')).toHaveText('Example Saga');
+test('music sorting survives collection switches, navigation and restart', async ({ page }) => {
+  await page.addInitScript(() => { localStorage.setItem('kinemaMockMusic','1'); localStorage.setItem('kinema.music.language','en'); });
+  await page.goto('/');
+  const music = () => page.locator('.top-nav').getByRole('button',{name:'Music',exact:true}).click();
+  await music();
+  const sidebar = page.locator('.collection-sidebar');
+  const bar = page.locator('.library-view-tabs');
+  await sidebar.getByRole('button',{name:'All music (3)',exact:true}).click();
+  await bar.getByRole('button',{name:'Year',exact:true}).click();
+  await sidebar.getByRole('button',{name:'Music (3)',exact:true}).click();
+  await bar.getByRole('button',{name:'Genre',exact:true}).click();
+  await sidebar.getByRole('button',{name:'All music (3)',exact:true}).click();
+  await expect(bar.getByRole('button',{name:'Year',exact:true})).toHaveAttribute('aria-pressed','true');
+  await sidebar.getByRole('button',{name:'Music (3)',exact:true}).click();
+  await expect(bar.getByRole('button',{name:'Genre',exact:true})).toHaveAttribute('aria-pressed','true');
+  await page.locator('.top-nav').getByRole('button',{name:'Movies',exact:true}).click();
+  await music();
+  await expect(bar.getByRole('button',{name:'Genre',exact:true})).toHaveAttribute('aria-pressed','true');
+  await page.reload();
+  await music();
+  await expect(bar.getByRole('button',{name:'Genre',exact:true})).toHaveAttribute('aria-pressed','true');
+  await sidebar.getByRole('button',{name:'All music (3)',exact:true}).click();
+  await expect(bar.getByRole('button',{name:'Year',exact:true})).toHaveAttribute('aria-pressed','true');
+});
 
-  await press(page, 'ArrowUp');
-  await moveTo(page, 'ArrowRight', /^Save collection/);
-  await press(page, 'Enter');
-  await expect(page.getByRole('heading', { name: /4K · TV shows/ })).toBeVisible();
 
-  // Back past the shelf to Home, where it is a rail of its own with a way in.
-  await press(page, 'Escape');
-  await press(page, 'Escape');
-  await expect.poll(() => railHeadings(page)).toContain('4K · TV shows');
-  const rail = page.locator('.rail', { has: page.locator('.rail-heading', { hasText: '4K · TV shows' }) });
-  await rail.getByRole('button', { name: /Open collection/ }).click();
-  await expect(page.getByRole('heading', { name: /4K · TV shows/ })).toBeVisible();
-
-  // Deleted, it goes from Home. (Kept across a restart is the settings
-  // table's; the mock's settings live as long as the page.)
-  await press(page, 'Escape');
-  await rail.getByRole('button', { name: /Open collection/ }).click();
-  await expect.poll(() => focused(page)).toMatch(/^✓ 4K/);
-  await press(page, 'ArrowUp');
-  await moveTo(page, 'ArrowRight', /^Delete/);
-  await press(page, 'Enter');
-  await press(page, 'Enter');
-  await expect.poll(() => railHeadings(page)).not.toContain('4K · TV shows');
+test('single music bar shares defaults with Settings for each collection', async ({ page }) => {
+  await page.addInitScript(() => { localStorage.setItem('kinemaMockMusic','1'); localStorage.setItem('kinema.music.language','en'); localStorage.setItem('kinema.music.collection.1.sort','title'); });
+  await page.goto('/');
+  const music = () => page.locator('.top-nav').getByRole('button',{name:'Music',exact:true}).click();
+  const sidebar = page.locator('.collection-sidebar');
+  const bar = page.locator('.library-view-tabs');
+  await music();
+  await sidebar.getByRole('button',{name:'Music (3)',exact:true}).click();
+  await expect(bar.getByRole('button',{name:'Artist',exact:true})).toHaveAttribute('aria-pressed','true');
+  await bar.getByRole('button',{name:'Year',exact:true}).click();
+  await expect(page.locator('.music-library-group > h2')).toHaveText(['2026']);
+  await sidebar.getByRole('button',{name:'Manage collections',exact:true}).click();
+  await expect(page.getByRole('combobox',{name:'Default collection sorting',exact:true})).toHaveValue('year');
+  await page.getByRole('combobox',{name:'Default collection sorting',exact:true}).selectOption('title');
+  await page.getByRole('combobox',{name:'Default All music sorting',exact:true}).selectOption('album');
+  const manager=page.locator('.music-folder-settings');
+  await manager.getByRole('button',{name:'Add collection',exact:true}).click();
+  await manager.getByLabel('Collection name').fill('Christmas');
+  await manager.getByRole('button',{name:'Create',exact:true}).click();
+  await page.getByRole('combobox',{name:'Default collection sorting',exact:true}).selectOption('genre');
+  await music();
+  await expect(bar.getByRole('button',{name:'Genre',exact:true})).toHaveAttribute('aria-pressed','true');
+  await sidebar.getByRole('button',{name:'Music (3)',exact:true}).click();
+  await expect(bar.getByRole('button',{name:'Song title',exact:true})).toHaveAttribute('aria-pressed','true');
+  await expect(page.locator('.music-song')).toHaveCount(3);
+  await sidebar.getByRole('button',{name:'All music (3)',exact:true}).click();
+  await expect(bar.getByRole('button',{name:'Album',exact:true})).toHaveAttribute('aria-pressed','true');
+  await expect(page.getByRole('combobox',{name:'Sort music by',exact:true})).toHaveCount(0);
+  await page.setViewportSize({width:1280,height:720});
+  await page.screenshot({path:'work/single-music-bar.png'});
+  await page.reload(); await music();
+  await sidebar.getByRole('button',{name:'Christmas (0)',exact:true}).click();
+  await expect(bar.getByRole('button',{name:'Genre',exact:true})).toHaveAttribute('aria-pressed','true');
 });

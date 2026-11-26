@@ -38,7 +38,7 @@ import FocusButton from './FocusButton';
 import FocusGroup, { FocusProvider } from './FocusGroup';
 import FocusInput from './FocusInput';
 import ChoiceRow from './ChoiceRow';
-import { setTvMode, TV_MODE_KEY } from './tv';
+import { setUiMode, TV_MODE_KEY, UI_MODE_KEY } from './tv';
 import { useCapabilities } from '../capabilities';
 import { ALL_ARROWS, useNavGroup } from './focusGroups';
 import { useLanding } from './focusStore';
@@ -62,7 +62,7 @@ const TMDB_KEY_URL = 'https://www.themoviedb.org/settings/api';
 
 const FIRST_RUN_FOCUS_KEY = 'first-run';
 
-type Seat = 'tv' | 'desk' | '';
+type Seat = 'tv' | 'desk' | 'handheld' | '';
 
 /** Whether to ask for a TMDB key at all: only a build without one of its own. */
 const ASK_FOR_KEY = !BUILTIN_TMDB_KEY;
@@ -70,9 +70,10 @@ const ASK_FOR_KEY = !BUILTIN_TMDB_KEY;
 interface Props {
   /** Start the first scan, and the setup pages while it runs. */
   onScan: () => void;
+  onSkip: () => void;
 }
 
-export default function FirstRun({ onScan }: Props) {
+export default function FirstRun({ onScan, onSkip }: Props) {
   // A page of its own (NAV-MAP, agreed 2026-10-11): Up from the first
   // question is nothing, not the top bar, and Right with nothing beside it is
   // nothing, not "Add TV folder" a section higher.
@@ -95,14 +96,15 @@ export default function FirstRun({ onScan }: Props) {
   useEffect(() => {
     void (async () => {
       try {
-        const [list, key, tv] = await Promise.all([
+        const [list, key, tv, uiMode] = await Promise.all([
           listLibraryRoots(),
           getSetting('tmdb_api_key'),
           getSetting(TV_MODE_KEY),
+          getSetting(UI_MODE_KEY),
         ]);
         setRoots(list);
         // Asked, not assumed: an answer only once one has been given.
-        setSeat(tv === 'on' ? 'tv' : tv === 'off' ? 'desk' : '');
+        setSeat(uiMode === 'handheld' ? 'handheld' : uiMode === 'pc' ? 'desk' : uiMode === 'tv' || tv === 'on' ? 'tv' : tv === 'off' ? 'desk' : '');
         if (key) {
           setTmdbKey(key);
           setSavedKey(true);
@@ -180,7 +182,7 @@ export default function FirstRun({ onScan }: Props) {
 
   const chooseSeat = useCallback((next: Seat) => {
     setSeat(next);
-    if (next) setTvMode(next === 'tv');
+    if (next) setUiMode(next === 'desk' ? 'pc' : next);
   }, []);
 
   return (
@@ -191,6 +193,11 @@ export default function FirstRun({ onScan }: Props) {
           A few questions, then Kinema does the rest: posters, descriptions and all. Every answer
           can be changed later in Settings.
         </p>
+
+        <FocusGroup kind="row" className="settings-row">
+          <FocusButton className="btn-secondary" focusKey="first-run-skip" onSelect={onSkip}>Skip setup</FocusButton>
+          <span className="muted">Go straight to music. Add movies or shows later in Settings.</span>
+        </FocusGroup>
 
         {error && (
           <div className="settings-error" onClick={() => setError(null)}>
@@ -208,6 +215,7 @@ export default function FirstRun({ onScan }: Props) {
               choices={[
                 { value: 'tv', label: 'A TV, from the sofa' },
                 { value: 'desk', label: 'A desk' },
+                { value: 'handheld', label: 'A handheld PC' },
               ]}
               value={seat}
               onChange={chooseSeat}

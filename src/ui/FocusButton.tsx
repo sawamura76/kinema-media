@@ -36,6 +36,9 @@ interface Props {
   /** It stays under the top bar as the page scrolls (a title page's Back):
    *  the one scroll rule keeps the ring clear of it (focusScroll.ts). */
   stickyTop?: boolean;
+  pressed?: boolean;
+  expanded?: boolean;
+  controls?: string;
 }
 
 export default function FocusButton({
@@ -48,6 +51,9 @@ export default function FocusButton({
   label,
   onHighlight,
   stickyTop = false,
+  pressed,
+  expanded,
+  controls,
 }: Props) {
   const ref = useRef<HTMLButtonElement>(null);
   const key = useNavKey(focusKey);
@@ -66,6 +72,9 @@ export default function FocusButton({
       disabled={disabled}
       title={title}
       aria-label={label}
+      aria-pressed={pressed}
+      aria-expanded={expanded}
+      aria-controls={controls}
       data-sticky-top={stickyTop ? '' : undefined}
       onClick={onSelect}
       onMouseEnter={(e) => noteWidth(e.currentTarget)}

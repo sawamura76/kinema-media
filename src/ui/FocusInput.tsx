@@ -16,7 +16,7 @@ interface Props {
   onChange: (value: string) => void;
   placeholder?: string;
   className?: string;
-  type?: 'text' | 'password';
+  type?: 'text' | 'password' | 'search';
   /**
    * Enter while typing. Handled on the DOM input rather than through the
    * focus engine's OK, which it delivers only when the input holds the

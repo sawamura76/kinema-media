@@ -8,6 +8,11 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+/App/
+/App-*/
+/work/
+/tools/npm/
+/tools/bin/
 dist
 dist-ssr
 *.local
@@ -66,3 +71,9 @@ playwright-report/
 __pycache__/
 
 site/whatLeaves.json
+
+# Personal development files
+/key.txt
+/.mcp.json
+/tools/
+/Build-Personal.ps1

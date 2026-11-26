@@ -14,6 +14,8 @@ export type SectionId =
   | 'library'
   | 'playback'
   | 'picture'
+  | 'visualizations'
+  | 'controls'
   | 'subtitles'
   | 'intros'
   | 'tracking'
@@ -26,6 +28,8 @@ export const SECTIONS: [SectionId, string][] = [
   ['library', 'Library'],
   ['playback', 'Playback'],
   ['picture', 'Picture & sound'],
+  ['visualizations', 'Visualizations'],
+  ['controls', 'Navigation & controls'],
   ['subtitles', 'Language & subtitles'],
   ['intros', 'Skipping intros'],
   ['tracking', 'Keep track of what I watch'],

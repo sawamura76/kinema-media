@@ -51,6 +51,8 @@ interface Props {
   onPlaySomething: () => void;
   /** Start the first scan, from the first-run panel. */
   onFirstScan: () => void;
+  onSkipSetup?: () => void;
+  setupDone?: boolean;
   /** A Videos folder with something in it: a library, if not of titles. */
   hasVideos?: boolean;
   /** The folders added, and the files the scans found in them (all kinds). */
@@ -123,7 +125,7 @@ export default function Home(props: Props) {
   // two controls are exactly what is needed.
   // A library of videos alone (videos.ts) is not a first run: Home shows its
   // Continue Watching, and the videos themselves are on the Library page.
-  if (titles.length === 0 && !hasVideos) {
+  if (titles.length === 0 && !hasVideos && !props.setupDone) {
     // Nothing rather than the setup panel while the first read is in flight:
     // the view behind is already opaque, and a blank moment is better than a
     // panel that flashes up at every launch and takes focus with it.
@@ -157,7 +159,7 @@ export default function Home(props: Props) {
     }
     return (
       <FocusScreen key="first-run">
-        <FirstRun onScan={onFirstScan} />
+        <FirstRun onScan={onFirstScan} onSkip={props.onSkipSetup ?? onSetupClosed} />
       </FocusScreen>
     );
   }

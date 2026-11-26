@@ -56,7 +56,7 @@ export default defineConfig(async () => ({
     watch: {
       // 3. tell Vite to ignore watching `src-tauri`, and Claude Code's
       //    worktrees (whole copies of the project under .claude/)
-      ignored: ["**/src-tauri/**", "**/.claude/**"],
+      ignored: ["**/src-tauri/**", "**/.claude/**", "**/App/**", "**/App-*/**", "**/work/**", "**/tools/npm/**"],
     },
   },
 }));
